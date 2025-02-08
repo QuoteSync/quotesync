@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Black">
+    <option name="sdkName" value="Python 3.13 (quotesync)" />
+  </component>
+  <component name="GithubDefaultAccount">
+    <option name="defaultAccountId" value="c8cec6d8-592a-4e28-8bbb-f1813a4f75f3" />
+  </component>
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (quotesync)" project-jdk-type="Python SDK" />
+</project>
