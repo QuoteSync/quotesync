@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, AuthorViewSet, BookViewSet, TagViewSet, QuoteViewSet, QuoteTagViewSet,
     QuoteGroupViewSet, QuoteGroupMembershipViewSet, QuoteGroupShareViewSet,
-    QuoteListViewSet, QuoteListQuoteViewSet, DocumentViewSet, ImportLogViewSet
+    QuoteListViewSet, QuoteListQuoteViewSet, DocumentViewSet, ImportLogViewSet,
+    current_user
 )
 
 router = DefaultRouter()
@@ -23,4 +24,5 @@ router.register(r'import-logs', ImportLogViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
+    path('api/me/', current_user, name='current_user'),
 ]
