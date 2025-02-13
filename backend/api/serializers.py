@@ -15,10 +15,20 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         password = validated_data.pop('password')
-        user = User(**validated_data)
-        user.set_password(password)  # This hashes the password
+        username = validated_data.pop('username')
+        email = validated_data.pop('email')
+        first_name = validated_data.pop('first_name')
+        last_name = validated_data.pop('last_name')
+        user = User(
+            username=username,
+            email=email,
+            first_name=first_name,
+            last_name=last_name
+        )
+        user.set_password(password)
         user.save()
         return user
+    
 
 
 class AuthorSerializer(serializers.ModelSerializer):
@@ -28,6 +38,7 @@ class AuthorSerializer(serializers.ModelSerializer):
 
 
 class BookSerializer(serializers.ModelSerializer):
+    author = AuthorSerializer(read_only=True)
     class Meta:
         model = Book
         fields = '__all__'
@@ -40,6 +51,7 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class QuoteSerializer(serializers.ModelSerializer):
+    book = BookSerializer(read_only=True)
     class Meta:
         model = Quote
         fields = '__all__'

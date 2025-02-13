@@ -15,6 +15,12 @@ const router = createRouter({
           component: () => import('@/views/Dashboard.vue')
         },
         {
+          path: '/quotes',
+          name: 'quotes',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/Quotes.vue')
+        },
+        {
           path: '/uikit/formlayout',
           name: 'formlayout',
           meta: { requiresAuth: true },
@@ -157,17 +163,36 @@ const router = createRouter({
   ]
 });
 
-router.beforeEach((to, _from, next) => {
-  // Check if any matched route requires authentication
+router.beforeEach(async (to, _from, next) => {
+  // Check if the route requires authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
     const token = localStorage.getItem('accessToken');
+
     if (!token) {
-      // If not logged in, redirect to the login page
-      next({ name: 'login' });
-    } else {
+      // If no token, redirect to login
+      return next({ name: 'login' });
+    }
+
+    try {
+      // Validate the token with the backend
+      const response = await fetch('/api/me', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Invalid token');
+      }
+
+      // Token is valid, allow navigation
       next();
+    } catch (error) {
+      // If an error occurs, redirect to login
+      next({ name: 'login' });
     }
   } else {
+    // If authentication is not required, proceed as usual
     next();
   }
 });

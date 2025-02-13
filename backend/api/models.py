@@ -15,13 +15,13 @@ class User(AbstractUser):
     email, password, first_name, last_name, is_active, is_staff, is_superuser,
     date_joined, last_login, etc.
     """
-    email = models.EmailField(unique=True, help_text="Dirección de correo electrónico")
     username = models.CharField(max_length=150, unique=True, help_text="Nombre de usuario")
+    email = models.EmailField(unique=True, help_text="Dirección de correo electrónico")
     first_name = models.CharField(max_length=30, blank=True, help_text="Nombre")
     last_name = models.CharField(max_length=150, blank=True, help_text="Apellido")
 
     def __str__(self):
-        return f"{self.first_name} {self.last_name}"
+        return f"{self.username}"
 
     class Meta:
         db_table = 'users'

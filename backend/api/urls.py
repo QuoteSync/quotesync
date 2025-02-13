@@ -4,7 +4,8 @@ from .views import (
     UserViewSet, AuthorViewSet, BookViewSet, TagViewSet, QuoteViewSet, QuoteTagViewSet,
     QuoteGroupViewSet, QuoteGroupMembershipViewSet, QuoteGroupShareViewSet,
     QuoteListViewSet, QuoteListQuoteViewSet, DocumentViewSet, ImportLogViewSet,
-    current_user
+    current_user,
+    upload_quotes,
 )
 
 router = DefaultRouter()
@@ -25,4 +26,6 @@ router.register(r'import-logs', ImportLogViewSet)
 urlpatterns = [
     path('api/', include(router.urls)),
     path('api/me/', current_user, name='current_user'),
+    
+    path('api/upload-quotes/', upload_quotes, name='upload_quotes'),
 ]

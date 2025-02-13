@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import apiClient from '@/api';
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
 
-const email = ref('');
+const username = ref('');
 const password = ref('');
 const checked = ref(false);
 const errorMessage = ref('');
@@ -15,7 +15,7 @@ const login = async () => {
     try {
         // Envía la petición POST a /api/token/ (ajusta el endpoint si fuera distinto)
         const response = await apiClient.post('/token/', {
-            username: email.value, // o usa 'email' si así está configurado en tu API
+            username: username.value, // o usa 'email' si así está configurado en tu API
             password: password.value
         });
 
@@ -57,8 +57,8 @@ const login = async () => {
                     </div>
 
                     <div>
-                        <label for="email1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-                        <InputText id="email1" type="text" placeholder="Email address" class="w-full md:w-[30rem] mb-8" v-model="email" />
+                        <label for="username1" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Username</label>
+                        <InputText id="username1" type="text" placeholder="Username" class="w-full md:w-[30rem] mb-8" v-model="username" />
                         <label for="password1" class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
                         <Password id="password1" v-model="password" placeholder="Password" :toggleMask="true" class="mb-4" fluid :feedback="false" @keyup.enter="login"></Password>
 
@@ -71,6 +71,10 @@ const login = async () => {
                         </div>
                         <!-- Botón que llama a la función de login -->
                         <Button label="Sign In" class="w-full" @click="login"></Button>
+
+                        <div class="text-right mt-4">
+                            <span class="cursor-pointer text-primary" @click="router.push({ name: 'register' })">Sign Up</span>
+                        </div>
                         <!-- Mensaje de error -->
                         <p v-if="errorMessage" class="text-red-500 mt-2">{{ errorMessage }}</p>
                     </div>

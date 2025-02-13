@@ -112,16 +112,7 @@ const toggleProfileMenu = (event) => {
                 </div>
             </div>
 
-            <button
-                class="layout-topbar-menu-button layout-topbar-action"
-                v-styleclass="{ selector: '@next', enterFromClass: 'hidden', enterActiveClass: 'animate-scalein', leaveToClass: 'hidden', leaveActiveClass: 'animate-fadeout', hideOnOutsideClick: true }"
-            >
-                <i class="pi pi-ellipsis-v"></i>
-            </button>
-
-            <div class="layout-topbar-menu hidden lg:block">
-                <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
+            <button type="button" class="layout-topbar-action">
                         <i class="pi pi-calendar"></i>
                         <span>Calendar</span>
                     </button>
@@ -129,14 +120,9 @@ const toggleProfileMenu = (event) => {
                         <i class="pi pi-inbox"></i>
                         <span>Messages</span>
                     </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
-                    </button>
-                    <Chip :label="username || 'user'" :image="'https://primefaces.org/cdn/primevue/images/avatar/onyamalimba.png'" class="mr-2 mb-2 cursor-pointer" @click="toggleProfileMenu" />
+                    <Chip :label="username || 'user'" :image="'https://primefaces.org/cdn/primevue/images/avatar/onyamalimba.png'" class="mr-2 mb-2 cursor-pointer" @click="toggleProfileMenu"  />
+                    <!-- <Avatar label="AA" class="mr-2" size="large" :style="{ 'background-color': '#2196F3', color: '#ffffff' }" shape="circle"></Avatar> -->
                     <TieredMenu :model="profileMenuItems" ref="profileMenu" popup />
-                </div>
-            </div>
         </div>
     </div>
 </template>
