@@ -34,6 +34,13 @@ class User(AbstractUser):
 
 class Author(models.Model):
     name = models.CharField(max_length=1024, unique=True, help_text="Nombre del autor")
+    cover = models.URLField(
+        blank=True,
+        null=True,
+        default="https://media.briantracy.com/blog/wp-content/uploads/2021/12/03083020/how-to-become-an-author.jpg",
+        help_text="URL de la foto del autor"
+    )
+    bio = models.TextField(blank=True, null=True, help_text="Biografía del autor")
 
     def __str__(self):
         return self.name
@@ -53,6 +60,16 @@ class Book(models.Model):
         on_delete=models.SET_NULL,
         help_text="Autor del libro"
     )
+    cover = models.URLField(blank=True, null=True, help_text="URL de la portada del libro")
+    description = models.TextField(blank=True, null=True, help_text="Descripción del libro")
+    published = models.DateField(blank=True, null=True, help_text="Fecha de publicación")
+    isbn = models.CharField(max_length=13, blank=True, null=True, help_text="ISBN del libro")
+    pages = models.PositiveIntegerField(blank=True, null=True, help_text="Número de páginas")
+    publisher = models.CharField(max_length=1024, blank=True, null=True, help_text="Editorial")
+    language = models.CharField(max_length=50, blank=True, null=True, help_text="Idioma")
+    created = models.DateTimeField(auto_now_add=True, help_text="Fecha de creación")
+    updated = models.DateTimeField(auto_now=True, help_text="Fecha de última actualización")
+
 
     def __str__(self):
         return "{} ({})".format(self.title, self.author)
@@ -65,6 +82,7 @@ class Book(models.Model):
 class Tag(models.Model):
     title = models.SlugField(unique=True, help_text="Título de la etiqueta")
     description = models.CharField(max_length=1024, blank=True, null=True, help_text="Descripción de la etiqueta")
+
 
     class Meta:
         ordering = ('title',)

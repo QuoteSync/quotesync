@@ -21,6 +21,18 @@ const router = createRouter({
           component: () => import('@/views/pages/Quotes.vue')
         },
         {
+          path: 'authors',
+          name: 'authors',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/Authors.vue')
+        },
+        {
+          path: 'books',
+          name: 'books',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/Books.vue')
+        },
+        {
           path: '/uikit/formlayout',
           name: 'formlayout',
           meta: { requiresAuth: true },
