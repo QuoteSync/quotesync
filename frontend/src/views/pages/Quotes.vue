@@ -4,6 +4,8 @@ import { FilterMatchMode } from "@primevue/core/api";
 import { useToast } from "primevue/usetoast";
 import { onMounted, ref } from "vue";
 import axios from "axios";
+// import { getCookie } from "@/utils/csrf"; // Ensure you have a utility to get CSRF token
+import { apiClient, getCookie } from "@/api";
 
 // Reactive variables
 const toast = useToast();
@@ -21,8 +23,9 @@ const submitted = ref(false);
 const fileInput = ref(null); // hidden file input for importing quotes
 
 // Fetch and map quotes when the component mounts
-onMounted(() => {
+function fetchQuotes() {
   QuoteService.getQuotes().then((data) => {
+    console.log("API Response:", data);
     quotes.value = data.map((item) => ({
       archive: item.archive,
       // Map the API’s "body" field to our "quote" property
@@ -38,8 +41,11 @@ onMounted(() => {
     }));
     console.log(data);
   });
-});
+}
 
+onMounted(fetchQuotes);
+
+// Open a dialog to create a new quote (do not call POST immediately)
 function openNew() {
   quote.value = {
     title: "",
@@ -53,50 +59,81 @@ function openNew() {
   quoteDialog.value = true;
 }
 
+// Open a dialog to edit an existing quote
 function editQuote(q) {
+  // Spread the selected quote into the reactive variable
   quote.value = { ...q };
   // Ensure quote.book is defined
   if (!quote.value.book) {
-    quote.value.book = { author: "", title: "" };
+    quote.value.book = { author: { id: "", name: "" }, title: "" };
   }
+  // Convert tags array to a comma-separated string
+  if (Array.isArray(quote.value.tags)) {
+    quote.value.tags = quote.value.tags.map((tag) => tag.title).join(", ");
+  }
+  submitted.value = false;
   quoteDialog.value = true;
 }
 
+// Hide the quote dialog
 function hideDialog() {
   quoteDialog.value = false;
   submitted.value = false;
 }
 
+// Save the quote by either creating (POST) or updating (PUT) via the API
 function saveQuote() {
   submitted.value = true;
 
-  // Validate using "title" (not "name")
   if (quote.value.title?.trim()) {
+    const payload = {
+      title: quote.value.title,
+      body: quote.value.body, // Ensure this matches the backend field
+      archive: quote.value.archive || false,
+      book: quote.value.book?.id || null,
+      tags: [...quote.value.tags.split(",")],
+      owner: quote.value.owner || 9, // If needed, set a default or fetch dynamically
+    };
+    console.log("TAGS:" + quote.value.tags);
+
     if (quote.value.id) {
-      const index = findIndexById(quote.value.id);
-      if (index !== -1) {
-        quotes.value[index] = { ...quote.value };
-      }
-      toast.add({
-        severity: "success",
-        summary: "Successful",
-        detail: "Quote Updated",
-        life: 3000,
-      });
-    } else {
-      quote.value.id = createId();
-      quotes.value.push({ ...quote.value });
-      toast.add({
-        severity: "success",
-        summary: "Successful",
-        detail: "Quote Created",
-        life: 3000,
-      });
+      QuoteService.updateQuote(quote.value.id, payload)
+        .then((data) => {
+          const index = findIndexById(quote.value.id);
+          if (index !== -1) {
+            quotes.value[index] = data;
+          }
+          toast.add({
+            severity: "success",
+            summary: "Successful",
+            detail: quote.value.tags,
+            life: 3000,
+          });
+          quoteDialog.value = false;
+          quote.value = {};
+        })
+        .catch((error) => {
+          console.error("PUT error:", error);
+          toast.add({
+            severity: "error",
+            summary: "Error",
+            detail: error.response?.data || "Unknown error",
+            life: 3000,
+          });
+        })
+        .finally(() => {
+          fetchQuotes();
+        });
     }
-    quoteDialog.value = false;
-    quote.value = {};
   }
 }
+
+// Utility: find a quote's index by its id in the local array
+function findIndexById(id) {
+  return quotes.value.findIndex((q) => q.id === id);
+}
+
+// --- Other functions remain unchanged ---
 
 function confirmDeleteQuote(q) {
   quote.value = q;
@@ -104,35 +141,27 @@ function confirmDeleteQuote(q) {
 }
 
 function deleteQuote() {
-  quotes.value = quotes.value.filter((val) => val.id !== quote.value.id);
-  deleteQuoteDialog.value = false;
-  quote.value = {};
-  toast.add({
-    severity: "success",
-    summary: "Successful",
-    detail: "Quote Deleted",
-    life: 3000,
-  });
-}
-
-function findIndexById(id) {
-  let index = -1;
-  for (let i = 0; i < quotes.value.length; i++) {
-    if (quotes.value[i].id === id) {
-      index = i;
-      break;
-    }
-  }
-  return index;
-}
-
-function createId() {
-  let id = "";
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 5; i++) {
-    id += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return id;
+  QuoteService.deleteQuote(quote.value.id)
+    .then(() => {
+      quotes.value = quotes.value.filter((val) => val.id !== quote.value.id);
+      deleteQuoteDialog.value = false;
+      quote.value = {};
+      toast.add({
+        severity: "success",
+        summary: "Successful",
+        detail: "Quote Deleted",
+        life: 3000,
+      });
+    })
+    .catch((error) => {
+      console.error("DELETE error:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data || "Unknown error",
+        life: 3000,
+      });
+    });
 }
 
 function exportCSV() {
@@ -147,12 +176,24 @@ function deleteSelectedQuotes() {
   quotes.value = quotes.value.filter((val) => !selectedQuotes.value.includes(val));
   deleteQuotesDialog.value = false;
   selectedQuotes.value = []; // reset to an empty array
-  toast.add({
-    severity: "success",
-    summary: "Successful",
-    detail: "Quotes Deleted",
-    life: 3000,
-  });
+  QuoteService.deleteMultipleQuotes(selectedQuotes.value.map((q) => q.id))
+    .then(() => {
+      toast.add({
+        severity: "success",
+        summary: "Successful",
+        detail: "Quotes Deleted",
+        life: 3000,
+      });
+    })
+    .catch((error) => {
+      console.error("DELETE error:", error);
+      toast.add({
+        severity: "error",
+        summary: "Error",
+        detail: error.response?.data || "Unknown error",
+        life: 3000,
+      });
+    });
 }
 
 function importQuotes() {
@@ -176,19 +217,7 @@ async function handleFileUpload(event) {
       life: 3000,
     });
     // Refresh quotes after a successful upload
-    QuoteService.getQuotes().then((data) => {
-      quotes.value = data.map((item) => ({
-        archive: item.archive,
-        quote: item.body,
-        created: item.created,
-        id: item.id,
-        location: item.location,
-        tags: item.tags,
-        title: item.title,
-        updated: item.updated,
-        book: item.book,
-      }));
-    });
+    fetchQuotes();
     console.log(response.data);
   } catch (error) {
     toast.add({
@@ -283,7 +312,13 @@ async function handleFileUpload(event) {
         />
         <Column field="book.title" header="Book" sortable style="min-width: 12rem" />
         <Column field="quote" header="Quote" sortable style="min-width: 16rem" />
-        <Column field="tags" header="Tags" sortable style="min-width: 12rem" />
+        <Column field="tags" header="Tags" sortable style="min-width: 12rem">
+          <template #body="slotProps">
+            <span v-for="tag in slotProps.data.tags" :key="tag.id" class="mr-2">
+              <Tag :value="tag.title" />
+            </span>
+          </template>
+        </Column>
         <Column :exportable="false" style="min-width: 12rem">
           <template #body="slotProps">
             <Button

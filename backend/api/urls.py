@@ -25,7 +25,10 @@ router.register(r'import-logs', ImportLogViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
-    path('api/me/', current_user, name='current_user'),
+    # path('api/me/', current_user, name='current_user'),
+    path('api/_allauth/', include('allauth.headless.urls')),
+
+
     
     path('api/upload-quotes/', upload_quotes, name='upload_quotes'),
 ]

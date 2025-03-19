@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from datetime import timedelta
+from corsheaders.defaults import default_headers
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,8 +47,22 @@ INSTALLED_APPS = [
     # Third-party apps
     'rest_framework',
     'corsheaders',
+
+    'accounts',
+    'django_filters',
+
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.headless',
+    'allauth.usersessions',
+    'allauth.mfa',  # Optional, if using MFA
     # Your apps
     'api',
+    'schema_graph',
+    'schema_viewer',
+
+
 ]
 
 MIDDLEWARE = [
@@ -62,22 +77,44 @@ MIDDLEWARE = [
     # Third-party middleware
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
+
+    'allauth.account.middleware.AccountMiddleware',
+    # 'allauth.socialaccount.middleware.SocialAccountMiddleware',
+    # 'allauth.usersessions.middleware.SessionAuthenticationMiddleware',
+    # 'allauth.mfa.middleware.MFARequiredMiddleware',  # Optional, if using MFA
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+]
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+]
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-csrftoken",
+]
+
+# ACCOUNT_SIGNUP_FORM_CLASS = 'accounts.forms.CustomSignupForm'
+# ACCOUNT_SIGNUP_FORM_CLASS = 'accounts.forms'
+# ACCOUNT_SIGNUP_FORM_CLASS = 'api.signup_forms.CustomSignupForm'
+
+
+
 
 # backend/backend/settings.py
 
 REST_FRAMEWORK = {
-    # Set the default authentication to JWT
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
-    # Optionally, you can set default permission classes:
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 }
+
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Puedes cambiar 5 minutos por el valor que desees
@@ -101,6 +138,12 @@ TEMPLATES = [
         },
     },
 ]
+
+AUTHENTICATION_BACKENDS = (
+    'django.contrib.auth.backends.ModelBackend',  # Default
+    'allauth.account.auth_backends.AuthenticationBackend',  # allauth
+)
+
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
@@ -164,3 +207,31 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# django-allauth settings
+# Configuración de django-allauth
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"  # Asegurar que usa tu campo personalizado
+ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"  # Si quieres usar email para login
+
+# ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+# ACCOUNT_EMAIL_REQUIRED = True
+
+HEADLESS_ONLY = True
+HEADLESS_FRONTEND_URLS = {
+    "account_confirm_email": "/account/verify-email/{key}",
+    "account_reset_password": "/account/password/reset",
+    "account_reset_password_from_key": "/account/password/reset/key/{key}",
+    "account_signup": "/account/signup",
+    "socialaccount_login_error": "/account/provider/callback",
+}
+HEADLESS_SERVE_SPECIFICATION = True
+
+MFA_SUPPORTED_TYPES = ["totp", "recovery_codes", "webauthn"]
+# MFA_PASSKEY_LOGIN_ENABLED = True
+# MFA_PASSKEY_SIGNUP_ENABLED = True
+
+AUTH_USER_MODEL = 'api.User'

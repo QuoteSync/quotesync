@@ -60,7 +60,7 @@ class Book(models.Model):
         on_delete=models.SET_NULL,
         help_text="Autor del libro"
     )
-    cover = models.URLField(blank=True, null=True, help_text="URL de la portada del libro")
+    cover = models.URLField(blank=True, null=True, help_text="URL de la portada del libro", default="https://media.briantracy.com/blog/wp-content/uploads/2021/12/03083020/how-to-become-an-author.jpg")
     description = models.TextField(blank=True, null=True, help_text="Descripción del libro")
     published = models.DateField(blank=True, null=True, help_text="Fecha de publicación")
     isbn = models.CharField(max_length=13, blank=True, null=True, help_text="ISBN del libro")
@@ -89,7 +89,7 @@ class Tag(models.Model):
         db_table = 'tags'
 
     def __str__(self):
-        return "{}: {}".format(self.title, self.description)
+        return self.title
 
 
 class Quote(models.Model):

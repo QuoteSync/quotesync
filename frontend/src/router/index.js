@@ -1,5 +1,6 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
+import { getSession } from '@/api';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -21,17 +22,23 @@ const router = createRouter({
           component: () => import('@/views/pages/Quotes.vue')
         },
         {
-          path: 'authors',
+          path: '/authors',
           name: 'authors',
           meta: { requiresAuth: true },
           component: () => import('@/views/pages/Authors.vue')
         },
         {
-          path: 'books',
+          path: '/books',
           name: 'books',
           meta: { requiresAuth: true },
           component: () => import('@/views/pages/Books.vue')
         },
+        {
+          path: '/books/:id',
+          name: 'bookDetail',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/BookDetail.vue')
+        },        
         {
           path: '/uikit/formlayout',
           name: 'formlayout',
@@ -176,37 +183,25 @@ const router = createRouter({
 });
 
 router.beforeEach(async (to, _from, next) => {
-  // Check if the route requires authentication
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    const token = localStorage.getItem('accessToken');
+  // Lista de rutas públicas
+  const publicRoutes = ['login', 'register', 'accessDenied', 'error'];
 
-    if (!token) {
-      // If no token, redirect to login
+  // Si la ruta es pública, permite la navegación sin llamar a getSession
+  if (publicRoutes.includes(to.name)) {
+    return next();
+  }
+
+  // Si la ruta requiere autenticación, se verifica la sesión
+  if (to.matched.some(record => record.meta.requiresAuth)) {
+    const sessionData = await getSession();
+    if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
+      return next();
+    } else {
       return next({ name: 'login' });
     }
-
-    try {
-      // Validate the token with the backend
-      const response = await fetch('/api/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Invalid token');
-      }
-
-      // Token is valid, allow navigation
-      next();
-    } catch (error) {
-      // If an error occurs, redirect to login
-      next({ name: 'login' });
-    }
-  } else {
-    // If authentication is not required, proceed as usual
-    next();
   }
+
+  next();
 });
 
 

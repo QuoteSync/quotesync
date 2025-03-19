@@ -1,4 +1,4 @@
-import apiClient from "@/api";
+import { apiClient } from "@/api";
 
 export const BookService = {
     async getBooks() {

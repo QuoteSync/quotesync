@@ -1,7 +1,8 @@
 from rest_framework import viewsets, permissions
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import (
     Author, Book, Tag, Quote, QuoteTag,
@@ -15,6 +16,9 @@ from .serializers import (
     QuoteListSerializer, QuoteListQuoteSerializer, DocumentSerializer,
     ImportLogSerializer
 )
+import logging
+
+logger = logging.getLogger(__name__)
 
 # quotesync/apps/quotes/views.py
 
@@ -47,20 +51,54 @@ class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
     serializer_class = AuthorSerializer
 
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['name']
+
 
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
+
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['title', 'author']
 
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
 
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['title']  # Ensure 'tag_name' is a valid field in the Tag model
+
+
 
 class QuoteViewSet(viewsets.ModelViewSet):
     queryset = Quote.objects.all()
     serializer_class = QuoteSerializer
+
+    def update(self, request, *args, **kwargs):
+        logger.info("Received PUT data: %s", request.data)
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            self.perform_update(serializer)
+            logger.info("PUT successful, response data: %s", serializer.data)
+            return Response(serializer.data)
+        else:
+            logger.error("PUT validation error: %s", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+    
+    @action(detail=False, methods=['post'], url_path='delete-multiple')
+    def delete_multiple(self, request):
+        ids = request.data.get("ids", [])
+        if not ids:
+            return Response({"detail": "No IDs provided."}, status=status.HTTP_400_BAD_REQUEST)
+        quotes = self.get_queryset().filter(id__in=ids)
+        print(quotes)
+        deleted_count = quotes.delete()[0]
+        return Response({"detail": f"Deleted {deleted_count} quotes."}, status=status.HTTP_200_OK)
 
 
 class QuoteTagViewSet(viewsets.ModelViewSet):

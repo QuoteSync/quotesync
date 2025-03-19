@@ -22,11 +22,12 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from schema_graph.views import Schema
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('schema/', Schema.as_view(), name='schema'),
+    path('schema-viewer/', include('schema_viewer.urls')),
     path('', include('api.urls')),  # Your API endpoints
-    # JWT endpoints
-    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 ]

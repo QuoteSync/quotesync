@@ -1,55 +1,74 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import apiClient from '@/api';
-import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import { signup } from "@/api";
+import FloatingConfigurator from "@/components/FloatingConfigurator.vue";
 
-const username = ref('');
-const firstName = ref('');
-const lastName = ref('');
-const email = ref('');
-const password = ref('');
-const confirmPassword = ref('');
-const errorMessage = ref('');
+const username = ref("");
+const firstName = ref("");
+const lastName = ref("");
+const email = ref("");
+const password = ref("");
+const confirmPassword = ref("");
+const errorMessage = ref("");
 const router = useRouter();
 
 const register = async () => {
-  errorMessage.value = ''; // Reinicia el mensaje de error
+  errorMessage.value = ""; // Reset the error message
 
-  // Validar que ambas contraseñas coincidan
-  // if (password.value !== confirmPassword.value) {
-  //   errorMessage.value = 'Las contraseñas no coinciden';
-  //   return;
-  // }
+  // Validate that both passwords match
+  if (password.value !== confirmPassword.value) {
+    errorMessage.value = "Passwords do not match";
+    return;
+  }
 
   try {
-    // Envía la petición POST a /api/users/ para crear un nuevo usuario
-    await apiClient.post('/users/', {
-      username: username.value,
-      first_name: firstName.value,
-      last_name: lastName.value,
-      email: email.value,
-      password: password.value,
+    // Call the signup API endpoint with all required fields.
+    await signup({
+      // first_name: firstName.value,
+      // last_name: lastName.value,
+      username: "username.value",
+      email: "emailasc@value.com",
+      password: "password.value",
     });
-
-    // Si el registro es exitoso, redirige al login
-    router.push({ name: 'login' });
+    // On successful signup, redirect to the login page.
+    router.push({ name: "login" });
   } catch (error) {
-    console.error('Error en el registro:', error);
-    errorMessage.value = 'Error en el registro. Verifica la información ingresada.';
+    console.error("Signup error:", error);
+    errorMessage.value = "Signup error. Please verify the entered information.";
   }
 };
 </script>
 
 <template>
   <FloatingConfigurator />
-  <div class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden">
+  <div
+    class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden"
+  >
     <div class="flex flex-col items-center justify-center">
-      <div style="border-radius: 56px; padding: 0.3rem; background: linear-gradient(180deg, var(--primary-color) 10%, rgba(33, 150, 243, 0) 30%)">
-        <div class="w-full bg-surface-0 dark:bg-surface-900 py-20 px-8 sm:px-20" style="border-radius: 53px">
+      <div
+        style="
+          border-radius: 56px;
+          padding: 0.3rem;
+          background: linear-gradient(
+            180deg,
+            var(--primary-color) 10%,
+            rgba(33, 150, 243, 0) 30%
+          );
+        "
+      >
+        <div
+          class="w-full bg-surface-0 dark:bg-surface-900 py-20 px-8 sm:px-20"
+          style="border-radius: 53px"
+        >
           <div class="text-center mb-8">
-            <!-- Aquí puedes colocar tu SVG o logo -->
-            <svg viewBox="0 0 54 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="mb-8 w-16 shrink-0 mx-auto">
+            <!-- Your SVG or logo -->
+            <svg
+              viewBox="0 0 54 40"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+              class="mb-8 w-16 shrink-0 mx-auto"
+            >
               <path
                 fill-rule="evenodd"
                 clip-rule="evenodd"
@@ -57,45 +76,112 @@ const register = async () => {
                 fill="var(--primary-color)"
               />
             </svg>
-            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">Create Your Account</div>
+            <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">
+              Create Your Account
+            </div>
             <span class="text-muted-color font-medium">Register to get started</span>
           </div>
 
           <div>
-            <!-- Campo para Username -->
-            <label for="username" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Username</label>
-            <InputText id="username" type="text" placeholder="Enter username" class="w-full md:w-[30rem] mb-8" v-model="username" />
+            <!-- Username field -->
+            <label
+              for="username"
+              class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2"
+              >Username</label
+            >
+            <InputText
+              id="username"
+              type="text"
+              placeholder="Enter username"
+              class="w-full md:w-[30rem] mb-8"
+              v-model="username"
+            />
 
-            <!-- Row for First Name and Last Name -->
+            <!-- First Name and Last Name fields -->
             <div class="flex gap-4">
               <div class="w-1/2">
-                <label for="firstName" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">First Name</label>
-                <InputText id="firstName" type="text" placeholder="Enter first name" class="w-full mb-8" v-model="firstName" />
+                <label
+                  for="firstName"
+                  class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2"
+                  >First Name</label
+                >
+                <InputText
+                  id="firstName"
+                  type="text"
+                  placeholder="Enter first name"
+                  class="w-full mb-8"
+                  v-model="firstName"
+                />
               </div>
               <div class="w-1/2">
-                <label for="lastName" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Last Name</label>
-                <InputText id="lastName" type="text" placeholder="Enter last name" class="w-full mb-8" v-model="lastName" />
+                <label
+                  for="lastName"
+                  class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2"
+                  >Last Name</label
+                >
+                <InputText
+                  id="lastName"
+                  type="text"
+                  placeholder="Enter last name"
+                  class="w-full mb-8"
+                  v-model="lastName"
+                />
               </div>
             </div>
 
-            <!-- Campo para Email -->
-            <label for="email" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Email</label>
-            <InputText id="email" type="text" placeholder="Enter email" class="w-full md:w-[30rem] mb-8" v-model="email" />
+            <!-- Email field -->
+            <label
+              for="email"
+              class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2"
+              >Email</label
+            >
+            <InputText
+              id="email"
+              type="text"
+              placeholder="Enter email"
+              class="w-full md:w-[30rem] mb-8"
+              v-model="email"
+            />
 
-            <!-- Campo para Password -->
-            <label for="password" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Password</label>
-            <Password id="password" v-model="password" placeholder="Enter password" :toggleMask="true" class="mb-4" fluid :feedback="false" />
+            <!-- Password field -->
+            <label
+              for="password"
+              class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2"
+              >Password</label
+            >
+            <Password
+              id="password"
+              v-model="password"
+              placeholder="Enter password"
+              :toggleMask="true"
+              class="mb-4"
+              fluid
+              :feedback="false"
+            />
 
-            <!-- Campo para Confirm Password -->
-            <label for="confirmPassword" class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Confirm Password</label>
-            <Password id="confirmPassword" v-model="confirmPassword" placeholder="Confirm password" :toggleMask="true" class="mb-4" fluid :feedback="false" @keyup.enter="register" />
+            <!-- Confirm Password field -->
+            <label
+              for="confirmPassword"
+              class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2"
+              >Confirm Password</label
+            >
+            <Password
+              id="confirmPassword"
+              v-model="confirmPassword"
+              placeholder="Confirm password"
+              :toggleMask="true"
+              class="mb-4"
+              fluid
+              :feedback="false"
+              @keyup.enter="register"
+            />
 
             <div class="flex items-center justify-between mt-2 mb-8 gap-8">
-              <!-- Opcional: checkbox para términos -->
+              <!-- Optional: terms checkbox -->
             </div>
-            <!-- Botón de registro -->
+            <!-- Register button -->
             <Button label="Register" class="w-full" @click="register" />
-            <!-- Mensaje de error -->
+            <!-- Error message -->
             <p v-if="errorMessage" class="text-red-500 mt-2">{{ errorMessage }}</p>
           </div>
         </div>
@@ -109,6 +195,7 @@ const register = async () => {
   transform: scale(1.6);
   margin-right: 1rem;
 }
+
 .pi-eye-slash {
   transform: scale(1.6);
   margin-right: 1rem;

@@ -5,6 +5,9 @@ from .models import (
     QuoteGroup, QuoteGroupMembership, QuoteGroupShare,
     QuoteList, QuoteListQuote, Document, ImportLog
 )
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework import status
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -52,11 +55,20 @@ class TagSerializer(serializers.ModelSerializer):
 
 class QuoteSerializer(serializers.ModelSerializer):
     book = BookSerializer(read_only=True)
+    tags = serializers.PrimaryKeyRelatedField(
+        queryset=Tag.objects.all(),
+        many=True
+    )
     class Meta:
         model = Quote
         fields = '__all__'
 
-
+    def to_representation(self, instance):
+        rep = super().to_representation(instance)
+        # Reemplaza la lista de IDs con la representación completa de cada Tag
+        rep['tags'] = TagSerializer(instance.tags.all(), many=True).data
+        return rep
+    
 class QuoteTagSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuoteTag
