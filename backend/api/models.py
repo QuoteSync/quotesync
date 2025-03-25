@@ -124,7 +124,8 @@ class Quote(models.Model):
         Tag,
         blank=True,
         related_name="quotes",
-        help_text="Etiquetas asociadas"
+        help_text="Etiquetas asociadas",
+        through='QuoteTag'
     )
 
     def save(self, *args, **kwargs):

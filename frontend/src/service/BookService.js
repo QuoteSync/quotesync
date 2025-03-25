@@ -5,6 +5,15 @@ export const BookService = {
         const response = await apiClient.get("/books/");
         return response.data;
     },
+    async getBook(bookId) {
+        const response = await apiClient.get(`/books/${bookId}/`);
+        return response.data;
+    },
+    async getBooksByAuthor(authorId) {
+        const response = await apiClient.get(`/books/?author=${authorId}`);
+        return response.data;
+    }
+    ,
 
     async createBook(bookData) {
         const response = await apiClient.post("/books/", bookData);

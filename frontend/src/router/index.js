@@ -28,6 +28,12 @@ const router = createRouter({
           component: () => import('@/views/pages/Authors.vue')
         },
         {
+          path: '/authors/:id',
+          name: 'authorDetail',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/AuthorDetail.vue')
+        },
+        {
           path: '/books',
           name: 'books',
           meta: { requiresAuth: true },

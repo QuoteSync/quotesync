@@ -173,6 +173,9 @@ const getRandomGradient = () => {
                         icon="pi pi-book"
                         label="Read More"
                         class="flex-auto whitespace-nowrap"
+                        @click="
+                          $router.push({ name: 'bookDetail', params: { id: book.id } })
+                        "
                       ></Button>
                     </div>
                   </div>
@@ -191,7 +194,8 @@ const getRandomGradient = () => {
               class="col-span-12 sm:col-span-6 lg:col-span-4 p-2"
             >
               <div
-                class="p-6 h-full border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg flex flex-col hover:scale-105 hover:shadow-xl mx-auto transition-transform duration-300"
+                @click="$router.push({ name: 'bookDetail', params: { id: book.id } })"
+                class="p-6 h-full border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg flex flex-col hover:scale-105 hover:shadow-xl mx-auto transition-transform duration-300 cursor-pointer"
               >
                 <!-- Cover: se muestra primero con dimensiones 200x300 px y efecto hover -->
                 <template v-if="book.cover">
@@ -250,11 +254,14 @@ const getRandomGradient = () => {
                         icon="pi pi-book"
                         label="Read More"
                         class="flex-auto whitespace-nowrap"
+                        @click="
+                          $router.push({ name: 'bookDetail', params: { id: book.id } })
+                        "
                       ></Button>
                       <Button
                         :icon="likedBooks[book.id] ? 'pi pi-heart-fill' : 'pi pi-heart'"
                         outlined
-                        @click="toggleLike(book.id)"
+                        @click.stop="toggleLike(book.id)"
                       ></Button>
                     </div>
                   </div>

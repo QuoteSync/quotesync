@@ -14,7 +14,7 @@ from .serializers import (
     QuoteSerializer, QuoteTagSerializer, QuoteGroupSerializer,
     QuoteGroupMembershipSerializer, QuoteGroupShareSerializer,
     QuoteListSerializer, QuoteListQuoteSerializer, DocumentSerializer,
-    ImportLogSerializer
+    ImportLogSerializer, QuoteUpdateSerializer
 )
 import logging
 
@@ -47,18 +47,25 @@ class UserViewSet(viewsets.ModelViewSet):
     
 
 
+
 class AuthorViewSet(viewsets.ModelViewSet):
     queryset = Author.objects.all()
     serializer_class = AuthorSerializer
-
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['name']
+
+    @action(detail=True, methods=['get'])
+    def books(self, request, pk=None):
+        author = self.get_object()
+        # Assuming the related_name on Book model's foreign key is "books"
+        books = author.books.all()
+        serializer = BookSerializer(books, many=True)
+        return Response(serializer.data)
 
 
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
     serializer_class = BookSerializer
-
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['title', 'author']
 
@@ -74,7 +81,26 @@ class TagViewSet(viewsets.ModelViewSet):
 
 class QuoteViewSet(viewsets.ModelViewSet):
     queryset = Quote.objects.all()
-    serializer_class = QuoteSerializer
+    
+    def get_serializer_class(self):
+        if self.action in ['update', 'partial_update']:
+            print(self.request.data)
+            return QuoteUpdateSerializer  # Serializer específico para actualizaciones
+        return QuoteSerializer
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        book_id = self.request.query_params.get('book')
+        author_id = self.request.query_params.get('author')
+        tag = self.request.query_params.get('tag')
+
+        if book_id:
+            queryset = queryset.filter(book__id=book_id)
+        if author_id:
+            queryset = queryset.filter(book__author__id=author_id)
+        if tag:
+            queryset = queryset.filter(tags__title__icontains=tag)
+        return queryset
 
     def update(self, request, *args, **kwargs):
         logger.info("Received PUT data: %s", request.data)
@@ -88,17 +114,6 @@ class QuoteViewSet(viewsets.ModelViewSet):
         else:
             logger.error("PUT validation error: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
-    
-    @action(detail=False, methods=['post'], url_path='delete-multiple')
-    def delete_multiple(self, request):
-        ids = request.data.get("ids", [])
-        if not ids:
-            return Response({"detail": "No IDs provided."}, status=status.HTTP_400_BAD_REQUEST)
-        quotes = self.get_queryset().filter(id__in=ids)
-        print(quotes)
-        deleted_count = quotes.delete()[0]
-        return Response({"detail": f"Deleted {deleted_count} quotes."}, status=status.HTTP_200_OK)
 
 
 class QuoteTagViewSet(viewsets.ModelViewSet):

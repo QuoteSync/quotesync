@@ -88,4 +88,14 @@ const signup = async (userData) => {
   }
 };
 
-export { apiClient, loginApi, logout, getSession, signup, getCookie};
+const me = async () => {
+  try {
+    const response = await apiClient.get("/_allauth/browser/v1/auth/me");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching me:", error);
+    return null;
+  }
+};
+
+export { apiClient, loginApi, logout, getSession, signup, getCookie, me };

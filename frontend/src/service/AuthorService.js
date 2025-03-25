@@ -5,6 +5,10 @@ export const AuthorService = {
         const response = await apiClient.get("/authors/");
         return response.data;
     },
+    async getAuthor(authorId) {
+        const response = await apiClient.get(`/authors/${authorId}/`);
+        return response.data
+    },
 
     async createAuthor(authorData) {
         const response = await apiClient.post("/authors/", authorData);
