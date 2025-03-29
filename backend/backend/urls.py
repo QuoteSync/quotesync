@@ -23,6 +23,8 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from schema_graph.views import Schema
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 urlpatterns = [
@@ -30,4 +32,9 @@ urlpatterns = [
     path('schema/', Schema.as_view(), name='schema'),
     path('schema-viewer/', include('schema_viewer.urls')),
     path('', include('api.urls')),  # Your API endpoints
+    path('accounts/', include('allauth.urls')),
 ]
+
+# Add URL patterns for media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

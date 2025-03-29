@@ -39,7 +39,7 @@ onMounted(async () => {
     if (!author.cover) {
       author.gradient = getRandomGradient();
     }
-    likedAuthors.value[author.id] = false;
+    likedAuthors.value[author.id] = author.is_favorite;
   });
   authors.value = data;
 });
@@ -49,8 +49,32 @@ onBeforeUnmount(() => {
 });
 
 // Método para alternar el estado del botón de "me gusta"
-const toggleLike = (authorId) => {
-  likedAuthors.value[authorId] = !likedAuthors.value[authorId];
+const toggleLike = async (authorId) => {
+  try {
+    const response = await AuthorService.toggleFavorite(authorId);
+    // Update the local state based on the server response
+    const author = authors.value.find(a => a.id === authorId);
+    if (author) {
+      author.is_favorite = response.is_favorite;
+      
+      // If this author was favorited, move it to the top of the list
+      if (response.is_favorite) {
+        // Remove the author from its current position
+        const index = authors.value.findIndex(a => a.id === authorId);
+        if (index !== -1) {
+          const [favoriteAuthor] = authors.value.splice(index, 1);
+          // Add it to the beginning of the array
+          authors.value.unshift(favoriteAuthor);
+          
+          // Scroll to the top to show the favorited author
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+    }
+    likedAuthors.value[authorId] = response.is_favorite;
+  } catch (error) {
+    console.error("Error toggling favorite status:", error);
+  }
 };
 
 // Método para generar un degradado aleatorio en CSS, asegurando colores distintos
@@ -155,11 +179,9 @@ const getRandomGradient = () => {
                     </div>
                     <div class="flex flex-row-reverse md:flex-row gap-2">
                       <Button
-                        :icon="
-                          likedAuthors[author.id] ? 'pi pi-heart-fill' : 'pi pi-heart'
-                        "
+                        :icon="author.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
                         outlined
-                        @click="toggleLike(author.id)"
+                        @click.stop="toggleLike(author.id)"
                       ></Button>
                       <Button
                         icon="pi pi-book"
@@ -235,11 +257,9 @@ const getRandomGradient = () => {
                         class="flex-auto whitespace-nowrap"
                       ></Button>
                       <Button
-                        :icon="
-                          likedAuthors[author.id] ? 'pi pi-heart-fill' : 'pi pi-heart'
-                        "
+                        :icon="author.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
                         outlined
-                        @click="toggleLike(author.id)"
+                        @click.stop="toggleLike(author.id)"
                       ></Button>
                     </div>
                   </div>

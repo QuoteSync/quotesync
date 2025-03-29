@@ -44,6 +44,18 @@ const router = createRouter({
           name: 'bookDetail',
           meta: { requiresAuth: true },
           component: () => import('@/views/pages/BookDetail.vue')
+        },
+        {
+          path: '/tags',
+          name: 'tags',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/Tags.vue')
+        },
+        {
+          path: '/tags/:id',
+          name: 'tagDetail',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/TagDetail.vue')
         },        
         {
           path: '/uikit/formlayout',

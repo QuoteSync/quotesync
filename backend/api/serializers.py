@@ -42,10 +42,25 @@ class AuthorSerializer(serializers.ModelSerializer):
 
 
 class BookSerializer(serializers.ModelSerializer):
-    author = AuthorSerializer(read_only=True)
+    author = AuthorSerializer()
+
     class Meta:
         model = Book
-        fields = '__all__'
+        fields = ['id', 'title', 'author', 'cover', 'description', 'published', 'is_favorite', 'gradient_primary_color', 'gradient_secondary_color']
+        read_only_fields = ['id']
+        
+    def update(self, instance, validated_data):
+        # If author data is present, it requires special handling
+        if 'author' in validated_data:
+            author_data = validated_data.pop('author')
+            # Here you would handle author update logic if needed
+        
+        # Update the other fields directly
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -60,7 +75,7 @@ class QuoteUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Quote
-        fields = ['body', 'tags', 'tags_data']
+        fields = ['body', 'tags', 'tags_data', 'is_favorite']
 
     def update(self, instance, validated_data):
         tags_data = validated_data.pop('tags', None)
@@ -103,7 +118,7 @@ class QuoteSerializer(serializers.ModelSerializer):
             'tags', 'tags_data', 'title',
             'owner', 'owner_id', 'archive',
             'created', 'updated', 'hash', 
-            'location', 'source_platform'
+            'location', 'source_platform', 'is_favorite'
         ]
     
     def create(self, validated_data):

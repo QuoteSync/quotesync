@@ -17,6 +17,10 @@ from .serializers import (
     ImportLogSerializer, QuoteUpdateSerializer
 )
 import logging
+import os
+from django.conf import settings
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +58,13 @@ class AuthorViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['name']
 
+    @action(detail=True, methods=['post'])
+    def toggle_favorite(self, request, pk=None):
+        author = self.get_object()
+        author.is_favorite = not author.is_favorite
+        author.save()
+        return Response({'is_favorite': author.is_favorite})
+
     @action(detail=True, methods=['get'])
     def books(self, request, pk=None):
         author = self.get_object()
@@ -69,6 +80,26 @@ class BookViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['title', 'author']
 
+    def update(self, request, *args, **kwargs):
+        logger.info("BookViewSet update - Received data: %s", request.data)
+        partial = kwargs.pop("partial", False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if serializer.is_valid():
+            self.perform_update(serializer)
+            logger.info("BookViewSet update - Successful, response data: %s", serializer.data)
+            return Response(serializer.data)
+        else:
+            logger.error("BookViewSet update - Validation error: %s", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def toggle_favorite(self, request, pk=None):
+        book = self.get_object()
+        book.is_favorite = not book.is_favorite
+        book.save()
+        return Response({'is_favorite': book.is_favorite})
+
 
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
@@ -76,6 +107,13 @@ class TagViewSet(viewsets.ModelViewSet):
 
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['title']  # Ensure 'tag_name' is a valid field in the Tag model
+
+    @action(detail=True, methods=['post'])
+    def toggle_favorite(self, request, pk=None):
+        tag = self.get_object()
+        tag.is_favorite = not tag.is_favorite
+        tag.save()
+        return Response({'is_favorite': tag.is_favorite})
 
 
 
@@ -101,6 +139,13 @@ class QuoteViewSet(viewsets.ModelViewSet):
         if tag:
             queryset = queryset.filter(tags__title__icontains=tag)
         return queryset
+
+    @action(detail=True, methods=['post'])
+    def toggle_favorite(self, request, pk=None):
+        quote = self.get_object()
+        quote.is_favorite = not quote.is_favorite
+        quote.save()
+        return Response({'is_favorite': quote.is_favorite})
 
     def update(self, request, *args, **kwargs):
         logger.info("Received PUT data: %s", request.data)

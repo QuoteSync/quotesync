@@ -11,6 +11,14 @@ const model = ref([
       { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
       { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
       { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
+      { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
+    ],
+  },
+  {
+    label: "Admin Tools",
+    icon: "pi pi-fw pi-cog",
+    items: [
+      { label: "Book Covers", icon: "pi pi-fw pi-images", to: "/" },
     ],
   },
   {

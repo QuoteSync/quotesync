@@ -41,12 +41,13 @@ class Author(models.Model):
         help_text="URL de la foto del autor"
     )
     bio = models.TextField(blank=True, null=True, help_text="Biografía del autor")
+    is_favorite = models.BooleanField(default=False, help_text="Indica si el autor está marcado como favorito")
 
     def __str__(self):
         return self.name
 
     class Meta:
-        ordering = ('name',)
+        ordering = ('-is_favorite', 'name')
         db_table = 'authors'
 
 
@@ -67,25 +68,27 @@ class Book(models.Model):
     pages = models.PositiveIntegerField(blank=True, null=True, help_text="Número de páginas")
     publisher = models.CharField(max_length=1024, blank=True, null=True, help_text="Editorial")
     language = models.CharField(max_length=50, blank=True, null=True, help_text="Idioma")
+    gradient_primary_color = models.CharField(max_length=7, blank=True, null=True, help_text="Color primario para el gradiente de la portada")
+    gradient_secondary_color = models.CharField(max_length=7, blank=True, null=True, help_text="Color secundario para el gradiente de la portada")
     created = models.DateTimeField(auto_now_add=True, help_text="Fecha de creación")
     updated = models.DateTimeField(auto_now=True, help_text="Fecha de última actualización")
-
+    is_favorite = models.BooleanField(default=False, help_text="Indica si el libro está marcado como favorito")
 
     def __str__(self):
         return "{} ({})".format(self.title, self.author)
 
     class Meta:
-        ordering = ('title',)
+        ordering = ('-is_favorite', 'title')
         db_table = 'books'
 
 
 class Tag(models.Model):
     title = models.SlugField(unique=True, help_text="Título de la etiqueta")
     description = models.CharField(max_length=1024, blank=True, null=True, help_text="Descripción de la etiqueta")
-
+    is_favorite = models.BooleanField(default=False, help_text="Indica si la etiqueta está marcada como favorita")
 
     class Meta:
-        ordering = ('title',)
+        ordering = ('-is_favorite', 'title')
         db_table = 'tags'
 
     def __str__(self):
@@ -117,6 +120,7 @@ class Quote(models.Model):
                                 help_text="Ubicación en el libro (página, posición, etc.)")
     source_platform = models.CharField(max_length=50, blank=True, null=True,
                                        help_text="Plataforma de origen (Kindle, Google Books, Apple Books)")
+    is_favorite = models.BooleanField(default=False, help_text="Indica si la cita está marcada como favorita")
 
     # Many-to-many relation to Tag. Django will auto-create the join table
     # but we also provide an explicit through model if you want more control.
@@ -137,7 +141,7 @@ class Quote(models.Model):
         return "{} [{}]".format(self.title, self.book)
 
     class Meta:
-        ordering = ('created', 'title')
+        ordering = ('-is_favorite', 'created', 'title')
         db_table = 'quotes'
 
 

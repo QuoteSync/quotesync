@@ -18,8 +18,8 @@ export const QuoteService = {
         return response.data;
     },
 
-    async getQuotesByTag(tagId) {
-        const response = await apiClient.get(`/quotes/?tags=${tagId}`);
+    async getQuotesByTag(tagTitle) {
+        const response = await apiClient.get(`/quotes/?tag=${tagTitle}`);
         return response.data;
     },
 
@@ -62,6 +62,11 @@ export const QuoteService = {
     // Create a new quote
     async createQuote(quoteData) {
         const response = await apiClient.post("/quotes/", quoteData);
+        return response.data;
+    },
+    
+    async toggleFavorite(quoteId) {
+        const response = await apiClient.post(`/quotes/${quoteId}/toggle_favorite/`);
         return response.data;
     },
 };

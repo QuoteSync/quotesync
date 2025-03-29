@@ -31,4 +31,9 @@ export const AuthorService = {
         });
         return response.data;
     },
+
+    async toggleFavorite(authorId) {
+        const response = await apiClient.post(`/authors/${authorId}/toggle_favorite/`);
+        return response.data;
+    },
 };

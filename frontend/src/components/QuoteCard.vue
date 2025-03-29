@@ -114,7 +114,7 @@ const newTag = ref("");
 
 // Computed property para el icono del corazón.
 const heartIconClass = computed(() =>
-  props.liked
+  props.quote.is_favorite
     ? "pi pi-heart-fill text-red-500 text-xl"
     : "pi pi-heart text-gray-500 text-xl"
 );
