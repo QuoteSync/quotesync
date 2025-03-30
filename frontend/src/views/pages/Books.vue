@@ -173,11 +173,38 @@
                   <div>
                     <h2 class="text-3xl font-bold fancy-font">{{ book.title }}</h2>
                     <div class="flex items-center mt-2">
-                      <img
-                        class="w-8 h-8 rounded-full object-cover transition-transform duration-300 hover:scale-105"
-                        :src="book.author.cover"
-                        alt="Avatar del autor"
-                      />
+                      <!-- Author image with loading state and fallback -->
+                      <div class="relative w-10 h-10 rounded-full overflow-hidden">
+                        <!-- Loading skeleton -->
+                        <div 
+                          v-if="book.author.cover && authorImageLoadingStates[book.author.id]" 
+                          class="absolute inset-0 w-full h-full rounded-full bg-gray-200 animate-pulse"
+                        ></div>
+                        
+                        <!-- Author image -->
+                        <img
+                          v-if="book.author.cover && !authorImageFailedStates[book.author.id]"
+                          :src="book.author.cover"
+                          :alt="book.author.name"
+                          class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
+                          @error="handleAuthorImageError(book.author.id, book.author.name)"
+                          @load="handleAuthorImageLoad(book.author.id)"
+                        />
+                        
+                        <!-- Gradient fallback -->
+                        <div
+                          v-if="!book.author.cover || authorImageFailedStates[book.author.id]"
+                          class="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105"
+                          :style="{ 
+                            background: book.author.gradient || 
+                              (book.author.gradientPrimary && book.author.gradientSecondary ? 
+                                `linear-gradient(135deg, ${book.author.gradientPrimary}, ${book.author.gradientSecondary})` : 
+                                getRandomGradient().background)
+                          }"
+                        >
+                          <span class="text-white text-sm font-bold">{{ book.author.name.charAt(0) }}</span>
+                        </div>
+                      </div>
                       <span class="ml-2 text-lg font-semibold">{{
                         book.author.name
                       }}</span>
@@ -326,11 +353,38 @@
                 <div class="mt-4 text-center">
                   <h2 class="text-3xl font-bold fancy-font">{{ book.title }}</h2>
                   <div class="flex items-center justify-center mt-2">
-                    <img
-                      class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
-                      :src="book.author.cover"
-                      alt="Avatar del autor"
-                    />
+                    <!-- Author image with loading state and fallback -->
+                    <div class="relative w-10 h-10 rounded-full overflow-hidden">
+                      <!-- Loading skeleton -->
+                      <div 
+                        v-if="book.author.cover && authorImageLoadingStates[book.author.id]" 
+                        class="absolute inset-0 w-full h-full rounded-full bg-gray-200 animate-pulse"
+                      ></div>
+                      
+                      <!-- Author image -->
+                      <img
+                        v-if="book.author.cover && !authorImageFailedStates[book.author.id]"
+                        :src="book.author.cover"
+                        :alt="book.author.name"
+                        class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
+                        @error="handleAuthorImageError(book.author.id, book.author.name)"
+                        @load="handleAuthorImageLoad(book.author.id)"
+                      />
+                      
+                      <!-- Gradient fallback -->
+                      <div
+                        v-if="!book.author.cover || authorImageFailedStates[book.author.id]"
+                        class="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105"
+                        :style="{ 
+                          background: book.author.gradient || 
+                            (book.author.gradientPrimary && book.author.gradientSecondary ? 
+                              `linear-gradient(135deg, ${book.author.gradientPrimary}, ${book.author.gradientSecondary})` : 
+                              getRandomGradient().background)
+                        }"
+                      >
+                        <span class="text-white text-sm font-bold">{{ book.author.name.charAt(0) }}</span>
+                      </div>
+                    </div>
                     <span class="ml-2 text-lg font-semibold">{{ book.author.name }}</span>
                   </div>
                   <p class="text-sm mt-2">{{ book.description }}</p>
@@ -533,6 +587,10 @@ const likedBooks = ref({});
 
 // Track loading states for book covers
 const coverLoadingStates = ref({});
+
+// Track loading states for author images
+const authorImageLoadingStates = ref({});
+const authorImageFailedStates = ref({});
 
 // Style for transitions
 const coverTransitionClass = "transition-opacity duration-300";
@@ -784,9 +842,24 @@ onMounted(async () => {
       });
     }
     
-    // Initialize UI state properties
+    // Initialize UI state properties for book cover
     book.imageFailed = false;
     coverLoadingStates.value[book.id] = true;
+    
+    // Initialize UI state properties for author image
+    if (book.author && book.author.id) {
+      // Initialize author image loading state
+      authorImageLoadingStates.value[book.author.id] = book.author.cover ? true : false;
+      authorImageFailedStates.value[book.author.id] = false;
+      
+      // Create a gradient for the author if they don't have a cover
+      if (!book.author.cover) {
+        const gradient = getRandomGradient();
+        book.author.gradient = gradient.background;
+        book.author.gradientPrimary = gradient.primary;
+        book.author.gradientSecondary = gradient.secondary;
+      }
+    }
     
     // Se espera que cada libro tenga un id único
     likedBooks.value[book.id] = book.is_favorite;
@@ -939,6 +1012,37 @@ const verifyGradientColors = async (bookId) => {
     console.error(`VERIFICATION: Error checking gradient colors for book ${bookId}:`, error);
     return false;
   }
+};
+
+// Handle author image error
+const handleAuthorImageError = (authorId, authorName) => {
+  // Mark the image as failed
+  authorImageFailedStates.value[authorId] = true;
+  authorImageLoadingStates.value[authorId] = false;
+  
+  // Find the book with this author
+  const book = books.value.find(b => b.author.id === authorId);
+  if (book && book.author) {
+    // Generate gradient if not already set
+    if (!book.author.gradient) {
+      const gradient = getRandomGradient();
+      book.author.gradient = gradient.background;
+      book.author.gradientPrimary = gradient.primary;
+      book.author.gradientSecondary = gradient.secondary;
+      
+      // Try to save the gradient colors to the database (if implemented)
+      // AuthorService.updateGradientColors(authorId, gradient.primary, gradient.secondary)
+      //   .catch(error => console.error(`Error saving author gradient colors:`, error));
+    }
+  }
+};
+
+// Handle author image load success
+const handleAuthorImageLoad = (authorId) => {
+  // Set loading state to false with a slight delay for a smoother transition
+  setTimeout(() => {
+    authorImageLoadingStates.value[authorId] = false;
+  }, 300);
 };
 </script>
 

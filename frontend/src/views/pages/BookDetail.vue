@@ -38,6 +38,9 @@ const simpleCoverDialogVisible = ref(false);
 const directCoverUrl = ref('');
 const directUrlError = ref(false);
 
+// Add these variables at the appropriate location
+const authorImageFailed = ref(false);
+
 // Función para generar un gradiente aleatorio en caso de que no haya cover
 const getRandomGradient = () => {
   // Book cover themed gradient combinations
@@ -407,6 +410,20 @@ const loadBook = async () => {
     
     book.value.imageFailed = false;
     coverIsLoading.value = true;
+    
+    // Initialize author image properties if author exists
+    if (book.value.author) {
+      // Reset the author image error state
+      authorImageFailed.value = false;
+      
+      // If author doesn't have a cover, prepare a gradient
+      if (!book.value.author.cover) {
+        const gradient = getRandomGradient();
+        book.value.author.gradient = gradient.background;
+        book.value.author.gradientPrimary = gradient.primary;
+        book.value.author.gradientSecondary = gradient.secondary;
+      }
+    }
   } catch (error) {
     console.error("Error loading book:", error);
     toast.add({
@@ -615,6 +632,19 @@ const saveDirectCoverUrl = async () => {
   }
 };
 
+// Handle author image errors
+const handleAuthorImageError = (author) => {
+  authorImageFailed.value = true;
+  
+  // Generate gradient if not already set
+  if (!author.gradient) {
+    const gradient = getRandomGradient();
+    author.gradient = gradient.background;
+    author.gradientPrimary = gradient.primary;
+    author.gradientSecondary = gradient.secondary;
+  }
+};
+
 onMounted(async () => {
   await loadBook();
   await fetchQuotes();
@@ -630,7 +660,7 @@ onMounted(async () => {
       <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
         <!-- Portada del Libro -->
         <div class="flex flex-col justify-center">
-          <div class="cover-container relative" style="width: 300px; height: 500px; margin: 0 auto;">
+          <div class="cover-container relative" style="width: 200px; height: 300px; margin: 0 auto;">
             <!-- Fixed size container to prevent layout shifts -->
             <div class="absolute inset-0 w-full h-full bg-gray-100 rounded-md shadow-md">
               <!-- Skeleton loader that shows during loading -->
@@ -651,7 +681,7 @@ onMounted(async () => {
                   
                   <!-- Loading spinner -->
                   <div class="mt-8">
-                    <div class="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    <div class="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
                   </div>
                 </div>
               </div>
@@ -682,25 +712,25 @@ onMounted(async () => {
                   <!-- Decorative book elements -->
                   <div class="flex-1 flex flex-col items-center justify-center relative">
                     <!-- Decorative circle -->
-                    <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                      <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-                        <span class="text-white/80 text-3xl font-serif">{{ book.title.charAt(0) }}</span>
+                    <div class="w-16 h-16 rounded-full border-2 border-white/30 flex items-center justify-center mb-3">
+                      <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                        <span class="text-white/80 text-xl font-serif">{{ book.title.charAt(0) }}</span>
                       </div>
                     </div>
                     
                     <!-- Decorative lines -->
-                    <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
-                    <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
+                    <div class="w-12 h-0.5 bg-white/20 mb-1"></div>
+                    <div class="w-20 h-0.5 bg-white/20 mb-2"></div>
                   </div>
                   
                   <!-- Title area -->
-                  <div class="mt-auto flex flex-col p-3 text-center z-10">
-                    <span class="text-white font-bold text-xl leading-tight">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                    <div class="w-16 h-0.5 bg-white/40 mx-auto my-2"></div>
-                    <span class="text-white/80 text-sm mt-2">by {{ book.author.name }}</span>
-                    <div class="mt-3 flex flex-col items-center">
-                      <i class="pi pi-image text-white/60 text-xl mb-2"></i>
-                      <span class="text-white/60 text-sm">Image failed to load</span>
+                  <div class="mt-auto flex flex-col p-2 text-center z-10">
+                    <span class="text-white font-bold text-lg leading-tight">{{ book.title.split(' ').slice(0, 5).join(' ') }}{{ book.title.split(' ').length > 5 ? '...' : '' }}</span>
+                    <div class="w-12 h-0.5 bg-white/40 mx-auto my-1"></div>
+                    <span class="text-white/80 text-xs mt-1">by {{ book.author.name }}</span>
+                    <div class="mt-2 flex flex-col items-center">
+                      <i class="pi pi-image text-white/60 text-sm mb-1"></i>
+                      <span class="text-white/60 text-xs">Image failed to load</span>
                     </div>
                   </div>
                 </div>
@@ -721,22 +751,22 @@ onMounted(async () => {
                   <!-- Decorative book elements -->
                   <div class="flex-1 flex flex-col items-center justify-center relative">
                     <!-- Decorative circle -->
-                    <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                      <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-                        <span class="text-white/80 text-3xl font-serif">{{ book.title.charAt(0) }}</span>
+                    <div class="w-16 h-16 rounded-full border-2 border-white/30 flex items-center justify-center mb-3">
+                      <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                        <span class="text-white/80 text-xl font-serif">{{ book.title.charAt(0) }}</span>
                       </div>
                     </div>
                     
                     <!-- Decorative lines -->
-                    <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
-                    <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
+                    <div class="w-12 h-0.5 bg-white/20 mb-1"></div>
+                    <div class="w-20 h-0.5 bg-white/20 mb-2"></div>
                   </div>
                   
                   <!-- Title area -->
-                  <div class="mt-auto flex flex-col p-3 text-center z-10">
-                    <span class="text-white font-bold text-2xl leading-tight uppercase tracking-wide">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                    <div class="w-16 h-0.5 bg-white/40 mx-auto my-2"></div>
-                    <span class="text-white/80 text-sm mt-2 italic">by {{ book.author.name }}</span>
+                  <div class="mt-auto flex flex-col p-2 text-center z-10">
+                    <span class="text-white font-bold text-2xl leading-tight uppercase tracking-wide">{{ book.title.split(' ').slice(0, 5).join(' ') }}{{ book.title.split(' ').length > 5 ? '...' : '' }}</span>
+                    <div class="w-12 h-0.5 bg-white/40 mx-auto my-1"></div>
+                    <span class="text-white/80 text-xs mt-1 italic">by {{ book.author.name }}</span>
                   </div>
                 </div>
               </div>
@@ -768,7 +798,7 @@ onMounted(async () => {
                 <!-- Selected cover preview (large) -->
                 <div class="col-span-1 flex flex-col items-center">
                   <h4 class="font-medium mb-2">Selected Cover:</h4>
-                  <div class="relative mb-4 w-64 h-96 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
+                  <div class="relative mb-4 w-40 h-60 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
                     <img 
                       v-if="previewCoverUrl" 
                       :src="previewCoverUrl" 
@@ -779,7 +809,7 @@ onMounted(async () => {
                     <div v-else class="text-gray-400">No cover selected</div>
                   </div>
                   <div v-if="previewCoverUrl" class="text-xs text-center mt-1 p-1 w-full overflow-hidden">
-                    <div class="truncate max-w-[250px]">{{ previewCoverUrl }}</div>
+                    <div class="truncate max-w-[200px]">{{ previewCoverUrl }}</div>
                   </div>
                 </div>
                 
@@ -794,7 +824,7 @@ onMounted(async () => {
                       :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
                       @click="selectCover(cover.url)"
                     >
-                      <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+                      <div class="w-full h-32 flex items-center justify-center bg-gray-100">
                         <img 
                           :src="cover.url" 
                           :alt="`Cover option ${index+1}`"
@@ -919,7 +949,7 @@ onMounted(async () => {
               
               <div class="mb-4" v-if="customCoverUrl">
                 <label class="block font-medium mb-2">Preview:</label>
-                <div class="border rounded p-2 flex items-center justify-center bg-gray-50 h-64">
+                <div class="border rounded p-2 flex items-center justify-center bg-gray-50 h-40">
                   <img 
                     :src="customCoverUrl" 
                     :alt="book.title" 
@@ -976,7 +1006,7 @@ onMounted(async () => {
                   <img 
                     :src="directCoverUrl" 
                     :alt="book.title" 
-                    class="max-h-[200px] object-contain"
+                    class="max-h-[150px] object-contain"
                     @error="directUrlError = true"
                     @load="directUrlError = false"
                   />
@@ -1015,11 +1045,31 @@ onMounted(async () => {
               })
             "
           >
-            <img
-              class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
-              :src="book.author.cover"
-              alt="Author Avatar"
-            />
+            <!-- Author image with gradient fallback -->
+            <div class="relative w-10 h-10 rounded-full overflow-hidden">
+              <!-- Author image -->
+              <img
+                v-if="book.author.cover && !authorImageFailed"
+                :src="book.author.cover"
+                :alt="book.author.name"
+                class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
+                @error="handleAuthorImageError(book.author)"
+              />
+              
+              <!-- Gradient fallback -->
+              <div
+                v-if="!book.author.cover || authorImageFailed"
+                class="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105"
+                :style="{ 
+                  background: book.author.gradient || 
+                    (book.author.gradientPrimary && book.author.gradientSecondary ? 
+                      `linear-gradient(135deg, ${book.author.gradientPrimary}, ${book.author.gradientSecondary})` : 
+                      getRandomGradient().background)
+                }"
+              >
+                <span class="text-white text-sm font-bold">{{ book.author.name.charAt(0) }}</span>
+              </div>
+            </div>
             <span class="ml-3 text-xl font-semibold">{{ book.author.name }}</span>
           </div>
           <p class="mt-4 text-lg">{{ book.description }}</p>
@@ -1102,7 +1152,7 @@ onMounted(async () => {
   background-repeat: repeat;
   background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
   position: relative;
-  min-height: 500px;
+  min-height: 300px;
   height: 100%;
   width: 100%;
 }

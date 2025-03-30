@@ -15,10 +15,11 @@
           <div
             v-for="(tag, idx) in editedTagsArray"
             :key="idx"
-            class="flex items-center px-3 py-1 bg-gradient-to-r from-blue-200 to-blue-300 text-blue-800 rounded-full text-xs shadow-sm"
+            class="flex items-center px-3 py-1 rounded-full text-white text-xs shadow-sm"
+            :style="{ background: 'linear-gradient(135deg, #3B82F6, #1E3A8A)' }"
           >
             {{ tag }}
-            <button class="ml-1 text-red-500 focus:outline-none" @click="removeTag(idx)">
+            <button class="ml-1 text-white focus:outline-none" @click="removeTag(idx)">
               x
             </button>
           </div>
@@ -61,7 +62,11 @@
         <div
           v-for="(tag, idx) in quote.tags"
           :key="idx"
-          class="px-3 py-1 bg-gradient-to-r from-blue-200 to-blue-300 text-blue-800 rounded-full text-xs shadow-sm"
+          class="px-3 py-1 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90"
+          :style="{ background: tag.gradient_primary_color && tag.gradient_secondary_color ? 
+            `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
+            'linear-gradient(135deg, #3B82F6, #1E3A8A)' }"
+          @click.stop.prevent="handleTagClick(tag)"
         >
           {{ tag.title }}
         </div>
@@ -69,11 +74,17 @@
       <!-- Información del libro y autor en dos líneas, junto a los botones -->
       <div class="mt-2 flex items-center justify-between">
         <div>
-          <span class="text-sm font-medium text-gray-500">
+          <span 
+            class="text-sm font-medium text-gray-500 cursor-pointer hover:text-primary-500 hover:underline"
+            @click.stop.prevent="handleBookClick(quote.book)"
+          >
             {{ quote.book?.title || "Unknown Book" }}
           </span>
           <br />
-          <span class="text-sm font-medium text-gray-500">
+          <span 
+            class="text-sm font-medium text-gray-500 cursor-pointer hover:text-primary-500 hover:underline"
+            @click.stop.prevent="handleAuthorClick(quote.book?.author)"
+          >
             {{ quote.book?.author?.name || "Unknown Author" }}
           </span>
         </div>
@@ -98,7 +109,10 @@
 
 <script setup>
 import { ref, watch, computed, defineProps, defineEmits } from "vue";
+import { useRouter } from "vue-router";
+import { TagService } from "@/service/TagService";
 
+const router = useRouter();
 const props = defineProps({
   quote: { type: Object, default: () => ({ body: "", tags: [] }) },
   isNew: { type: Boolean, default: false },
@@ -182,6 +196,64 @@ const save = () => {
     });
   }
 };
+
+const handleTagClick = async (tag) => {
+  console.log("Tag clicked:", tag);
+  
+  try {
+    // If we have a tag ID, use it directly
+    if (tag && tag.id) {
+      console.log("Navigating with tag ID:", tag.id);
+      
+      // Use direct URL navigation with page reload
+      window.location.href = `/tags/${tag.id}`;
+      return;
+    }
+    
+    // If no ID but we have a title, fetch the tag by title
+    if (tag && tag.title) {
+      console.log("No tag ID found, searching by title:", tag.title);
+      
+      // Get all tags and find the one matching this title
+      const tags = await TagService.getTags();
+      const matchingTag = tags.find(t => t.title === tag.title);
+      
+      if (matchingTag && matchingTag.id) {
+        console.log("Found tag by title:", matchingTag);
+        
+        // Use direct URL navigation with page reload
+        window.location.href = `/tags/${matchingTag.id}`;
+        return;
+      }
+    }
+    
+    console.error("Cannot navigate - tag has no ID or title:", tag);
+  } catch (error) {
+    console.error("Error in handleTagClick:", error);
+  }
+};
+
+const handleBookClick = (book) => {
+  if (book && book.id) {
+    console.log("Navigating to book:", book.title, "with ID:", book.id);
+    window.location.href = `/books/${book.id}`;
+  } else {
+    console.error("Cannot navigate - book has no ID:", book);
+  }
+};
+
+const handleAuthorClick = (author) => {
+  if (author && author.id) {
+    console.log("Navigating to author:", author.name, "with ID:", author.id);
+    window.location.href = `/authors/${author.id}`;
+  } else {
+    console.error("Cannot navigate - author has no ID:", author);
+  }
+};
+
+if (props.quote && props.quote.tags && props.quote.tags.length > 0) {
+  console.log("Tags structure:", JSON.stringify(props.quote.tags[0], null, 2));
+}
 </script>
 
 <style scoped>

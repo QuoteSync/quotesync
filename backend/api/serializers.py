@@ -38,7 +38,15 @@ class UserSerializer(serializers.ModelSerializer):
 class AuthorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Author
-        fields = '__all__'
+        fields = ['id', 'name', 'cover', 'bio', 'is_favorite', 'gradient_primary_color', 'gradient_secondary_color']
+        
+    def update(self, instance, validated_data):
+        # Update the fields directly
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        instance.save()
+        return instance
 
 
 class BookSerializer(serializers.ModelSerializer):

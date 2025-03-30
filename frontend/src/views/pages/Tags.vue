@@ -1,6 +1,10 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { TagService } from "@/service/TagService";
+import { useRouter } from "vue-router";
+
+// Initialize the router
+const router = useRouter();
 
 // Opciones para el layout de DataView
 const layout = ref("grid");
@@ -34,10 +38,36 @@ onMounted(async () => {
   const data = await TagService.getTags();
   console.log(data);
   // Se asigna un color aleatorio para cada tag
-  data.forEach((tag) => {
-    tag.gradient = getRandomGradient();
+  for (const tag of data) {
+    // Create gradient object - either from stored values or generate new one
+    if (tag.gradient_primary_color && tag.gradient_secondary_color) {
+      // Use the stored gradient colors from the database
+      console.log(`Tag ${tag.id} already has gradient colors:`, tag.gradient_primary_color, tag.gradient_secondary_color);
+      tag.gradient = {
+        primary: tag.gradient_primary_color,
+        secondary: tag.gradient_secondary_color,
+        background: `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})`
+      };
+    } else {
+      // Generate a new random gradient and store it in the database
+      console.log(`Tag ${tag.id} needs new gradient colors`);
+      tag.gradient = getRandomGradient();
+      console.log(`Generated colors for tag ${tag.id}:`, tag.gradient.primary, tag.gradient.secondary);
+      
+      // Save the gradient colors to the database
+      TagService.updateGradientColors(
+        tag.id,
+        tag.gradient.primary,
+        tag.gradient.secondary
+      ).then(response => {
+        console.log(`Successfully saved gradient colors for tag ${tag.id}:`, response);
+      }).catch(error => {
+        console.error(`Error saving gradient colors for tag ${tag.id}:`, error);
+      });
+    }
+    
     likedTags.value[tag.id] = tag.is_favorite;
-  });
+  }
   tags.value = data;
 });
 
@@ -76,21 +106,34 @@ const toggleLike = async (tagId) => {
 
 // Método para generar un degradado aleatorio en CSS, asegurando colores distintos
 const getRandomGradient = () => {
-  const colors = [
-    "#FF5733",
-    "#33FF57",
-    "#3357FF",
-    "#FF33A1",
-    "#33FFF5",
-    "#F5FF33",
-    "#FF5733",
+  // Book cover themed gradient combinations
+  const gradients = [
+    { primary: "#1E3A8A", secondary: "#3B82F6" },  // Blue theme
+    { primary: "#9D174D", secondary: "#EC4899" },  // Pink theme
+    { primary: "#064E3B", secondary: "#10B981" },  // Green theme
+    { primary: "#723B13", secondary: "#D97706" },  // Amber theme
+    { primary: "#581C87", secondary: "#8B5CF6" },  // Purple theme
+    { primary: "#831843", secondary: "#BE185D" },  // Deep pink theme
+    { primary: "#134E4A", secondary: "#0F766E" },  // Teal theme
+    { primary: "#7F1D1D", secondary: "#DC2626" },  // Red theme
   ];
-  let color1, color2;
-  do {
-    color1 = colors[Math.floor(Math.random() * colors.length)];
-    color2 = colors[Math.floor(Math.random() * colors.length)];
-  } while (color1 === color2);
-  return `linear-gradient(135deg, ${color1}, ${color2})`;
+  
+  const gradient = gradients[Math.floor(Math.random() * gradients.length)];
+  return {
+    primary: gradient.primary, 
+    secondary: gradient.secondary,
+    background: `linear-gradient(135deg, ${gradient.primary}, ${gradient.secondary})`
+  };
+};
+
+// Update the navigation function to use Vue Router
+const navigateToTag = (tagId) => {
+  console.log('Navigating to tag:', tagId);
+  // Use Vue Router instead of direct URL navigation
+  router.push({ 
+    name: 'tagDetail', 
+    params: { id: tagId } 
+  });
 };
 </script>
 
@@ -120,15 +163,21 @@ const getRandomGradient = () => {
           <div class="flex flex-col">
             <div v-for="(tag, index) in slotProps.items" :key="index">
               <div
-                class="flex flex-col sm:flex-row md:items-center p-6 gap-4"
+                class="flex flex-col sm:flex-row md:items-center p-6 gap-4 hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer"
                 :class="{ 'border-t border-surface': index !== 0 }"
+                @click="navigateToTag(tag.id)"
               >
                 <!-- Contenedor del tag con degradado en List view -->
                 <div 
-                  class="md:w-40 h-24 rounded-lg flex items-center justify-center text-white font-bold text-xl transition-transform duration-300 hover:scale-105 hover:shadow-xl"
-                  :style="{ background: tag.gradient }"
+                  class="md:w-40 h-24 rounded-lg overflow-hidden relative shadow-lg transition-transform duration-300 hover:scale-105 hover:shadow-xl"
+                  :style="{ background: tag.gradient.background }"
                 >
-                  {{ tag.title }}
+                  <!-- Light reflection effect -->
+                  <div class="absolute top-0 right-0 w-12 h-[150%] bg-white opacity-10 rotate-30 -translate-x-8 -translate-y-8"></div>
+                  <!-- Content -->
+                  <div class="w-full h-full flex items-center justify-center p-2 z-10">
+                    <span class="text-white font-bold text-xl">#{{ tag.title }}</span>
+                  </div>
                 </div>
 
                 <!-- Información del tag -->
@@ -154,9 +203,7 @@ const getRandomGradient = () => {
                         icon="pi pi-tag"
                         label="View Tag"
                         class="flex-auto whitespace-nowrap"
-                        @click="
-                          $router.push({ name: 'tagDetail', params: { id: tag.id } })
-                        "
+                        @click.stop="navigateToTag(tag.id)"
                       ></Button>
                     </div>
                   </div>
@@ -175,15 +222,31 @@ const getRandomGradient = () => {
               class="col-span-12 sm:col-span-6 lg:col-span-4 p-2"
             >
               <div
-                @click="$router.push({ name: 'tagDetail', params: { id: tag.id } })"
+                @click="navigateToTag(tag.id)"
                 class="p-6 h-full border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg flex flex-col hover:scale-105 hover:shadow-xl mx-auto transition-transform duration-300 cursor-pointer"
               >
                 <!-- Tag badge with gradient background -->
                 <div 
-                  class="w-full h-40 rounded-lg flex items-center justify-center text-white font-bold text-3xl transition-transform duration-300 mx-auto"
-                  :style="{ background: tag.gradient }"
+                  class="w-full h-40 rounded-lg overflow-hidden relative shadow-lg transition-transform duration-300 mx-auto"
+                  :style="{ background: tag.gradient.background }"
                 >
-                  #{{ tag.title }}
+                  <!-- Light reflection effect -->
+                  <div class="absolute top-0 right-0 w-20 h-[150%] bg-white opacity-10 rotate-30 -translate-x-10 -translate-y-10"></div>
+                  
+                  <!-- Decorative elements -->
+                  <div class="w-full h-full flex flex-col items-center justify-center p-4 relative">
+                    <!-- Decorative circle -->
+                    <div class="w-16 h-16 rounded-full border-2 border-white/30 flex items-center justify-center mb-2">
+                      <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                        <span class="text-white/90 text-xl font-serif">{{ tag.title.charAt(0).toUpperCase() }}</span>
+                      </div>
+                    </div>
+                    
+                    <!-- Tag name -->
+                    <div class="mt-2 text-center z-10">
+                      <span class="text-white font-bold text-2xl">#{{ tag.title }}</span>
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Detalles del tag: título y contador -->
@@ -203,9 +266,7 @@ const getRandomGradient = () => {
                         icon="pi pi-tag"
                         label="View Quotes"
                         class="flex-auto whitespace-nowrap"
-                        @click="
-                          $router.push({ name: 'tagDetail', params: { id: tag.id } })
-                        "
+                        @click.stop="navigateToTag(tag.id)"
                       ></Button>
                       <Button
                         :icon="tag.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"

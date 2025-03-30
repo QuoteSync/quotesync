@@ -42,6 +42,8 @@ class Author(models.Model):
     )
     bio = models.TextField(blank=True, null=True, help_text="Biografía del autor")
     is_favorite = models.BooleanField(default=False, help_text="Indica si el autor está marcado como favorito")
+    gradient_primary_color = models.CharField(max_length=7, blank=True, null=True, help_text="Color primario para el gradiente de la imagen del autor")
+    gradient_secondary_color = models.CharField(max_length=7, blank=True, null=True, help_text="Color secundario para el gradiente de la imagen del autor")
 
     def __str__(self):
         return self.name
@@ -86,6 +88,8 @@ class Tag(models.Model):
     title = models.SlugField(unique=True, help_text="Título de la etiqueta")
     description = models.CharField(max_length=1024, blank=True, null=True, help_text="Descripción de la etiqueta")
     is_favorite = models.BooleanField(default=False, help_text="Indica si la etiqueta está marcada como favorita")
+    gradient_primary_color = models.CharField(max_length=7, blank=True, null=True, help_text="Color primario para el gradiente de la etiqueta")
+    gradient_secondary_color = models.CharField(max_length=7, blank=True, null=True, help_text="Color secundario para el gradiente de la etiqueta")
 
     class Meta:
         ordering = ('-is_favorite', 'title')

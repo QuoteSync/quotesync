@@ -12,21 +12,24 @@ const quotes = ref([]);
 
 // Function to generate a random gradient for the tag
 const getRandomGradient = () => {
-  const colors = [
-    "#FF5733",
-    "#33FF57",
-    "#3357FF",
-    "#FF33A1",
-    "#33FFF5",
-    "#F5FF33",
-    "#FF5733",
+  // Book cover themed gradient combinations
+  const gradients = [
+    { primary: "#1E3A8A", secondary: "#3B82F6" },  // Blue theme
+    { primary: "#9D174D", secondary: "#EC4899" },  // Pink theme
+    { primary: "#064E3B", secondary: "#10B981" },  // Green theme
+    { primary: "#723B13", secondary: "#D97706" },  // Amber theme
+    { primary: "#581C87", secondary: "#8B5CF6" },  // Purple theme
+    { primary: "#831843", secondary: "#BE185D" },  // Deep pink theme
+    { primary: "#134E4A", secondary: "#0F766E" },  // Teal theme
+    { primary: "#7F1D1D", secondary: "#DC2626" },  // Red theme
   ];
-  let color1, color2;
-  do {
-    color1 = colors[Math.floor(Math.random() * colors.length)];
-    color2 = colors[Math.floor(Math.random() * colors.length)];
-  } while (color1 === color2);
-  return `linear-gradient(135deg, ${color1}, ${color2})`;
+  
+  const gradient = gradients[Math.floor(Math.random() * gradients.length)];
+  return {
+    primary: gradient.primary, 
+    secondary: gradient.secondary,
+    background: `linear-gradient(135deg, ${gradient.primary}, ${gradient.secondary})`
+  };
 };
 
 // Reactive states for like and editing functionality on quotes
@@ -130,7 +133,34 @@ onMounted(async () => {
   try {
     // Get tag details
     const tagData = await TagService.getTag(tagId);
-    tagData.gradient = getRandomGradient();
+    
+    // Create gradient object - either from stored values or generate new one
+    if (tagData.gradient_primary_color && tagData.gradient_secondary_color) {
+      // Use the stored gradient colors from the database
+      console.log(`Tag ${tagData.id} already has gradient colors:`, tagData.gradient_primary_color, tagData.gradient_secondary_color);
+      tagData.gradient = {
+        primary: tagData.gradient_primary_color,
+        secondary: tagData.gradient_secondary_color,
+        background: `linear-gradient(135deg, ${tagData.gradient_primary_color}, ${tagData.gradient_secondary_color})`
+      };
+    } else {
+      // Generate a new random gradient and store it in the database
+      console.log(`Tag ${tagData.id} needs new gradient colors`);
+      tagData.gradient = getRandomGradient();
+      console.log(`Generated colors for tag ${tagData.id}:`, tagData.gradient.primary, tagData.gradient.secondary);
+      
+      // Save the gradient colors to the database
+      TagService.updateGradientColors(
+        tagData.id,
+        tagData.gradient.primary,
+        tagData.gradient.secondary
+      ).then(response => {
+        console.log(`Successfully saved gradient colors for tag ${tagData.id}:`, response);
+      }).catch(error => {
+        console.error(`Error saving gradient colors for tag ${tagData.id}:`, error);
+      });
+    }
+    
     tag.value = tagData;
     
     // Get quotes with this tag
@@ -154,10 +184,27 @@ onMounted(async () => {
       <div class="flex flex-col items-center gap-6">
         <!-- Tag Badge -->
         <div 
-          class="w-64 h-32 rounded-lg flex items-center justify-center text-white font-bold text-4xl transition-transform duration-300 hover:scale-105"
-          :style="{ background: tag.gradient }"
+          class="w-full h-40 rounded-lg overflow-hidden relative shadow-lg transition-transform duration-300 hover:scale-105 mx-auto"
+          style="max-width: 300px"
+          :style="{ background: tag.gradient.background }"
         >
-          #{{ tag.title }}
+          <!-- Light reflection effect -->
+          <div class="absolute top-0 right-0 w-20 h-[150%] bg-white opacity-10 rotate-30 -translate-x-10 -translate-y-10"></div>
+          
+          <!-- Decorative elements -->
+          <div class="w-full h-full flex flex-col items-center justify-center p-4 relative">
+            <!-- Decorative circle -->
+            <div class="w-16 h-16 rounded-full border-2 border-white/30 flex items-center justify-center mb-2">
+              <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                <span class="text-white/90 text-xl font-serif">{{ tag.title.charAt(0).toUpperCase() }}</span>
+              </div>
+            </div>
+            
+            <!-- Tag name -->
+            <div class="mt-2 text-center z-10">
+              <span class="text-white font-bold text-2xl">#{{ tag.title }}</span>
+            </div>
+          </div>
         </div>
         
         <!-- Tag Information -->
