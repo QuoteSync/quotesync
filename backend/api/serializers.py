@@ -14,31 +14,18 @@ from django.utils.text import slugify
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'password']
-        extra_kwargs = {'password': {'write_only': True}}
-
-    def create(self, validated_data):
-        password = validated_data.pop('password')
-        username = validated_data.pop('username')
-        email = validated_data.pop('email')
-        first_name = validated_data.pop('first_name')
-        last_name = validated_data.pop('last_name')
-        user = User(
-            username=username,
-            email=email,
-            first_name=first_name,
-            last_name=last_name
-        )
-        user.set_password(password)
-        user.save()
-        return user
-    
+        fields = ['id', 'email', 'username', 'first_name', 'last_name']
 
 
 class AuthorSerializer(serializers.ModelSerializer):
+    quotes_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Author
-        fields = ['id', 'name', 'cover', 'bio', 'is_favorite', 'gradient_primary_color', 'gradient_secondary_color']
+        fields = ['id', 'name', 'cover', 'bio', 'is_favorite', 'gradient_primary_color', 'gradient_secondary_color', 'quotes_count']
+        
+    def get_quotes_count(self, obj):
+        return Quote.objects.filter(book__author=obj).count()
         
     def update(self, instance, validated_data):
         # Update the fields directly
@@ -51,11 +38,15 @@ class AuthorSerializer(serializers.ModelSerializer):
 
 class BookSerializer(serializers.ModelSerializer):
     author = AuthorSerializer()
+    quotes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
-        fields = ['id', 'title', 'author', 'cover', 'description', 'published', 'is_favorite', 'gradient_primary_color', 'gradient_secondary_color']
+        fields = ['id', 'title', 'author', 'cover', 'description', 'published', 'is_favorite', 'gradient_primary_color', 'gradient_secondary_color', 'quotes_count']
         read_only_fields = ['id']
+        
+    def get_quotes_count(self, obj):
+        return obj.quotes.count()
         
     def update(self, instance, validated_data):
         # If author data is present, it requires special handling
@@ -72,9 +63,14 @@ class BookSerializer(serializers.ModelSerializer):
 
 
 class TagSerializer(serializers.ModelSerializer):
+    quotes_count = serializers.SerializerMethodField()
+
     class Meta:
         model = Tag
         fields = '__all__'
+
+    def get_quotes_count(self, obj):
+        return obj.quotes.count()
 
 class QuoteUpdateSerializer(serializers.ModelSerializer):
     # Se espera un array de strings (ej. ["Amor"])
@@ -177,16 +173,20 @@ class QuoteTagSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class QuoteGroupSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = QuoteGroup
-        fields = '__all__'
-
-
 class QuoteGroupMembershipSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
     class Meta:
         model = QuoteGroupMembership
-        fields = '__all__'
+        fields = ['id', 'user', 'role', 'joined']
+
+
+class QuoteGroupSerializer(serializers.ModelSerializer):
+    members = QuoteGroupMembershipSerializer(source='quotegroupmembership_set', many=True, read_only=True)
+    
+    class Meta:
+        model = QuoteGroup
+        fields = ['id', 'name', 'description', 'created', 'created_by', 'members']
 
 
 class QuoteGroupShareSerializer(serializers.ModelSerializer):
@@ -196,9 +196,13 @@ class QuoteGroupShareSerializer(serializers.ModelSerializer):
 
 
 class QuoteListSerializer(serializers.ModelSerializer):
+    quotes = QuoteSerializer(many=True, read_only=True)
+    owner = UserSerializer(read_only=True)
+    
     class Meta:
         model = QuoteList
-        fields = '__all__'
+        fields = ['id', 'title', 'description', 'owner', 'visibility', 'group', 'quotes', 'created', 'updated']
+        read_only_fields = ['owner', 'created', 'updated']
 
 
 class QuoteListQuoteSerializer(serializers.ModelSerializer):

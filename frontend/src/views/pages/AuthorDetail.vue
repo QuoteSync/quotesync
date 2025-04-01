@@ -102,11 +102,42 @@
                 class="max-w-full max-h-full object-contain"
                 @error="(e) => e.target.src = 'https://via.placeholder.com/200x200?text=Image+Error'"
               />
-              <div v-else class="text-gray-400">No image selected</div>
+              <!-- Show gradient preview if no image is selected -->
+              <div 
+                v-else 
+                class="w-full h-full rounded book-cover flex items-center justify-center"
+                :style="{ 
+                  background: author.gradient || 
+                    (author.gradient_primary_color && author.gradient_secondary_color ? 
+                      `linear-gradient(135deg, ${author.gradient_primary_color}, ${author.gradient_secondary_color})` : 
+                      getRandomGradient().background) 
+                }"
+              >
+                <!-- Author placeholder -->
+                <div class="text-white text-xl font-bold p-4 text-center">
+                  <div class="w-16 h-16 mx-auto rounded-full border-2 border-white/30 flex items-center justify-center mb-3">
+                    <span class="text-3xl">{{ author.name.charAt(0) }}</span>
+                  </div>
+                  <div>Gradient Only</div>
+                </div>
+              </div>
             </div>
             <div v-if="previewCoverUrl" class="text-xs text-center mt-1 p-1 w-full overflow-hidden">
               <div class="truncate max-w-[250px]">{{ previewCoverUrl }}</div>
             </div>
+            <!-- Add a "Remove Image" button -->
+            <Button 
+              v-if="previewCoverUrl || author.cover" 
+              icon="pi pi-trash" 
+              label="Remove Image" 
+              severity="danger" 
+              class="p-button-sm mt-2" 
+              @click="removeAuthorImage"
+              text
+            />
+            <small v-if="!previewCoverUrl" class="text-gray-500 mt-1 block text-center">
+              Showing gradient background only
+            </small>
           </div>
           
           <!-- Cover options grid -->
@@ -257,8 +288,7 @@
           />
           <Button 
             icon="pi pi-check" 
-            label="Save Image" 
-            :disabled="!previewCoverUrl"
+            label="Save Changes" 
             @click="saveCoverChange"
             :loading="changingCover"
           />
@@ -459,54 +489,49 @@ const getRandomGradient = () => {
   };
 };
 
-// Add function to handle author image errors
+// Handle image loading errors by setting a gradient
 const handleAuthorImageError = async (authorObj) => {
-  console.log(`Handling author image error for: ${authorObj.name}`);
-  
-  // Mark the image as failed to show the gradient fallback
-  authorObj.imageFailed = true;
+  console.log("Handling author image error");
   coverIsLoading.value = false;
   
-  try {
-    // Check if already has gradient colors
+  // Set flag to show error fallback instead of the image
+  if (authorObj) {
+    // Mark the image as failed so we can show fallback gradient
+    authorObj.imageFailed = true;
+    
+    // Check if we already have gradient colors
     if (authorObj.gradient_primary_color && authorObj.gradient_secondary_color) {
+      // Use existing gradient colors
+      console.log("Using existing gradient colors");
       authorObj.gradient = `linear-gradient(135deg, ${authorObj.gradient_primary_color}, ${authorObj.gradient_secondary_color})`;
-      console.log(`Using stored gradient for ${authorObj.name}:`, authorObj.gradient);
-      return;
+    } else {
+      // Generate new gradient colors
+      console.log("Generating new gradient colors");
+      const newGradient = getRandomGradient();
+      authorObj.gradient_primary_color = newGradient.primary;
+      authorObj.gradient_secondary_color = newGradient.secondary;
+      authorObj.gradient = newGradient.background;
+      
+      // Save the gradient colors to the database
+      try {
+        await AuthorService.updateGradientColors(
+          authorObj.id, 
+          authorObj.gradient_primary_color, 
+          authorObj.gradient_secondary_color
+        );
+        console.log("Gradient colors saved to database");
+      } catch (error) {
+        console.error("Error saving gradient colors:", error);
+      }
     }
     
-    // No stored gradient, generate and save one
-    console.log(`Generating gradient for ${authorObj.name}`);
-    const gradient = getRandomGradient();
-    authorObj.gradient = gradient.background;
-    
-    // Save gradient colors to database
-    await AuthorService.updateGradientColors(
-      authorObj.id,
-      gradient.primary,
-      gradient.secondary
-    );
-    
-    // Update local properties
-    authorObj.gradient_primary_color = gradient.primary;
-    authorObj.gradient_secondary_color = gradient.secondary;
-    
-    console.log(`Saved gradient for ${authorObj.name}:`, authorObj.gradient);
-    
-    // Show toast notification for error
+    // Show a toast notification
     toast.add({
       severity: 'warn',
       summary: 'Image Error',
-      detail: 'Could not load author image, using gradient instead',
+      detail: 'Could not load author image, showing gradient instead',
       life: 3000
     });
-  } catch (error) {
-    console.error(`Error handling author image:`, error);
-    // Ensure there's a fallback gradient
-    if (!authorObj.gradient) {
-      const gradient = getRandomGradient();
-      authorObj.gradient = gradient.background;
-    }
   }
 };
 
@@ -672,12 +697,24 @@ const coverIsLoading = ref(true);
 // Functions for author cover management
 const openCoverDialog = () => {
   coverDialogVisible.value = true;
-  customCoverUrl.value = "";
+  
+  // Set the initial preview to the current cover or null if no cover
+  if (author.value.cover && !author.value.imageFailed) {
+    previewCoverUrl.value = author.value.cover;
+  } else {
+    // If no cover or image failed, set to null to show gradient option
+    previewCoverUrl.value = null;
+  }
+  
+  // Reset Wikipedia search term with author name for better results
+  wikipediaSearchTerm.value = author.value.name + " writer";
+  
+  // Reset custom URL fields
+  customCoverUrl.value = '';
   showCustomPreview.value = false;
   previewError.value = false;
-  // Initialize the search terms
-  wikipediaSearchTerm.value = `${author.name} writer`;
-  openLibrarySearchTerm.value = author.name;
+  
+  // Start searching for cover options
   searchCoverForAuthor();
 };
 
@@ -750,18 +787,45 @@ const selectCover = (coverUrl) => {
 
 // Save the selected cover and update the author
 const saveCoverChange = async () => {
-  if (!previewCoverUrl.value) return;
-  
   try {
-    console.log("Saving author image:", previewCoverUrl.value);
+    changingCover.value = true;
     
-    // Update the author cover in the database
-    await AuthorService.updateAuthorCover(author.value.id, previewCoverUrl.value);
-    
-    // Update local state without reloading
-    author.value.cover = previewCoverUrl.value;
-    author.value.imageFailed = false;
-    coverIsLoading.value = true;
+    // If previewCoverUrl is null, we're removing the image
+    if (previewCoverUrl.value === null) {
+      // Use the dedicated cover update method with null to properly remove the image
+      await AuthorService.updateAuthorCover(author.value.id, null);
+      
+      // Update local state
+      author.value.cover = null;
+      author.value.imageFailed = false;
+      
+      // Ensure we have a gradient
+      if (!author.value.gradient_primary_color || !author.value.gradient_secondary_color) {
+        const gradient = getRandomGradient();
+        author.value.gradient_primary_color = gradient.primary;
+        author.value.gradient_secondary_color = gradient.secondary;
+        author.value.gradient = gradient.background;
+        
+        // Save the gradient colors to the database
+        try {
+          await AuthorService.updateGradientColors(
+            author.value.id,
+            gradient.primary,
+            gradient.secondary
+          );
+        } catch (error) {
+          console.error("Error saving gradient colors:", error);
+        }
+      }
+    } else {
+      // Regular image update (using the dedicated cover update method)
+      await AuthorService.updateAuthorCover(author.value.id, previewCoverUrl.value);
+      
+      // Update local state
+      author.value.cover = previewCoverUrl.value;
+      author.value.imageFailed = false;
+      coverIsLoading.value = true;
+    }
     
     // Close dialog
     coverDialogVisible.value = false;
@@ -769,33 +833,20 @@ const saveCoverChange = async () => {
     toast.add({
       severity: 'success',
       summary: 'Image Updated',
-      detail: 'Author image has been updated successfully',
+      detail: previewCoverUrl.value ? 'Author image has been updated' : 'Author image has been removed',
       life: 3000
     });
     
   } catch (error) {
     console.error("Error updating author image:", error);
-    
-    // Handle apiClient errors
-    let errorMsg = "Unknown error";
-    if (error.response && error.response.data) {
-      if (typeof error.response.data === 'object') {
-        errorMsg = Object.entries(error.response.data)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(', ');
-      } else {
-        errorMsg = String(error.response.data);
-      }
-    } else if (error.message) {
-      errorMsg = error.message;
-    }
-    
     toast.add({
       severity: 'error',
       summary: 'Update Failed',
-      detail: `Failed to update author image: ${errorMsg}`,
-      life: 5000
+      detail: 'Failed to update author image',
+      life: 3000
     });
+  } finally {
+    changingCover.value = false;
   }
 };
 
@@ -927,6 +978,19 @@ const searchWithWikipedia = async () => {
   } finally {
     changingCover.value = false;
   }
+};
+
+// Add the removeAuthorImage method to the script
+const removeAuthorImage = () => {
+  // Set previewCoverUrl to null to indicate we want no image
+  previewCoverUrl.value = null;
+  
+  toast.add({
+    severity: 'info',
+    summary: 'Image Removed',
+    detail: 'The author will be displayed with gradient background only',
+    life: 3000
+  });
 };
 
 onMounted(async () => {

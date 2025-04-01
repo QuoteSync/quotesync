@@ -193,6 +193,21 @@ const navigateToTag = (tagId) => {
                   </div>
                   <!-- Sección inferior: botones -->
                   <div class="mt-4 flex flex-col md:items-end gap-4">
+                    <div
+                      class="bg-surface-100 p-1 rounded-full"
+                      style="border-radius: 30px"
+                    >
+                      <div
+                        class="bg-surface-0 flex items-center gap-2 justify-center py-1 px-2 rounded-full"
+                        style="
+                          box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.04),
+                            0px 1px 2px rgba(0, 0, 0, 0.06);
+                        "
+                      >
+                        <span class="text-surface-900 font-medium text-sm">{{ tag.quotes_count || 0 }}</span>
+                        <i class="pi pi-comment text-primary-500"></i>
+                      </div>
+                    </div>
                     <div class="flex flex-row-reverse md:flex-row gap-2">
                       <Button
                         :icon="tag.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
@@ -261,10 +276,25 @@ const navigateToTag = (tagId) => {
                 <!-- Sección inferior: botones -->
                 <div class="mt-auto pt-4">
                   <div class="flex flex-row justify-between items-center">
+                    <div
+                      class="bg-surface-100 p-1 rounded-full"
+                      style="border-radius: 30px"
+                    >
+                      <div
+                        class="bg-surface-0 flex items-center gap-2 justify-center py-1 px-2 rounded-full"
+                        style="
+                          box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.04),
+                            0px 1px 2px rgba(0, 0, 0, 0.06);
+                        "
+                      >
+                        <span class="text-surface-900 font-medium text-sm">{{ tag.quotes_count || 0 }}</span>
+                        <i class="pi pi-comment text-primary-500"></i>
+                      </div>
+                    </div>
                     <div class="flex gap-2">
                       <Button
-                        icon="pi pi-tag"
-                        label="View Quotes"
+                        icon="pi pi-book"
+                        label="Read More"
                         class="flex-auto whitespace-nowrap"
                         @click.stop="navigateToTag(tag.id)"
                       ></Button>

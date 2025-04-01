@@ -211,7 +211,7 @@
                     </div>
                     <p class="text-sm mt-2">{{ book.description }}</p>
                   </div>
-                  <!-- Sección de rating y botones -->
+                  <!-- Add quote count badge -->
                   <div class="mt-4 flex flex-col md:items-end gap-4">
                     <div
                       class="bg-surface-100 p-1 rounded-full"
@@ -224,8 +224,8 @@
                             0px 1px 2px rgba(0, 0, 0, 0.06);
                         "
                       >
-                        <span class="text-surface-900 font-medium text-sm">5.0</span>
-                        <i class="pi pi-star-fill text-yellow-500"></i>
+                        <span class="text-surface-900 font-medium text-sm">{{ book.quotes_count || 0 }}</span>
+                        <i class="pi pi-comment text-primary-500"></i>
                       </div>
                     </div>
                     <div class="flex flex-row-reverse md:flex-row gap-2">
@@ -403,8 +403,8 @@
                             0px 1px 2px rgba(0, 0, 0, 0.06);
                         "
                       >
-                        <span class="text-surface-900 font-medium text-sm">5.0</span>
-                        <i class="pi pi-star-fill text-yellow-500"></i>
+                        <span class="text-surface-900 font-medium text-sm">{{ book.quotes_count || 0 }}</span>
+                        <i class="pi pi-comment text-primary-500"></i>
                       </div>
                     </div>
                     <div class="flex gap-2">

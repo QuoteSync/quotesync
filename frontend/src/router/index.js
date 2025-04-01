@@ -1,6 +1,10 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 import { getSession } from '@/api';
+import QuoteLists from '@/views/pages/QuoteLists.vue';
+import QuoteListDetail from '@/views/pages/QuoteListDetail.vue';
+import QuoteGroups from '@/views/pages/QuoteGroups.vue';
+import QuoteGroupDetails from '@/views/pages/QuoteGroupDetails.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -164,6 +168,36 @@ const router = createRouter({
           name: 'documentation',
           meta: { requiresAuth: true },
           component: () => import('@/views/pages/Documentation.vue')
+        },
+        {
+          path: '/lists',
+          name: 'quoteLists',
+          component: QuoteLists,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: '/lists/:id',
+          name: 'quoteListDetail',
+          component: QuoteListDetail,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: '/groups',
+          name: 'groups',
+          component: QuoteGroups,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: '/groups/:id',
+          name: 'group-details',
+          component: QuoteGroupDetails,
+          meta: { requiresAuth: true }
+        },
+        {
+          path: '/shared',
+          name: 'sharedItems',
+          component: () => import('@/views/pages/SharedItems.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },

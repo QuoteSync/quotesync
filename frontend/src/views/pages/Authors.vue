@@ -280,8 +280,8 @@ const navigateToAuthor = (authorId) => {
                             0px 1px 2px rgba(0, 0, 0, 0.06);
                         "
                       >
-                        <span class="text-surface-900 font-medium text-sm">5.0</span>
-                        <i class="pi pi-star-fill text-yellow-500"></i>
+                        <span class="text-surface-900 font-medium text-sm">{{ author.quotes_count || 0 }}</span>
+                        <i class="pi pi-comment text-primary-500"></i>
                       </div>
                     </div>
                     <div class="flex flex-row-reverse md:flex-row gap-2">
@@ -368,8 +368,8 @@ const navigateToAuthor = (authorId) => {
                             0px 1px 2px rgba(0, 0, 0, 0.06);
                         "
                       >
-                        <span class="text-surface-900 font-medium text-sm">5.0</span>
-                        <i class="pi pi-star-fill text-yellow-500"></i>
+                        <span class="text-surface-900 font-medium text-sm">{{ author.quotes_count || 0 }}</span>
+                        <i class="pi pi-comment text-primary-500"></i>
                       </div>
                     </div>
                     <div class="flex gap-2">

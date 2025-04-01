@@ -3,16 +3,34 @@ import { ref } from "vue";
 
 import AppMenuItem from "./AppMenuItem.vue";
 
+const socialItems = [
+  {
+    label: 'Groups',
+    icon: 'pi pi-users',
+    to: '/groups'
+  },
+  {
+    label: 'Shared with Me',
+    icon: 'pi pi-share-alt',
+    to: '/shared'
+  }
+];
+
 const model = ref([
   {
     label: "Pages",
     items: [
+      { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
+      { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
+      { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
+      { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
       { label: "Dashboard", icon: "pi pi-fw pi-home", to: "/" },
       { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
-      { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
-      { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
-      { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
     ],
+  },
+  {
+    label: "Social",
+    items: socialItems
   },
   {
     label: "Admin Tools",

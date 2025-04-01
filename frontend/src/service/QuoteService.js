@@ -69,4 +69,9 @@ export const QuoteService = {
         const response = await apiClient.post(`/quotes/${quoteId}/toggle_favorite/`);
         return response.data;
     },
+
+    async getSharedQuotes() {
+        const response = await apiClient.get('/quotes/shared/');
+        return response.data;
+    },
 };

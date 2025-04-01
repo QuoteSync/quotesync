@@ -227,13 +227,19 @@ export const AuthorService = {
     // Method to update an author's cover
     async updateAuthorCover(authorId, coverUrl) {
         try {
-            const response = await apiClient.patch(`/authors/${authorId}/`, {
+            // If coverUrl is null, send a null value to properly remove the cover field
+            const payload = {
                 cover: coverUrl
-            });
+            };
+            
+            console.log(`AuthorService: Updating cover for author ${authorId} to ${coverUrl === null ? 'null (removing)' : coverUrl}`);
+            
+            const response = await apiClient.patch(`/authors/${authorId}/`, payload);
             console.log("Author cover update success:", response.data);
             return response.data;
         } catch (error) {
             console.error("Error updating author cover:", error);
+            console.error("Response data:", error.response?.data);
             throw error;
         }
     }

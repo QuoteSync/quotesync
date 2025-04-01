@@ -1,6 +1,6 @@
 <template>
   <div
-    class="w-full p-6 border border-surface-200 dark:border-surface-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm"
+    class="w-full p-6 border border-surface-200 dark:border-surface-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm relative"
   >
     <div v-if="isEditing || isNew">
       <textarea
@@ -89,20 +89,41 @@
           </span>
         </div>
         <div class="flex items-center gap-2">
-          <button
-            class="p-2 rounded-full transition-colors hover:bg-gray-200 cursor-pointer"
-            @click="$emit('toggle-like', quote.id)"
-          >
-            <i :class="heartIconClass" />
-          </button>
-          <button
-            class="p-2 rounded transition-colors hover:bg-gray-200 cursor-pointer"
+          <Button
+            icon="pi pi-heart"
+            :class="{ 'p-button-rounded': true, 'p-button-text': !liked, 'p-button-danger': liked }"
+            @click="$emit('toggle-like')"
+          />
+          <Button
+            icon="pi pi-pencil"
+            class="p-button-rounded p-button-text"
             @click="startEdit"
-          >
-            <i class="pi pi-pencil" />
-          </button>
+          />
+          <QuoteListMenu
+            :quoteId="quote.id"
+            @quote-added-to-list="handleQuoteAddedToList"
+            @remove-quote="$emit('remove-quote', $event)"
+          />
         </div>
       </div>
+    </div>
+    
+    <!-- Actions Menu -->
+    <div v-if="showActions" class="absolute top-2 right-2">
+      <Button
+        icon="pi pi-ellipsis-v"
+        class="p-button-rounded p-button-text"
+        @click="toggleMenu"
+        aria-haspopup="true"
+        aria-controls="overlay_menu"
+      />
+      <Menu
+        ref="menu"
+        :model="menuItems"
+        :popup="true"
+        aria-haspopup="true"
+        aria-controls="overlay_menu"
+      />
     </div>
   </div>
 </template>
@@ -111,15 +132,29 @@
 import { ref, watch, computed, defineProps, defineEmits } from "vue";
 import { useRouter } from "vue-router";
 import { TagService } from "@/service/TagService";
+import { QuoteListService } from '@/service/QuoteListService';
+import QuoteListMenu from './QuoteListMenu.vue';
+import Menu from 'primevue/menu';
 
 const router = useRouter();
 const props = defineProps({
-  quote: { type: Object, default: () => ({ body: "", tags: [] }) },
+  quote: {
+    type: Object,
+    required: true
+  },
   isNew: { type: Boolean, default: false },
   liked: { type: Boolean, default: false },
+  showActions: {
+    type: Boolean,
+    default: false
+  },
+  showRemoveButton: {
+    type: Boolean,
+    default: true
+  }
 });
 
-const emit = defineEmits(["toggle-like", "save-edit", "save-new", "cancel-edit"]);
+const emit = defineEmits(["toggle-like", "save-edit", "save-new", "cancel-edit", "remove-quote"]);
 
 const isEditing = ref(props.isNew); // Si es nueva, ya iniciamos en modo edición.
 const editedText = ref(props.isNew ? "" : props.quote.body);
@@ -251,11 +286,213 @@ const handleAuthorClick = (author) => {
   }
 };
 
+const handleQuoteAddedToList = (quoteId) => {
+  console.log("Quote added to list:", quoteId);
+  // Handle the event when a quote is added to a list
+};
+
 if (props.quote && props.quote.tags && props.quote.tags.length > 0) {
   console.log("Tags structure:", JSON.stringify(props.quote.tags[0], null, 2));
 }
+
+const menu = ref(null);
+
+const menuItems = ref([
+  {
+    label: 'Remove from list',
+    icon: 'pi pi-trash',
+    command: () => {
+      emit('remove-quote', props.quote.id);
+    }
+  }
+]);
+
+const toggleMenu = (event) => {
+  menu.value.toggle(event);
+};
 </script>
 
 <style scoped>
 /* Puedes agregar estilos adicionales para pulir la apariencia de los pills */
+
+.quote-list-menu {
+  :deep(.p-button) {
+    border-radius: 50%;
+    background: transparent;
+    border: none;
+    color: #6B7280;
+  }
+
+  :deep(.p-button:hover) {
+    background: #F3F4F6;
+  }
+
+  :deep(.dark .p-button) {
+    color: #9CA3AF;
+  }
+
+  :deep(.dark .p-button:hover) {
+    background: #374151;
+  }
+
+  :deep(.p-dropdown) {
+    min-width: 200px;
+  }
+
+  :deep(.p-dropdown-panel) {
+    background: white;
+    border: 1px solid #E5E7EB;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+
+  :deep(.dark .p-dropdown-panel) {
+    background: #1F2937;
+    border-color: #374151;
+  }
+
+  :deep(.p-dropdown-items) {
+    padding: 0;
+  }
+
+  :deep(.p-dropdown-item) {
+    padding: 0.75rem 1rem;
+    color: #374151;
+  }
+
+  :deep(.dark .p-dropdown-item) {
+    color: #E5E7EB;
+  }
+
+  :deep(.p-dropdown-item:hover) {
+    background: #F3F4F6;
+  }
+
+  :deep(.dark .p-dropdown-item:hover) {
+    background: #374151;
+  }
+
+  :deep(.p-dialog) {
+    background: white;
+  }
+
+  :deep(.dark .p-dialog) {
+    background: #1F2937;
+  }
+
+  :deep(.p-dialog-header) {
+    background: white;
+    border-bottom: 1px solid #E5E7EB;
+    padding: 1rem;
+  }
+
+  :deep(.dark .p-dialog-header) {
+    background: #1F2937;
+    border-color: #374151;
+  }
+
+  :deep(.p-dialog-content) {
+    background: white;
+    padding: 1rem;
+  }
+
+  :deep(.dark .p-dialog-content) {
+    background: #1F2937;
+  }
+
+  :deep(.p-dialog-footer) {
+    background: white;
+    border-top: 1px solid #E5E7EB;
+    padding: 1rem;
+  }
+
+  :deep(.dark .p-dialog-footer) {
+    background: #1F2937;
+    border-color: #374151;
+  }
+
+  :deep(.p-inputtext) {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #E5E7EB;
+    border-radius: 0.375rem;
+    background: white;
+  }
+
+  :deep(.dark .p-inputtext) {
+    background: #374151;
+    border-color: #4B5563;
+    color: #E5E7EB;
+  }
+
+  :deep(.p-button.p-button-primary) {
+    background: #3B82F6;
+    border-color: #3B82F6;
+    color: white;
+  }
+
+  :deep(.p-button.p-button-primary:hover) {
+    background: #2563EB;
+    border-color: #2563EB;
+  }
+
+  :deep(.p-button.p-button-secondary) {
+    background: #E5E7EB;
+    border-color: #E5E7EB;
+    color: #374151;
+  }
+
+  :deep(.p-button.p-button-secondary:hover) {
+    background: #D1D5DB;
+    border-color: #D1D5DB;
+  }
+
+  :deep(.dark .p-button.p-button-secondary) {
+    background: #374151;
+    border-color: #374151;
+    color: #E5E7EB;
+  }
+
+  :deep(.dark .p-button.p-button-secondary:hover) {
+    background: #4B5563;
+    border-color: #4B5563;
+  }
+}
+
+:deep(.p-menu) {
+  min-width: 200px;
+  background: white;
+  border: 1px solid #E5E7EB;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.dark .p-menu) {
+  background: #1F2937;
+  border-color: #374151;
+}
+
+:deep(.p-menu-item) {
+  padding: 0.75rem 1rem;
+  color: #374151;
+}
+
+:deep(.dark .p-menu-item) {
+  color: #E5E7EB;
+}
+
+:deep(.p-menu-item:hover) {
+  background: #F3F4F6;
+}
+
+:deep(.dark .p-menu-item:hover) {
+  background: #374151;
+}
+
+:deep(.p-menu-item .p-menuitem-icon) {
+  color: #6B7280;
+  margin-right: 0.5rem;
+}
+
+:deep(.dark .p-menu-item .p-menuitem-icon) {
+  color: #9CA3AF;
+}
 </style>

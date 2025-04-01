@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
+from django.db import models
 
 from .models import (
     Author, Book, Tag, Quote, QuoteTag,
@@ -58,6 +59,9 @@ class AuthorViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['name']
 
+    def get_queryset(self):
+        return Author.objects.all().prefetch_related('books', 'books__quotes')
+
     @action(detail=True, methods=['post'])
     def toggle_favorite(self, request, pk=None):
         author = self.get_object()
@@ -68,7 +72,6 @@ class AuthorViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def books(self, request, pk=None):
         author = self.get_object()
-        # Assuming the related_name on Book model's foreign key is "books"
         books = author.books.all()
         serializer = BookSerializer(books, many=True)
         return Response(serializer.data)
@@ -79,6 +82,9 @@ class BookViewSet(viewsets.ModelViewSet):
     serializer_class = BookSerializer
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['title', 'author']
+
+    def get_queryset(self):
+        return Book.objects.all().select_related('author').prefetch_related('quotes')
 
     def update(self, request, *args, **kwargs):
         logger.info("BookViewSet update - Received data: %s", request.data)
@@ -104,9 +110,11 @@ class BookViewSet(viewsets.ModelViewSet):
 class TagViewSet(viewsets.ModelViewSet):
     queryset = Tag.objects.all()
     serializer_class = TagSerializer
-
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['title']  # Ensure 'tag_name' is a valid field in the Tag model
+    filterset_fields = ['title']
+
+    def get_queryset(self):
+        return Tag.objects.all().prefetch_related('quotes')
 
     @action(detail=True, methods=['post'])
     def toggle_favorite(self, request, pk=None):
@@ -169,6 +177,95 @@ class QuoteTagViewSet(viewsets.ModelViewSet):
 class QuoteGroupViewSet(viewsets.ModelViewSet):
     queryset = QuoteGroup.objects.all()
     serializer_class = QuoteGroupSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return QuoteGroup.objects.filter(
+            models.Q(created_by=self.request.user) | 
+            models.Q(members=self.request.user)
+        ).distinct()
+
+    def perform_create(self, serializer):
+        group = serializer.save(created_by=self.request.user)
+        # Add creator as admin member
+        QuoteGroupMembership.objects.create(
+            group=group,
+            user=self.request.user,
+            role='admin'
+        )
+        # Add other members if provided
+        member_emails = self.request.data.get('members', [])
+        for email in member_emails:
+            try:
+                user = User.objects.get(email=email)
+                QuoteGroupMembership.objects.create(
+                    group=group,
+                    user=user,
+                    role='reader'
+                )
+            except User.DoesNotExist:
+                # Skip if user not found
+                continue
+
+    @action(detail=True, methods=['post'])
+    def add_member(self, request, pk=None):
+        group = self.get_object()
+        email = request.data.get('email')
+        role = request.data.get('role', 'reader')
+        
+        if not email:
+            return Response(
+                {'error': 'Email is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            user = User.objects.get(email=email)
+            # Check if user is already a member
+            if QuoteGroupMembership.objects.filter(group=group, user=user).exists():
+                return Response(
+                    {'error': 'User is already a member of this group'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            membership = QuoteGroupMembership.objects.create(
+                group=group,
+                user=user,
+                role=role
+            )
+            return Response(QuoteGroupMembershipSerializer(membership).data)
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['delete'])
+    def remove_member(self, request, pk=None):
+        group = self.get_object()
+        email = request.data.get('email')
+        
+        if not email:
+            return Response(
+                {'error': 'Email is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            user = User.objects.get(email=email)
+            membership = QuoteGroupMembership.objects.get(group=group, user=user)
+            membership.delete()
+            return Response({'status': 'member removed'})
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except QuoteGroupMembership.DoesNotExist:
+            return Response(
+                {'error': 'User is not a member of this group'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class QuoteGroupMembershipViewSet(viewsets.ModelViewSet):
@@ -184,6 +281,43 @@ class QuoteGroupShareViewSet(viewsets.ModelViewSet):
 class QuoteListViewSet(viewsets.ModelViewSet):
     queryset = QuoteList.objects.all()
     serializer_class = QuoteListSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return QuoteList.objects.filter(owner=self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+    @action(detail=True, methods=['post'])
+    def add_quote(self, request, pk=None):
+        quote_list = self.get_object()
+        quote_id = request.data.get('quote_id')
+        
+        try:
+            quote = Quote.objects.get(id=quote_id, owner=request.user)
+            quote_list.quotes.add(quote)
+            return Response({'status': 'quote added'})
+        except Quote.DoesNotExist:
+            return Response(
+                {'error': 'Quote not found or not owned by user'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['post'])
+    def remove_quote(self, request, pk=None):
+        quote_list = self.get_object()
+        quote_id = request.data.get('quote_id')
+        
+        try:
+            quote = Quote.objects.get(id=quote_id, owner=request.user)
+            quote_list.quotes.remove(quote)
+            return Response({'status': 'quote removed'})
+        except Quote.DoesNotExist:
+            return Response(
+                {'error': 'Quote not found or not owned by user'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
 
 
 class QuoteListQuoteViewSet(viewsets.ModelViewSet):
