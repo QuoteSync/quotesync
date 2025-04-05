@@ -26,6 +26,7 @@ const model = ref([
       { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
       { label: "Dashboard", icon: "pi pi-fw pi-home", to: "/" },
       { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
+      { label: "Import Quotes", icon: "pi pi-fw pi-download", to: "/import-quotes" },
     ],
   },
   {

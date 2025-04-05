@@ -219,18 +219,18 @@ ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"  # Asegurar que usa tu campo personalizado
 ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"  # Si quieres usar email para login
 
-# ACCOUNT_AUTHENTICATION_METHOD = "email"
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_LOGIN_METHODS = {'username', 'email'}
+ACCOUNT_AUTHENTICATION_METHOD = "username_email"  # Allow both username and email login
+# ACCOUNT_USERNAME_REQUIRED = False
+# ACCOUNT_LOGIN_METHODS = {'username', 'email'}
 # ACCOUNT_EMAIL_REQUIRED = True
 
 HEADLESS_ONLY = True
 HEADLESS_FRONTEND_URLS = {
-    "account_confirm_email": "/account/verify-email/{key}",
-    "account_reset_password": "/account/password/reset",
-    "account_reset_password_from_key": "/account/password/reset/key/{key}",
-    "account_signup": "/account/signup",
-    "socialaccount_login_error": "/account/provider/callback",
+    "account_confirm_email": "http://localhost:5173/account/verify-email/{key}",
+    "account_reset_password": "http://localhost:5173/account/password/reset",
+    "account_reset_password_from_key": "http://localhost:5173/account/password/reset/key/{key}",
+    "account_signup": "http://localhost:5173/account/signup",
+    "socialaccount_login_error": "http://localhost:5173/account/provider/callback",
 }
 HEADLESS_SERVE_SPECIFICATION = True
 
@@ -239,3 +239,6 @@ MFA_SUPPORTED_TYPES = ["totp", "recovery_codes", "webauthn"]
 # MFA_PASSKEY_SIGNUP_ENABLED = True
 
 AUTH_USER_MODEL = 'api.User'
+
+# Change email backend to console for development
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

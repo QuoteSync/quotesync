@@ -2,36 +2,69 @@
 import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { QuoteService } from '@/service/QuoteService';
-import { QuoteGroupService } from '@/service/QuoteGroupService';
 import QuoteCard from '@/components/QuoteCard.vue';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import TabView from 'primevue/tabview';
 import TabPanel from 'primevue/tabpanel';
+import { useRouter } from 'vue-router';
+import { getSession } from '@/api';
 
 const toast = useToast();
 const sharedQuotes = ref([]);
 const sharedLists = ref([]);
 const loading = ref(false);
+const router = useRouter();
 
 const loadSharedItems = async () => {
   loading.value = true;
   try {
-    // Load shared quotes
-    const quotes = await QuoteService.getSharedQuotes();
-    sharedQuotes.value = quotes;
+    // Check if user is authenticated first
+    const session = await getSession();
+    if (!session || !session.meta || !session.meta.is_authenticated) {
+      toast.add({
+        severity: 'error',
+        summary: 'Authentication Error',
+        detail: 'You must be logged in to view shared items',
+        life: 3000
+      });
+      router.push({ name: 'login' });
+      return;
+    }
+    
+    // Load shared quotes from shared lists
+    const sharedListsData = await QuoteService.getSharedQuotes();
+    sharedLists.value = sharedListsData;
+    
+    // Extract quotes from shared lists
+    const quotesFromLists = [];
+    sharedListsData.forEach(list => {
+      if (list.quotes && Array.isArray(list.quotes)) {
+        quotesFromLists.push(...list.quotes);
+      }
+    });
+    sharedQuotes.value = quotesFromLists;
 
-    // Load shared lists
-    const lists = await QuoteGroupService.getSharedLists();
-    sharedLists.value = lists;
   } catch (error) {
     console.error('Error loading shared items:', error);
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load shared items',
-      life: 3000
-    });
+    
+    // Check if it's an authentication error
+    if (error.response && error.response.status === 401) {
+      toast.add({
+        severity: 'error',
+        summary: 'Authentication Error',
+        detail: 'Your session has expired. Please log in again',
+        life: 3000
+      });
+      router.push({ name: 'login' });
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load shared items',
+        life: 3000
+      });
+    }
   } finally {
     loading.value = false;
   }
@@ -95,11 +128,20 @@ onMounted(() => {
           :value="sharedLists"
           class="p-datatable-striped"
         >
-          <Column field="name" header="Name"></Column>
-          <Column field="description" header="Description"></Column>
+          <Column field="title" header="List Title"></Column>
+          <Column field="description" header="Description">
+            <template #body="slotProps">
+              {{ slotProps.data.description || 'No description' }}
+            </template>
+          </Column>
           <Column field="created" header="Created">
             <template #body="slotProps">
-              {{ new Date(slotProps.data.created).toLocaleDateString() }}
+              {{ slotProps.data.created ? new Date(slotProps.data.created).toLocaleDateString() : 'N/A' }}
+            </template>
+          </Column>
+          <Column field="owner_name" header="Shared By">
+            <template #body="slotProps">
+              {{ slotProps.data.owner?.username || 'Unknown' }}
             </template>
           </Column>
           <Column :exportable="false" style="min-width: 8rem">

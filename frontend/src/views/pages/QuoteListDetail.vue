@@ -2,12 +2,15 @@
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { QuoteListService } from '@/service/QuoteListService';
+import { QuoteGroupService } from '@/service/QuoteGroupService';
+import { QuoteService } from '@/service/QuoteService';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import QuoteCard from '@/components/QuoteCard.vue';
+import Checkbox from 'primevue/checkbox';
 
 const route = useRoute();
 const router = useRouter();
@@ -20,6 +23,13 @@ const editedDescription = ref('');
 const showDeleteDialog = ref(false);
 const quoteToDelete = ref(null);
 const showDeleteListDialog = ref(false);
+const likedQuotes = ref({});
+
+// Sharing functionality
+const groups = ref([]);
+const loadingGroups = ref(false);
+const selectedGroups = ref([]);
+const showShareDialog = ref(false);
 
 const loadQuoteList = async () => {
   try {
@@ -27,16 +37,69 @@ const loadQuoteList = async () => {
     quoteList.value = list;
     editedTitle.value = list.title;
     editedDescription.value = list.description || '';
+    
+    // Initialize liked status for each quote
+    if (list.quotes) {
+      list.quotes.forEach(quote => {
+        likedQuotes.value[quote.id] = quote.is_favorite || false;
+      });
+    }
   } catch (error) {
     console.error('Error loading quote list:', error);
+    
+    // Handle 404 Not Found errors
+    if (error.response && error.response.status === 404) {
+      toast.add({
+        severity: 'error',
+        summary: 'Not Found',
+        detail: 'The quote list you are looking for does not exist or you don\'t have permission to view it',
+        life: 5000
+      });
+      // Redirect to the quote lists page after a delay
+      setTimeout(() => {
+        router.push({ name: 'quoteLists' });
+      }, 2000);
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: 'Error',
+        detail: 'Failed to load quote list',
+        life: 3000
+      });
+    }
+  } finally {
+    loading.value = false;
+  }
+};
+
+// Toggle favorite status of a quote
+const toggleLikeQuote = async (quoteId) => {
+  try {
+    const response = await QuoteService.toggleFavorite(quoteId);
+    
+    // Update the liked status in our local state
+    likedQuotes.value[quoteId] = response.is_favorite;
+    
+    // Also update in the quotes list for UI consistency
+    const quote = quoteList.value.quotes.find(q => q.id === quoteId);
+    if (quote) {
+      quote.is_favorite = response.is_favorite;
+    }
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: response.is_favorite ? 'Added to favorites' : 'Removed from favorites',
+      life: 2000
+    });
+  } catch (error) {
+    console.error('Error toggling favorite status:', error);
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: 'Failed to load quote list',
+      detail: 'Failed to update favorite status',
       life: 3000
     });
-  } finally {
-    loading.value = false;
   }
 };
 
@@ -135,8 +198,63 @@ const confirmDelete = async () => {
   }
 };
 
-onMounted(() => {
-  loadQuoteList();
+const loadGroups = async () => {
+  loadingGroups.value = true;
+  try {
+    const response = await QuoteGroupService.getGroups();
+    groups.value = response;
+    // Mark groups that already have access to this list
+    selectedGroups.value = groups.value
+      .filter(group => group.lists?.some(list => list.id === quoteList.value.id))
+      .map(group => group.id);
+  } catch (error) {
+    console.error('Error loading groups:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load groups',
+      life: 3000
+    });
+  } finally {
+    loadingGroups.value = false;
+  }
+};
+
+const toggleGroupShare = async (groupId) => {
+  try {
+    if (selectedGroups.value.includes(groupId)) {
+      // Share with the group
+      await QuoteGroupService.updateListVisibility(quoteList.value.id, 'group', groupId);
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'List shared with group successfully',
+        life: 3000
+      });
+    } else {
+      // Remove from group
+      await QuoteGroupService.updateListVisibility(quoteList.value.id, 'private');
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'List removed from group successfully',
+        life: 3000
+      });
+    }
+  } catch (error) {
+    console.error('Error toggling group share:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update list sharing',
+      life: 3000
+    });
+  }
+};
+
+onMounted(async () => {
+  await loadQuoteList();
+  await loadGroups();
 });
 </script>
 
@@ -163,6 +281,11 @@ onMounted(() => {
           </div>
           <div class="flex gap-2">
             <Button
+              label="Share"
+              icon="pi pi-share-alt"
+              @click="showShareDialog = true"
+            />
+            <Button
               label="Edit"
               icon="pi pi-pencil"
               @click="showEditDialog = true"
@@ -183,7 +306,9 @@ onMounted(() => {
               v-for="quote in quoteList.quotes"
               :key="quote.id"
               :quote="quote"
+              :liked="likedQuotes[quote.id]"
               :showActions="true"
+              @toggle-like="toggleLikeQuote"
               @remove-quote="handleRemoveQuote"
             />
           </div>
@@ -193,6 +318,49 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- Share List Dialog -->
+    <Dialog
+      v-model:visible="showShareDialog"
+      header="Share List"
+      :style="{ width: '500px' }"
+      :modal="true"
+    >
+      <div class="p-4">
+        <div v-if="loadingGroups" class="flex justify-center p-4">
+          <i class="pi pi-spin pi-spinner text-2xl"></i>
+        </div>
+
+        <div v-else-if="groups.length === 0" class="text-center p-4 text-surface-500">
+          No groups available to share with
+        </div>
+
+        <div v-else class="flex flex-col gap-4">
+          <div 
+            v-for="group in groups" 
+            :key="group.id"
+            class="flex items-center justify-between p-3 border border-surface-200 dark:border-surface-700 rounded-lg"
+          >
+            <div>
+              <h3 class="font-medium">{{ group.name }}</h3>
+              <p class="text-sm text-surface-600 dark:text-surface-400">{{ group.description || 'No description' }}</p>
+            </div>
+            <Checkbox
+              :modelValue="selectedGroups.includes(group.id)"
+              @update:modelValue="(checked) => {
+                if (checked) {
+                  selectedGroups.push(group.id);
+                } else {
+                  selectedGroups = selectedGroups.filter(id => id !== group.id);
+                }
+                toggleGroupShare(group.id);
+              }"
+              :binary="true"
+            />
+          </div>
+        </div>
+      </div>
+    </Dialog>
 
     <!-- Edit List Dialog -->
     <Dialog

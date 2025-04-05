@@ -92,7 +92,7 @@
           <Button
             icon="pi pi-heart"
             :class="{ 'p-button-rounded': true, 'p-button-text': !liked, 'p-button-danger': liked }"
-            @click="$emit('toggle-like')"
+            @click="$emit('toggle-like', quote.id)"
           />
           <Button
             icon="pi pi-pencil"

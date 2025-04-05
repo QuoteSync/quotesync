@@ -10,6 +10,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Dialog from 'primevue/dialog';
 import Textarea from 'primevue/textarea';
+import Checkbox from 'primevue/checkbox';
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +26,10 @@ const editingGroup = ref({
   name: '',
   description: ''
 });
+
+const lists = ref([]);
+const loadingLists = ref(false);
+const selectedLists = ref([]);
 
 const loadGroup = async () => {
   loading.value = true;
@@ -194,8 +199,63 @@ const deleteGroup = async () => {
   }
 };
 
-onMounted(() => {
-  loadGroup();
+const loadLists = async () => {
+  loadingLists.value = true;
+  try {
+    const response = await QuoteGroupService.getSharedLists();
+    lists.value = response;
+    // Marcar las listas que ya están compartidas con este grupo
+    selectedLists.value = lists.value
+      .filter(list => list.group === group.value.id)
+      .map(list => list.id);
+  } catch (error) {
+    console.error('Error loading lists:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load lists',
+      life: 3000
+    });
+  } finally {
+    loadingLists.value = false;
+  }
+};
+
+const toggleListShare = async (listId) => {
+  try {
+    if (selectedLists.value.includes(listId)) {
+      // Compartir con el grupo
+      await QuoteGroupService.updateListVisibility(listId, 'group', group.value.id);
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'List shared with group successfully',
+        life: 3000
+      });
+    } else {
+      // Quitar del grupo
+      await QuoteGroupService.updateListVisibility(listId, 'private');
+      toast.add({
+        severity: 'success',
+        summary: 'Success',
+        detail: 'List removed from group successfully',
+        life: 3000
+      });
+    }
+  } catch (error) {
+    console.error('Error toggling list share:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update list sharing',
+      life: 3000
+    });
+  }
+};
+
+onMounted(async () => {
+  await loadGroup();
+  await loadLists();
 });
 </script>
 
@@ -266,6 +326,64 @@ onMounted(() => {
             </template>
           </Column>
         </DataTable>
+      </div>
+
+      <!-- Lists Section -->
+      <div class="surface-card p-4 border-round shadow-2 mt-4">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-semibold m-0">Shared Lists</h2>
+        </div>
+
+        <div v-if="loadingLists" class="flex justify-center p-4">
+          <i class="pi pi-spin pi-spinner text-2xl"></i>
+        </div>
+
+        <div v-else-if="lists.length === 0" class="text-center p-4 text-surface-500">
+          No lists available to share
+        </div>
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div 
+            v-for="list in lists" 
+            :key="list.id"
+            class="p-4 border border-surface-200 dark:border-surface-700 rounded-lg hover:shadow-md transition-shadow relative"
+          >
+            <!-- Share icon -->
+            <div class="absolute top-2 right-2">
+              <i 
+                class="pi text-xl" 
+                :class="{
+                  'pi-share-alt text-primary': selectedLists.includes(list.id),
+                  'pi-share text-surface-400': !selectedLists.includes(list.id)
+                }"
+              ></i>
+            </div>
+
+            <div class="flex items-center gap-2 mb-2">
+              <Checkbox
+                :modelValue="selectedLists.includes(list.id)"
+                @update:modelValue="(checked) => {
+                  if (checked) {
+                    selectedLists.push(list.id);
+                  } else {
+                    selectedLists = selectedLists.filter(id => id !== list.id);
+                  }
+                  toggleListShare(list.id);
+                }"
+                :binary="true"
+                class="mr-2"
+              />
+              <span class="font-medium">{{ list.title }}</span>
+            </div>
+            <p class="text-sm text-surface-600 dark:text-surface-400 mb-2">
+              {{ list.description || 'No description' }}
+            </p>
+            <div class="flex items-center gap-2 text-sm text-surface-500">
+              <i class="pi pi-calendar"></i>
+              <span>Created {{ new Date(list.created).toLocaleDateString() }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -408,5 +526,18 @@ onMounted(() => {
 /* Empty message styles */
 .p-datatable-empty-message {
   @apply text-surface-500 dark:text-surface-400;
+}
+
+/* List card styles */
+.border-surface-200 {
+  @apply dark:border-surface-700;
+}
+
+.hover\:shadow-md:hover {
+  @apply shadow-md;
+}
+
+.transition-shadow {
+  @apply transition-all duration-200;
 }
 </style> 

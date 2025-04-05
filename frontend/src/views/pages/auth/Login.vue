@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { loginApi, getSession } from "@/api"; // Import getSession as well
 import FloatingConfigurator from "@/components/FloatingConfigurator.vue";
@@ -9,6 +9,19 @@ const password = ref("");
 const checked = ref(false);
 const errorMessage = ref("");
 const router = useRouter();
+
+// Check if user is already logged in when the component mounts
+onMounted(async () => {
+    try {
+        const sessionData = await getSession();
+        if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
+            // If already authenticated, redirect to dashboard
+            router.push({ name: "dashboard" });
+        }
+    } catch (error) {
+        console.error("Error checking session:", error);
+    }
+});
 
 const login = async () => {
     errorMessage.value = ""; // Reset the error message
@@ -64,8 +77,8 @@ const login = async () => {
 
                     <div>
                         <label for="username1"
-                            class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Username</label>
-                        <InputText id="username1" type="text" placeholder="Username" class="w-full md:w-[30rem] mb-8"
+                            class="block text-surface-900 dark:text-surface-0 text-xl font-medium mb-2">Username or Email</label>
+                        <InputText id="username1" type="text" placeholder="Username or Email" class="w-full md:w-[30rem] mb-8"
                             v-model="username" />
                         <label for="password1"
                             class="block text-surface-900 dark:text-surface-0 font-medium text-xl mb-2">Password</label>
@@ -77,7 +90,8 @@ const login = async () => {
                                 <Checkbox v-model="checked" id="rememberme1" binary class="mr-2"></Checkbox>
                                 <label for="rememberme1">Remember me</label>
                             </div>
-                            <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary">Forgot
+                            <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary" 
+                                @click="router.push({ name: 'forgotPassword' })">Forgot
                                 password?</span>
                         </div>
                         <!-- Botón que llama a la función de login -->

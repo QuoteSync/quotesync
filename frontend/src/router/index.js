@@ -26,6 +26,12 @@ const router = createRouter({
           component: () => import('@/views/pages/Quotes.vue')
         },
         {
+          path: '/import-quotes',
+          name: 'importQuotes',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/ImportQuotes.vue')
+        },
+        {
           path: '/authors',
           name: 'authors',
           meta: { requiresAuth: true },
@@ -217,6 +223,11 @@ const router = createRouter({
       component: () => import('@/views/pages/auth/Login.vue')
     },
     {
+      path: '/auth/forgot-password',
+      name: 'forgotPassword',
+      component: () => import('@/views/pages/auth/ForgotPassword.vue')
+    },
+    {
       path: '/auth/register',
       name: 'register',
       component: () => import('@/views/pages/auth/Register.vue')
@@ -230,25 +241,41 @@ const router = createRouter({
       path: '/auth/error',
       name: 'error',
       component: () => import('@/views/pages/auth/Error.vue')
+    },
+    {
+      path: '/account/verify-email/:key',
+      name: 'verifyEmail',
+      component: () => import('@/views/pages/auth/VerifyEmail.vue')
+    },
+    {
+      path: '/account/password/reset/key/:key',
+      name: 'resetPassword',
+      component: () => import('@/views/pages/auth/ResetPassword.vue')
     }
   ]
 });
 
 router.beforeEach(async (to, _from, next) => {
-  // Lista de rutas públicas
-  const publicRoutes = ['login', 'register', 'accessDenied', 'error'];
+  // List of public routes
+  const publicRoutes = ['login', 'register', 'accessDenied', 'error', 'resetPassword', 'forgotPassword', 'verifyEmail'];
 
-  // Si la ruta es pública, permite la navegación sin llamar a getSession
+  // If the route is public, allow navigation without calling getSession
   if (publicRoutes.includes(to.name)) {
     return next();
   }
 
-  // Si la ruta requiere autenticación, se verifica la sesión
+  // If the route requires authentication, verify the session
   if (to.matched.some(record => record.meta.requiresAuth)) {
-    const sessionData = await getSession();
-    if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
-      return next();
-    } else {
+    try {
+      const sessionData = await getSession();
+      if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
+        return next();
+      } else {
+        console.log("No active session, redirecting to login");
+        return next({ name: 'login' });
+      }
+    } catch (error) {
+      console.error("Session check error:", error);
       return next({ name: 'login' });
     }
   }

@@ -284,10 +284,25 @@ class QuoteListViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return QuoteList.objects.filter(owner=self.request.user)
+        # Include both owned lists and lists shared through groups
+        return QuoteList.objects.filter(
+            models.Q(owner=self.request.user) | 
+            models.Q(visibility='group') & models.Q(group__members=self.request.user)
+        ).distinct()
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+    @action(detail=False, methods=['get'])
+    def shared(self, request):
+        # Get lists shared through groups the user is a member of
+        shared_lists = QuoteList.objects.filter(
+            models.Q(visibility='group') &
+            models.Q(group__members=request.user)
+        ).distinct()
+        
+        serializer = self.get_serializer(shared_lists, many=True)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
     def add_quote(self, request, pk=None):
@@ -316,6 +331,42 @@ class QuoteListViewSet(viewsets.ModelViewSet):
         except Quote.DoesNotExist:
             return Response(
                 {'error': 'Quote not found or not owned by user'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['post'])
+    def update_visibility(self, request, pk=None):
+        quote_list = self.get_object()
+        visibility = request.data.get('visibility')
+        group_id = request.data.get('group_id')
+
+        if visibility not in ['private', 'group']:
+            return Response(
+                {'error': 'Invalid visibility value'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if visibility == 'group' and not group_id:
+            return Response(
+                {'error': 'Group ID is required for group visibility'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            if visibility == 'group':
+                group = QuoteGroup.objects.get(id=group_id)
+                quote_list.group = group
+            else:
+                quote_list.group = None
+
+            quote_list.visibility = visibility
+            quote_list.save()
+
+            serializer = self.get_serializer(quote_list)
+            return Response(serializer.data)
+        except QuoteGroup.DoesNotExist:
+            return Response(
+                {'error': 'Group not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
 

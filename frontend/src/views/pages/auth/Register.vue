@@ -1,7 +1,7 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { signup } from "@/api";
+import { signup, getSession } from "@/api";
 import FloatingConfigurator from "@/components/FloatingConfigurator.vue";
 
 const username = ref("");
@@ -13,6 +13,19 @@ const confirmPassword = ref("");
 const errorMessage = ref("");
 const router = useRouter();
 
+// Check if user is already logged in when the component mounts
+onMounted(async () => {
+  try {
+    const sessionData = await getSession();
+    if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
+      // If already authenticated, redirect to dashboard
+      router.push({ name: "dashboard" });
+    }
+  } catch (error) {
+    console.error("Error checking session:", error);
+  }
+});
+
 const register = async () => {
   errorMessage.value = ""; // Reset the error message
 
@@ -22,20 +35,32 @@ const register = async () => {
     return;
   }
 
+  // Create the user data object with the required fields
+  const userData = {
+    username: username.value,
+    email: email.value,
+    password: password.value,
+    // These are commented out but available if needed
+    // first_name: firstName.value,
+    // last_name: lastName.value,
+  };
+
+  console.log("Sending registration data:", userData);
+
   try {
     // Call the signup API endpoint with all required fields.
-    await signup({
-      // first_name: firstName.value,
-      // last_name: lastName.value,
-      username: "username.value",
-      email: "emailasc@value.com",
-      password: "password.value",
-    });
+    const response = await signup(userData);
+    console.log("Signup response:", response);
     // On successful signup, redirect to the login page.
     router.push({ name: "login" });
   } catch (error) {
     console.error("Signup error:", error);
-    errorMessage.value = "Signup error. Please verify the entered information.";
+    if (error.response) {
+      console.error("Error response data:", error.response.data);
+      errorMessage.value = `Signup error: ${JSON.stringify(error.response.data)}`;
+    } else {
+      errorMessage.value = "Signup error. Please verify the entered information.";
+    }
   }
 };
 </script>

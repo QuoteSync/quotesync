@@ -48,15 +48,23 @@ const loginApi = async (username, password) => {
 // Logout function: redirect to login after a successful logout.
 const logout = async () => {
   try {
+    // Check if the session exists first
+    const sessionExists = await getSession();
+    if (!sessionExists) {
+      // Already logged out, just redirect
+      router.push({ name: "login" });
+      return { success: true };
+    }
+    
+    // Session exists, try to delete it
     const response = await apiClient.delete("/_allauth/browser/v1/auth/session");
     router.push({ name: "login" });
     return response.data;
   } catch (error) {
-    if (error.response && error.response.status === 401) {
-      router.push({ name: "login" });
-    } else {
-      console.error("Logout error:", error);
-    }
+    // Any error (including 401) means we should redirect to login
+    console.error("Logout error:", error);
+    router.push({ name: "login" });
+    return { success: true };
   }
 };
 
@@ -76,11 +84,7 @@ const getSession = async () => {
 
 const signup = async (userData) => {
   try {
-    const response = await apiClient.post("/_allauth/browser/v1/auth/signup", {
-      "email": "emaiql@domain.org3",
-      "username": "wizardq3",
-      "password": "Alohomoraq!3"
-    });
+    const response = await apiClient.post("/_allauth/browser/v1/auth/signup", userData);
     return response.data;
   } catch (error) {
     console.error("Signup error:", error);
@@ -98,4 +102,34 @@ const me = async () => {
   }
 };
 
-export { apiClient, loginApi, logout, getSession, signup, getCookie, me };
+// Password reset request function
+const passwordResetRequest = async (email) => {
+  try {
+    const response = await apiClient.post("/_allauth/browser/v1/auth/password/request", { email });
+    return response.data;
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    throw error;
+  }
+};
+
+// Password reset with key function
+const passwordResetWithKey = async (key, password) => {
+  try {
+    const response = await apiClient.post("/_allauth/browser/v1/auth/password/reset", { 
+      key, 
+      password 
+    });
+    return response.data;
+  } catch (error) {
+    // For password reset, some implementations return 401 as part of the flow
+    // This is still considered a "success" path for the password reset
+    if (error.response && error.response.status === 401) {
+      return { success: true, status: 401 };
+    }
+    console.error("Password reset error:", error);
+    throw error;
+  }
+};
+
+export { apiClient, loginApi, logout, getSession, signup, getCookie, me, passwordResetRequest, passwordResetWithKey };
