@@ -20,11 +20,11 @@ const model = ref([
   {
     label: "Pages",
     items: [
+      { label: "Dashboard", icon: "pi pi-fw pi-home", to: "/" },
       { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
       { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
       { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
       { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
-      { label: "Dashboard", icon: "pi pi-fw pi-home", to: "/" },
       { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
       { label: "Import Quotes", icon: "pi pi-fw pi-download", to: "/import-quotes" },
     ],

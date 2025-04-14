@@ -1,0 +1,17 @@
+# Django and REST framework dependencies
+Django>=4.2.0
+djangorestframework>=3.14.0
+django-filter>=23.2
+django-cors-headers>=4.1.0
+python-dotenv>=1.0.0
+
+# Authentication
+django-allauth>=0.54.0
+dj-rest-auth>=4.0.1
+
+# DOCX processing
+docx2txt>=0.8
+python-docx>=1.0.0
+
+# Utilities
+pillow>=10.0.0 

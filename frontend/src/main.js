@@ -9,6 +9,7 @@ import ToastService from 'primevue/toastservice';
 
 import '@/assets/styles.scss';
 import '@/assets/tailwind.css';
+import './assets/styles/cover-management.css'
 
 const app = createApp(App);
 

@@ -7,8 +7,6 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Dialog from 'primevue/dialog';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
 
 const router = useRouter();
 const toast = useToast();
@@ -17,6 +15,26 @@ const loading = ref(false);
 const showCreateDialog = ref(false);
 const showEditDialog = ref(false);
 const selectedGroup = ref(null);
+const hoverGroup = ref(null);
+
+// Predefined gradient pairs for group cards
+const gradients = [
+  { primary: '#4158D0', secondary: '#C850C0' },
+  { primary: '#0093E9', secondary: '#80D0C7' },
+  { primary: '#8EC5FC', secondary: '#E0C3FC' },
+  { primary: '#FBAB7E', secondary: '#F7CE68' },
+  { primary: '#85FFBD', secondary: '#FFFB7D' },
+  { primary: '#FF9A8B', secondary: '#FF6A88' },
+  { primary: '#74EBD5', secondary: '#9FACE6' },
+  { primary: '#F4D03F', secondary: '#16A085' },
+];
+
+// Generate a consistent gradient for a group based on its ID
+const getGroupGradient = (groupId) => {
+  // Use the last digit of the group ID to select a gradient
+  const index = parseInt(groupId.toString().slice(-1)) % gradients.length;
+  return gradients[index];
+};
 
 const newGroup = ref({
   name: '',
@@ -78,7 +96,7 @@ const createGroup = async () => {
   }
 };
 
-const editGroup = async (group) => {
+const editGroup = (group) => {
   editingGroup.value = {
     name: group.name,
     description: group.description
@@ -143,6 +161,18 @@ const deleteGroup = async (groupId) => {
   }
 };
 
+const setHoverGroup = (groupId) => {
+  hoverGroup.value = groupId;
+};
+
+const clearHoverGroup = () => {
+  hoverGroup.value = null;
+};
+
+const navigateToGroup = (groupId) => {
+  router.push(`/groups/${groupId}`);
+};
+
 onMounted(() => {
   loadGroups();
 });
@@ -157,57 +187,65 @@ onMounted(() => {
           label="Create Group"
           icon="pi pi-plus"
           severity="success"
+          class="p-button-rounded"
           @click="showCreateDialog = true"
         />
       </div>
 
-      <DataTable
-        :value="groups"
-        :loading="loading"
-        responsiveLayout="scroll"
-        class="p-datatable-sm"
-      >
-        <Column field="name" header="Name">
-          <template #body="slotProps">
-            <div 
-              class="flex align-items-center gap-2 cursor-pointer hover:text-primary transition-colors duration-200"
-              @click="router.push(`/groups/${slotProps.data.id}`)"
-            >
-              <i class="pi pi-users text-primary"></i>
-              <span>{{ slotProps.data.name }}</span>
+      <ProgressSpinner v-if="loading" class="w-4rem h-4rem" strokeWidth="4" fill="var(--surface-ground)" animationDuration=".5s" />
+      
+      <div v-else-if="groups.length > 0" class="grid">
+        <div v-for="group in groups" :key="group.id" 
+             class="col-12 md:col-6 lg:col-4 p-2">
+          <div class="group-card" 
+               :class="{ 'hovered': hoverGroup === group.id }"
+               :style="{
+                 background: `linear-gradient(135deg, ${getGroupGradient(group.id).primary}, ${getGroupGradient(group.id).secondary})`
+               }"
+               @mouseenter="setHoverGroup(group.id)"
+               @mouseleave="clearHoverGroup()">
+            <div class="group-info" @click="navigateToGroup(group.id)">
+              <div class="group-icon">
+                <i class="pi pi-users text-white text-xl"></i>
+              </div>
+              <div class="group-content">
+                <h3 class="group-title">{{ group.name }}</h3>
+                <p class="group-description">{{ group.description }}</p>
+                <div class="flex items-center mt-2">
+                  <span class="group-members">{{ group.members?.length || 0 }} members</span>
+                  <span class="group-date ml-auto">{{ new Date(group.created).toLocaleDateString() }}</span>
+                </div>
+              </div>
             </div>
-          </template>
-        </Column>
-        <Column field="description" header="Description"></Column>
-        <Column field="created" header="Created">
-          <template #body="slotProps">
-            {{ new Date(slotProps.data.created).toLocaleDateString() }}
-          </template>
-        </Column>
-        <Column header="Members">
-          <template #body="slotProps">
-            <span class="px-2 py-1 border-round bg-primary-50 text-primary-700 text-sm">
-              {{ slotProps.data.members?.length || 0 }} members
-            </span>
-          </template>
-        </Column>
-        <Column header="Actions">
-          <template #body="slotProps">
-            <div class="flex gap-2">
+            <div class="group-actions">
               <Button
                 icon="pi pi-pencil"
-                class="p-button-text p-button-sm"
-                @click.stop="editGroup(slotProps.data)"
+                class="p-button-rounded p-button-text"
+                style="color: white;"
+                @click.stop="editGroup(group)"
               />
               <Button
                 icon="pi pi-trash"
-                class="p-button-text p-button-danger p-button-sm"
-                @click.stop="deleteGroup(slotProps.data.id)"
+                class="p-button-rounded p-button-text"
+                style="color: white;"
+                @click.stop="deleteGroup(group.id)"
               />
             </div>
-          </template>
-        </Column>
-      </DataTable>
+          </div>
+        </div>
+      </div>
+      
+      <div v-else class="empty-state">
+        <i class="pi pi-users text-4xl text-primary mb-3"></i>
+        <span class="text-xl font-medium">No Quote Groups</span>
+        <p class="text-color-secondary">Create a group to share quotes with others</p>
+        <Button 
+          label="Create Group" 
+          icon="pi pi-plus" 
+          class="p-button-rounded mt-3"
+          @click="showCreateDialog = true"
+        />
+      </div>
     </div>
 
     <!-- Create Group Dialog -->
@@ -301,20 +339,117 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.p-datatable {
-  @apply shadow-sm;
+.group-card {
+  border-radius: 24px;
+  padding: 1.5rem;
+  color: white;
+  min-height: 200px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.3s ease;
 }
 
-.p-datatable .p-datatable-header {
-  @apply bg-surface-0 border-b border-surface-200 dark:border-surface-700;
+.group-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.p-datatable .p-datatable-thead > tr > th {
-  @apply bg-surface-50 dark:bg-surface-800 text-surface-700 dark:text-surface-200;
+.group-card.hovered {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
 }
 
-.p-datatable .p-datatable-tbody > tr > td {
-  @apply border-b border-surface-200 dark:border-surface-700;
+.group-card.hovered::before {
+  opacity: 1;
+}
+
+.group-info {
+  cursor: pointer;
+  flex: 1;
+}
+
+.group-content {
+  position: relative;
+  z-index: 2;
+}
+
+.group-icon {
+  background: rgba(255, 255, 255, 0.2);
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+  backdrop-filter: blur(5px);
+  transition: transform 0.3s ease;
+}
+
+.group-card.hovered .group-icon {
+  transform: scale(1.1);
+}
+
+.group-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.group-description {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  margin-bottom: 1rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-members, .group-date {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.group-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.group-card.hovered .group-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  background: var(--surface-card);
+  border-radius: 16px;
+  border: 1px dashed var(--surface-border);
 }
 
 :deep(.p-dialog-header) {

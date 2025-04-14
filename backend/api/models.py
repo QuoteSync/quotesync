@@ -85,7 +85,7 @@ class Book(models.Model):
 
 
 class Tag(models.Model):
-    title = models.SlugField(unique=True, help_text="Título de la etiqueta")
+    title = models.SlugField(max_length=100, unique=True, help_text="Título de la etiqueta")
     description = models.CharField(max_length=1024, blank=True, null=True, help_text="Descripción de la etiqueta")
     is_favorite = models.BooleanField(default=False, help_text="Indica si la etiqueta está marcada como favorita")
     gradient_primary_color = models.CharField(max_length=7, blank=True, null=True, help_text="Color primario para el gradiente de la etiqueta")
@@ -125,6 +125,9 @@ class Quote(models.Model):
     source_platform = models.CharField(max_length=50, blank=True, null=True,
                                        help_text="Plataforma de origen (Kindle, Google Books, Apple Books)")
     is_favorite = models.BooleanField(default=False, help_text="Indica si la cita está marcada como favorita")
+    chapter = models.CharField(max_length=200, blank=True, null=True,
+                              help_text="Capítulo del libro al que pertenece la cita")
+    book_url = models.URLField(blank=True, null=True, help_text="URL al libro en plataformas externas (Google Books, etc.)")
 
     # Many-to-many relation to Tag. Django will auto-create the join table
     # but we also provide an explicit through model if you want more control.
@@ -331,3 +334,33 @@ class ImportLog(models.Model):
 
     class Meta:
         db_table = 'import_logs'
+
+
+# -------------------------------------------------------------------------
+# Model for Quote Notes (Comments)
+# -------------------------------------------------------------------------
+
+class QuoteNote(models.Model):
+    quote = models.ForeignKey(
+        Quote,
+        related_name="notes",
+        on_delete=models.CASCADE,
+        help_text="Cita a la que pertenece la nota"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="quote_notes",
+        on_delete=models.CASCADE,
+        help_text="Usuario que creó la nota"
+    )
+    content = models.TextField(help_text="Contenido de la nota")
+    created = models.DateTimeField(auto_now_add=True, help_text="Fecha de creación")
+    updated = models.DateTimeField(auto_now=True, help_text="Fecha de última actualización")
+    is_private = models.BooleanField(default=False, help_text="Indica si la nota es privada o visible para otros usuarios")
+
+    def __str__(self):
+        return f"Nota de {self.user} en {self.quote.title}"
+
+    class Meta:
+        ordering = ('created',)
+        db_table = 'quote_notes'

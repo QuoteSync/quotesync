@@ -57,7 +57,7 @@
       </div>
     </div>
     <div v-else>
-      <p class="text-xl italic">"{{ quote.body }}"</p>
+      <p class="text-xl italic cursor-pointer hover:text-primary-500 transition-colors" @click="navigateToQuoteDetails">"{{ quote.body }}"</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <div
           v-for="(tag, idx) in quote.tags"
@@ -309,6 +309,11 @@ const menuItems = ref([
 
 const toggleMenu = (event) => {
   menu.value.toggle(event);
+};
+
+const navigateToQuoteDetails = () => {
+  console.log("Navigating to quote details:", props.quote.id);
+  router.push({ name: 'quoteDetails', params: { id: props.quote.id } });
 };
 </script>
 

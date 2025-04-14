@@ -26,6 +26,12 @@ const router = createRouter({
           component: () => import('@/views/pages/Quotes.vue')
         },
         {
+          path: '/quotes/:id',
+          name: 'quoteDetails',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/QuoteDetails.vue')
+        },
+        {
           path: '/import-quotes',
           name: 'importQuotes',
           meta: { requiresAuth: true },

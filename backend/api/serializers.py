@@ -3,12 +3,13 @@ from rest_framework import serializers
 from .models import (
     User, Author, Book, Tag, Quote, QuoteTag,
     QuoteGroup, QuoteGroupMembership, QuoteGroupShare,
-    QuoteList, QuoteListQuote, Document, ImportLog
+    QuoteList, QuoteListQuote, Document, ImportLog, QuoteNote
 )
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
 from django.utils.text import slugify
+from django.db.models import Q
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -79,7 +80,7 @@ class QuoteUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Quote
-        fields = ['body', 'tags', 'tags_data', 'is_favorite']
+        fields = ['body', 'tags', 'tags_data', 'is_favorite', 'chapter', 'book_url']
 
     def update(self, instance, validated_data):
         tags_data = validated_data.pop('tags', None)
@@ -114,6 +115,8 @@ class QuoteSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(child=serializers.CharField(), write_only=True, required=False)
     # Campo para la lectura: representación completa de cada Tag
     tags_data = TagSerializer(source='tags', read_only=True, many=True)
+    # Notes for the quote (read-only)
+    notes = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Quote
@@ -122,9 +125,28 @@ class QuoteSerializer(serializers.ModelSerializer):
             'tags', 'tags_data', 'title',
             'owner', 'owner_id', 'archive',
             'created', 'updated', 'hash', 
-            'location', 'source_platform', 'is_favorite'
+            'location', 'source_platform', 'is_favorite',
+            'chapter', 'book_url', 'notes'
         ]
     
+    def get_notes(self, obj):
+        """Get visible notes for the quote"""
+        request = self.context.get('request')
+        if not request or not request.user.is_authenticated:
+            return []
+            
+        try:
+            # Get notes that this user can see
+            notes = obj.notes.filter(
+                Q(user=request.user) | Q(is_private=False)
+            ).order_by('created')
+            
+            return QuoteNoteSerializer(notes, many=True, context=self.context).data
+        except Exception as e:
+            # If there's any error (like the table not existing yet), return empty list
+            print(f"Error fetching notes: {e}")
+            return []
+
     def create(self, validated_data):
         tags_data = validated_data.pop('tags', [])
         # Extraer book_id y owner_id y asignarlos a los campos correspondientes
@@ -221,3 +243,18 @@ class ImportLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = ImportLog
         fields = '__all__'
+
+
+class QuoteNoteSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = QuoteNote
+        fields = ['id', 'quote', 'user', 'content', 'created', 'updated', 'is_private']
+        read_only_fields = ['created', 'updated', 'user']
+    
+    def create(self, validated_data):
+        # Get the current user from the request
+        user = self.context['request'].user
+        validated_data['user'] = user
+        return super().create(validated_data)

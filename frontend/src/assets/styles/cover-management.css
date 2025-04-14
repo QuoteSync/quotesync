@@ -1,0 +1,239 @@
+/* Book Covers Management Card Styles */
+.cover-management-card {
+  background: linear-gradient(to right, var(--surface-0), var(--surface-50));
+  border-left: 4px solid var(--primary-color);
+  transition: all 0.3s ease;
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.cover-management-card:hover {
+  transform: translateY(-2px);
+}
+
+.cover-icon-wrapper {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-800));
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1rem;
+}
+
+.cover-icon-wrapper i {
+  color: white;
+  font-size: 1.5rem;
+}
+
+.update-button {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-800));
+  border: none;
+  color: white;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.update-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.update-button:disabled, 
+.update-button[disabled] {
+  background: linear-gradient(135deg, var(--surface-300), var(--surface-400)) !important;
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  color: var(--surface-900) !important;
+}
+
+.cover-description {
+  border-left: 3px solid var(--primary-200);
+  padding-left: 1rem;
+  margin-left: 0.5rem;
+  font-style: italic;
+}
+
+.cover-stats-card {
+  background: linear-gradient(to right, var(--surface-50), var(--surface-100));
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--primary-300);
+  transition: all 0.3s ease;
+}
+
+.cover-stats-badge {
+  background: linear-gradient(135deg, var(--orange-500), var(--yellow-500));
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-weight: bold;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.cover-progress-bar {
+  height: 8px;
+  background-color: var(--surface-200);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
+
+.cover-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-700));
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* Dialog Styles */
+.cover-preview-dialog .p-dialog-header {
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-800));
+  color: white;
+  border-top-left-radius: var(--border-radius);
+  border-top-right-radius: var(--border-radius);
+}
+
+.cover-preview-dialog .p-dialog-title {
+  font-weight: 600;
+  color: white;
+}
+
+.cover-preview-dialog .p-dialog-header-icon,
+.cover-preview-dialog .p-dialog-header-close,
+.cover-preview-dialog .p-dialog-header-icon span,
+.cover-preview-dialog .p-dialog-header-close span {
+  color: white !important;
+}
+
+.cover-preview-dialog .p-dialog-content {
+  padding: 1.5rem;
+  border-bottom-left-radius: var(--border-radius);
+  border-bottom-right-radius: var(--border-radius);
+}
+
+.cover-preview-container {
+  transition: all 0.3s ease;
+  border: 2px dashed var(--surface-300);
+}
+
+.cover-preview-container:hover {
+  border-color: var(--primary-300);
+}
+
+.cover-options-grid .cover-option {
+  transition: all 0.2s ease;
+}
+
+.cover-options-grid .cover-option:hover {
+  transform: scale(1.05);
+}
+
+.cover-options-grid .cover-option.selected {
+  background-color: var(--primary-50);
+}
+
+.cover-options-grid .cover-option.selected .cover-option-inner {
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 0 4px var(--primary-100);
+  border-radius: var(--border-radius);
+}
+
+.search-section {
+  background-color: var(--surface-50);
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  border-left: 3px solid var(--primary-300);
+}
+
+.search-button {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  border: 1px solid var(--primary-color) !important;
+  transition: all 0.3s ease;
+}
+
+.search-button:hover:not(:disabled) {
+  background-color: var(--primary-700) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.search-button:disabled,
+.search-button[disabled] {
+  background-color: var(--surface-300) !important;
+  border-color: var(--surface-400) !important;
+  color: var(--surface-600) !important;
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.action-buttons {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.action-buttons .p-button {
+  min-width: 120px;
+  transition: all 0.3s ease;
+  margin: 0 0.5rem;
+}
+
+.action-buttons .p-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons .p-button:disabled,
+.action-buttons .p-button[disabled] {
+  opacity: 0.7 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  background-color: var(--surface-300) !important;
+  border-color: var(--surface-400) !important;
+  color: var(--surface-600) !important;
+}
+
+.action-buttons .p-button-success {
+  background-color: var(--green-500) !important;
+  border-color: var(--green-500) !important;
+  color: white !important;
+}
+
+.action-buttons .p-button-success:hover:not(:disabled) {
+  background-color: var(--green-600) !important;
+  border-color: var(--green-600) !important;
+}
+
+.action-buttons .p-button-outlined {
+  border: 1px solid var(--primary-color) !important;
+  color: var(--primary-color) !important;
+  background-color: transparent !important;
+}
+
+.action-buttons .p-button-outlined:hover:not(:disabled) {
+  background-color: var(--primary-50) !important;
+}
+
+.action-buttons .p-button-secondary.p-button-outlined {
+  border: 1px solid var(--surface-500) !important;
+  color: var(--surface-600) !important;
+}
+
+.action-buttons .p-button-secondary.p-button-outlined:hover:not(:disabled) {
+  background-color: var(--surface-100) !important;
+}
+
+.action-buttons .p-button-danger.p-button-text {
+  color: var(--red-500) !important;
+}
+
+.action-buttons .p-button-danger.p-button-text:hover {
+  background-color: var(--red-50) !important;
+} 

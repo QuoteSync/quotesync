@@ -4,8 +4,12 @@ from .views import (
     UserViewSet, AuthorViewSet, BookViewSet, TagViewSet, QuoteViewSet, QuoteTagViewSet,
     QuoteGroupViewSet, QuoteGroupMembershipViewSet, QuoteGroupShareViewSet,
     QuoteListViewSet, QuoteListQuoteViewSet, DocumentViewSet, ImportLogViewSet,
+    QuoteNoteViewSet,
     current_user,
     upload_quotes,
+    upload_docx,
+    upload_zip,
+    get_statistics,
 )
 
 router = DefaultRouter()
@@ -22,6 +26,7 @@ router.register(r'quote-lists', QuoteListViewSet, basename='quote-list')
 router.register(r'quote-list-quotes', QuoteListQuoteViewSet)
 router.register(r'documents', DocumentViewSet)
 router.register(r'import-logs', ImportLogViewSet)
+router.register(r'quote-notes', QuoteNoteViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
@@ -31,4 +36,7 @@ urlpatterns = [
 
     
     path('api/upload-quotes/', upload_quotes, name='upload_quotes'),
+    path('api/upload-docx/', upload_docx, name='upload_docx'),
+    path('api/upload-zip/', upload_zip, name='upload_zip'),
+    path('api/statistics/', get_statistics, name='get_statistics'),
 ]

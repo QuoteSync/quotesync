@@ -1,21 +1,9 @@
 <template>
   <div class="flex flex-col">
-    <!-- Debug component for gradient saving -->
-    <div v-if="isDebugMode" class="mb-4">
-      <ColorSaver />
-    </div>
-    
     <div class="card">
       <div class="flex justify-between items-center mb-4">
         <div class="font-semibold text-xl">Libros</div>
         <div class="flex gap-2">
-          <Button 
-            label="Debug Mode" 
-            icon="pi pi-cog" 
-            severity="secondary" 
-            @click="isDebugMode = !isDebugMode"
-            class="mr-2"
-          />
           <Button 
             label="Update Book Covers" 
             icon="pi pi-refresh" 

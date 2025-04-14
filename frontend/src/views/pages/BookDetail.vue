@@ -38,6 +38,136 @@ const simpleCoverDialogVisible = ref(false);
 const directCoverUrl = ref('');
 const directUrlError = ref(false);
 
+// Quotes state
+const likedQuotes = ref({});
+const selectedTag = ref("");
+const showFavorites = ref(false);
+const selectedChapter = ref(""); // New: For chapter filtering
+
+// Compute all unique chapters from quotes
+const availableChapters = computed(() => {
+  if (!book.value || !book.value.quotes) return [];
+  
+  const chapters = book.value.quotes
+    .map(quote => quote.chapter)
+    .filter(chapter => chapter) // Filter out empty/null chapters
+    .reduce((unique, chapter) => {
+      if (!unique.includes(chapter)) {
+        unique.push(chapter);
+      }
+      return unique;
+    }, []);
+  
+  return chapters.sort(); // Sort alphabetically
+});
+
+// Compute all unique tags from quotes
+const allTags = computed(() => {
+  if (!book.value || !book.value.quotes) return [];
+
+  const tags = [];
+  book.value.quotes.forEach((quote) => {
+    if (quote.tags) {
+      quote.tags.forEach((tag) => {
+        if (!tags.includes(tag.title)) {
+          tags.push(tag.title);
+        }
+      });
+    }
+  });
+
+  return tags.sort();
+});
+
+// Filtered quotes based on selected filters
+const filteredQuotes = computed(() => {
+  if (!book.value || !book.value.quotes) return [];
+
+  return book.value.quotes.filter((quote) => {
+    // Filter by favorites
+    if (showFavorites.value && !likedQuotes.value[quote.id]) {
+      return false;
+    }
+
+    // Filter by tag
+    if (selectedTag.value && 
+        (!quote.tags || !quote.tags.some((tag) => tag.title === selectedTag.value))) {
+      return false;
+    }
+    
+    // Filter by chapter
+    if (selectedChapter.value && quote.chapter !== selectedChapter.value) {
+      return false;
+    }
+
+    return true;
+  });
+});
+
+// Función para cambiar el like de una cita
+const toggleLikeQuote = async (quoteId) => {
+  try {
+    const response = await QuoteService.toggleFavorite(quoteId);
+    likedQuotes.value[quoteId] = response.is_favorite;
+  } catch (error) {
+    console.error("Error toggling favorite status:", error);
+  }
+};
+
+// Función para guardar una cita editada
+const saveEditedQuote = async (editedQuote) => {
+  try {
+    const response = await QuoteService.updateQuote(editedQuote.id, editedQuote);
+    const index = book.value.quotes.findIndex(q => q.id === editedQuote.id);
+    if (index !== -1) {
+      book.value.quotes[index] = response;
+    }
+  } catch (error) {
+    console.error("Error updating quote:", error);
+  }
+};
+
+// Función para crear una nueva cita
+const handleSaveNewQuote = async (newQuote) => {
+  try {
+    const quoteToCreate = {
+      ...newQuote,
+      book: book.value.id,
+    };
+    const response = await QuoteService.createQuote(quoteToCreate);
+    
+    // Add the new quote to the quotes array
+    if (book.value.quotes) {
+      book.value.quotes.unshift(response);
+    } else {
+      book.value.quotes = [response];
+    }
+    
+    // Reset the creating state
+    isCreatingNewQuote.value = false;
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Quote Added',
+      detail: 'Your new quote has been created successfully',
+      life: 3000,
+    });
+  } catch (error) {
+    console.error("Error creating quote:", error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to create new quote',
+      life: 3000,
+    });
+  }
+};
+
+// Función para cancelar la edición de una cita
+const cancelEditingQuote = () => {
+  // Nothing to do here since edits are handled in the QuoteCard component
+};
+
 // Función para generar un gradiente aleatorio en caso de que no haya cover
 const getRandomGradient = () => {
   // Book cover themed gradient combinations
@@ -60,349 +190,34 @@ const getRandomGradient = () => {
   };
 };
 
-// Función para abrir el diálogo de cambio de portada
-const openCoverDialog = () => {
-  coverDialogVisible.value = true;
-  customSearchTitle.value = book.value.title;
-  
-  // Reset custom URL fields
-  customCoverUrl.value = '';
-  showCustomPreview.value = false;
-  previewError.value = false;
-  
-  // Start searching for cover options
-  searchCoverForBook();
-};
+// Rest of your existing functions...
 
-// Search for covers for the current book
-const searchCoverForBook = async (customTitle) => {
-  changingCover.value = true;
-  try {
-    // Use the provided custom title or the book's title
-    const searchTitle = customTitle || book.value.title;
-    
-    // Fetch cover options from OpenLibrary
-    const result = await BookService.fetchCoverFromOpenLibrary(
-      searchTitle, 
-      book.value.author.name
-    );
-    
-    coverOptions.value = result.covers;
-    
-    if (coverOptions.value.length > 0) {
-      // Set the current cover as the preview or the first cover if not found
-      if (book.value.cover && coverOptions.value.some(c => c.url === book.value.cover)) {
-        previewCoverUrl.value = book.value.cover;
-      } else {
-        previewCoverUrl.value = coverOptions.value[0].url;
-      }
-      
-      toast.add({
-        severity: 'success',
-        summary: 'Covers Found',
-        detail: `Found ${coverOptions.value.length} covers for "${book.value.title}"`,
-        life: 2000
-      });
-    } else {
-      previewCoverUrl.value = null;
-      toast.add({
-        severity: 'info',
-        summary: 'No Covers Found',
-        detail: `Could not find covers for "${book.value.title}"`,
-        life: 2000
-      });
-    }
-  } catch (error) {
-    console.error("Error searching for covers:", error);
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to fetch book covers',
-      life: 3000
-    });
-  } finally {
-    changingCover.value = false;
-  }
-};
-
-// Select a cover from the options
-const selectCover = (coverUrl) => {
-  console.log("Selected cover:", coverUrl);
-  previewCoverUrl.value = coverUrl;
-  
-  // Show a toast notification
-  toast.add({
-    severity: 'info',
-    summary: 'Cover Selected',
-    detail: 'Cover selected, click Save Cover to apply changes',
-    life: 2000
-  });
-};
-
-// Save the selected cover and update the book
-const saveCoverChange = async () => {
-  if (!previewCoverUrl.value) return;
-  
-  try {
-    console.log("Saving cover:", previewCoverUrl.value);
-    
-    // Use the direct PATCH method instead of BookService
-    await directPatchCover(previewCoverUrl.value);
-    
-    // Update local state without reloading the book
-    book.value.cover = previewCoverUrl.value;
-    book.value.gradient = getRandomGradient();
-    book.value.imageFailed = false;
-    coverIsLoading.value = true;
-    
-    // Close dialog
-    coverDialogVisible.value = false;
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Cover Updated',
-      detail: 'Book cover has been updated successfully',
-      life: 3000
-    });
-    
-    // Save the gradient colors to the database
-    BookService.updateGradientColors(
-      book.value.id,
-      book.value.gradient.primary,
-      book.value.gradient.secondary
-    ).catch(error => {
-      console.error(`Error saving gradient colors for book ${book.value.id}:`, error);
-    });
-    
-  } catch (error) {
-    console.error("Error updating book cover:", error);
-    
-    // Handle apiClient errors
-    let errorMsg = "Unknown error";
-    if (error.response && error.response.data) {
-      if (typeof error.response.data === 'object') {
-        errorMsg = Object.entries(error.response.data)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(', ');
-      } else {
-        errorMsg = String(error.response.data);
-      }
-    } else if (error.message) {
-      errorMsg = error.message;
-    }
-    
-    toast.add({
-      severity: 'error',
-      summary: 'Update Failed',
-      detail: `Failed to update book cover: ${errorMsg}`,
-      life: 5000
-    });
-  }
-};
-
-// Estados reactivos para likes y edición de citas
-const likedQuotes = ref({});
-const editingQuoteId = ref(null);
-const editedQuoteText = ref("");
-
-// Estados para filtros
-const selectedTag = ref("");
-const showFavorites = ref(false);
-
-// Computed: Lista de todos los tags disponibles de las citas
-const allTags = computed(() => {
-  if (!book.value?.quotes) return [];
-  const tagsSet = new Set();
-  book.value.quotes.forEach((quote) => {
-    quote.tags.forEach((tag) => {
-      tagsSet.add(tag.title);
-    });
-  });
-  return Array.from(tagsSet);
-});
-
-// Computed: Citas filtradas según tag y favoritos
-const filteredQuotes = computed(() => {
-  if (!book.value?.quotes) return [];
-  return book.value.quotes.filter((quote) => {
-    let tagMatch = true;
-    let favoriteMatch = true;
-    if (selectedTag.value) {
-      tagMatch = quote.tags.some((tag) => tag.title === selectedTag.value);
-    }
-    if (showFavorites.value) {
-      favoriteMatch = likedQuotes.value[quote.id] === true;
-    }
-    return tagMatch && favoriteMatch;
-  });
-});
-
-// Funciones para manejar las acciones de las citas
-const toggleLikeQuote = async (quoteId) => {
-  try {
-    const response = await QuoteService.toggleFavorite(quoteId);
-    // Update the local state based on the server response
-    const quote = book.value.quotes.find(q => q.id === quoteId);
-    if (quote) {
-      quote.is_favorite = response.is_favorite;
-      
-      // If this quote was favorited, move it to the top of the list
-      if (response.is_favorite) {
-        // Remove the quote from its current position
-        const index = book.value.quotes.findIndex(q => q.id === quoteId);
-        if (index !== -1) {
-          const [favoriteQuote] = book.value.quotes.splice(index, 1);
-          // Add it to the beginning of the array
-          book.value.quotes.unshift(favoriteQuote);
-          
-          // Scroll to the top to show the favorited quote
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-      }
-    }
-    likedQuotes.value[quoteId] = response.is_favorite;
-  } catch (error) {
-    console.error("Error toggling favorite status:", error);
-  }
-};
-
-const startEditingQuote = (quote) => {
-  editingQuoteId.value = quote.id;
-  editedQuoteText.value = quote.body;
-};
-
-const cancelEditingQuote = () => {
-  editingQuoteId.value = null;
-  editedQuoteText.value = "";
-};
-
-const saveEditedQuote = async (quote) => {
-  console.log("Saving edited quote:", quote.tags);
-  const updatedQuote = await QuoteService.updateQuote(quote.id, {
-    body: quote.body,
-    tags: quote.tags,
-  });
-  console.log("Quote updated:", updatedQuote);
-  const index = book.value.quotes.findIndex((q) => q.id === quote.id);
-  if (index !== -1) {
-    book.value.quotes[index] = updatedQuote;
-  }
-  editingQuoteId.value = null;
-  editedQuoteText.value = "";
-};
-
-// Función para manejar la creación de una nueva cita
-const handleSaveNewQuote = async (newQuoteData) => {
-  // Se obtiene la sesión y se extrae el id del usuario autenticado
-  const session = await getSession();
-  const owner_id = session.data.user.id;
-  console.log("Owner ID:", owner_id);
-
-  const payload = {
-    body: newQuoteData.body,
-    tags: newQuoteData.tags,
-    book_id: book.value.id, // Usamos el id del libro actual
-    title: newQuoteData.body.split(" ").slice(0, 4).join(" "),
-    owner_id: owner_id,
-    owner: owner_id, // Dependiendo de cómo lo espere el serializer
-  };
-  const createdQuote = await QuoteService.createQuote(payload);
-  book.value.quotes.push(createdQuote);
-  isCreatingNewQuote.value = false;
-};
-
-const openCustomUrlDialog = () => {
-  customUrlDialogVisible.value = true;
-  customCoverUrl.value = book.value?.cover || '';
-};
-
-const setCustomCover = async () => {
-  if (!customCoverUrl.value || previewError.value) return;
-  
-  try {
-    console.log("Setting custom cover:", customCoverUrl.value);
-    
-    // Use the direct PATCH method instead of BookService
-    await directPatchCover(customCoverUrl.value);
-    
-    // Update local book data without reloading
-    book.value.cover = customCoverUrl.value;
-    book.value.gradient = getRandomGradient();
-    book.value.imageFailed = false;
-    coverIsLoading.value = true;
-    
-    // Close dialog
-    customUrlDialogVisible.value = false;
-    
-    // Show success message
-    toast.add({
-      severity: 'success',
-      summary: 'Cover Updated',
-      detail: 'The book cover has been updated with your custom URL',
-      life: 3000
-    });
-    
-    // Save the gradient colors to the database
-    BookService.updateGradientColors(
-      book.value.id,
-      book.value.gradient.primary,
-      book.value.gradient.secondary
-    ).catch(error => {
-      console.error(`Error saving gradient colors for book ${book.value.id}:`, error);
-    });
-    
-  } catch (error) {
-    console.error('Error setting custom cover:', error);
-    
-    // Handle apiClient errors
-    let errorMsg = "Unknown error";
-    if (error.response && error.response.data) {
-      if (typeof error.response.data === 'object') {
-        errorMsg = Object.entries(error.response.data)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(', ');
-      } else {
-        errorMsg = String(error.response.data);
-      }
-    } else if (error.message) {
-      errorMsg = error.message;
-    }
-    
-    toast.add({
-      severity: 'error',
-      summary: 'Update Failed',
-      detail: `Failed to update the book cover: ${errorMsg}`,
-      life: 5000
-    });
-  }
-};
-
-// Function to load book data
+// Function to load the book details
 const loadBook = async () => {
   try {
     const data = await BookService.getBook(bookId);
     book.value = data;
     
-    // Add UI-related properties
-    if (book.value.gradient_primary_color && book.value.gradient_secondary_color) {
-      // Use the stored gradient colors from the database
-      book.value.gradient = {
-        primary: book.value.gradient_primary_color,
-        secondary: book.value.gradient_secondary_color,
-        background: `linear-gradient(135deg, ${book.value.gradient_primary_color}, ${book.value.gradient_secondary_color})`
-      };
-    } else {
-      // Generate a new random gradient and store it in the database
-      book.value.gradient = getRandomGradient();
-      
-      // Save the gradient colors to the database
-      BookService.updateGradientColors(
-        book.value.id,
-        book.value.gradient.primary,
-        book.value.gradient.secondary
-      ).catch(error => {
-        console.error(`Error saving gradient colors for book ${book.value.id}:`, error);
-      });
+    // Prepare the gradient for book cover fallback if needed
+    if (!book.value.gradient) {
+      if (book.value.gradient_primary_color && book.value.gradient_secondary_color) {
+        book.value.gradient = {
+          primary: book.value.gradient_primary_color,
+          secondary: book.value.gradient_secondary_color,
+          background: `linear-gradient(135deg, ${book.value.gradient_primary_color}, ${book.value.gradient_secondary_color})`
+        };
+      } else {
+        book.value.gradient = getRandomGradient();
+        
+        // Save the gradient colors to the database
+        BookService.updateGradientColors(
+          book.value.id,
+          book.value.gradient.primary,
+          book.value.gradient.secondary
+        ).catch(error => {
+          console.error(`Error saving gradient colors for book ${book.value.id}:`, error);
+        });
+      }
     }
     
     book.value.imageFailed = false;
@@ -481,140 +296,7 @@ const fetchQuotes = async () => {
   }
 };
 
-// Preview custom URL cover
-const previewCustomCoverUrl = () => {
-  if (!customCoverUrl.value) return;
-  
-  // Show the preview section and reset any previous errors
-  showCustomPreview.value = true;
-  previewError.value = false;
-};
-
-// Handle custom URL image load error
-const handleCustomUrlError = () => {
-  previewError.value = true;
-  toast.add({
-    severity: 'error',
-    summary: 'Invalid URL',
-    detail: 'The image URL could not be loaded',
-    life: 3000
-  });
-};
-
-// Handle custom URL image load success
-const handleCustomUrlSuccess = () => {
-  previewError.value = false;
-};
-
-// Use the custom URL as cover
-const useCustomCoverUrl = () => {
-  if (!customCoverUrl.value || previewError.value) return;
-  
-  // Set the custom URL as the preview URL
-  previewCoverUrl.value = customCoverUrl.value;
-  
-  // Hide the custom preview
-  showCustomPreview.value = false;
-  
-  toast.add({
-    severity: 'info',
-    summary: 'Custom URL Selected',
-    detail: 'Custom URL selected, click Save Cover to apply changes',
-    life: 2000
-  });
-};
-
-const openSimpleCoverDialog = () => {
-  simpleCoverDialogVisible.value = true;
-  directCoverUrl.value = '';
-  directUrlError.value = false;
-};
-
-// Create a direct PATCH method for updating the cover
-const directPatchCover = async (coverUrl) => {
-  try {
-    // Import the API client to use its authentication
-    const { apiClient } = await import("@/api");
-    
-    // Simplified API call with no cache handling
-    const url = `/books/${bookId}/`;
-    console.log("PATCH to:", url, "with cover:", coverUrl);
-    
-    // Just send the cover URL only
-    const response = await apiClient.patch(url, {
-      cover: coverUrl
-    });
-    
-    console.log("PATCH success");
-    return response.data;
-  } catch (error) {
-    console.error("PATCH error:", error);
-    throw error;
-  }
-};
-
-// Update the saveDirectCoverUrl function to use the direct PATCH method
-const saveDirectCoverUrl = async () => {
-  if (!directCoverUrl.value || directUrlError.value) return;
-  
-  try {
-    console.log("Setting direct cover:", directCoverUrl.value);
-    
-    // Use the direct PATCH method instead of BookService
-    await directPatchCover(directCoverUrl.value);
-    
-    // Update local book data without reloading
-    book.value.cover = directCoverUrl.value;
-    book.value.gradient = getRandomGradient();
-    book.value.imageFailed = false;
-    coverIsLoading.value = true;
-    
-    // Close dialog
-    simpleCoverDialogVisible.value = false;
-    
-    // Show success message
-    toast.add({
-      severity: 'success',
-      summary: 'Cover Updated',
-      detail: 'The book cover has been updated with your direct URL',
-      life: 3000
-    });
-    
-    // Save the gradient colors to the database
-    BookService.updateGradientColors(
-      book.value.id,
-      book.value.gradient.primary,
-      book.value.gradient.secondary
-    ).catch(error => {
-      console.error(`Error saving gradient colors for book ${book.value.id}:`, error);
-    });
-    
-  } catch (error) {
-    console.error('Error setting direct cover:', error);
-    
-    // Handle apiClient errors
-    let errorMsg = "Unknown error";
-    if (error.response && error.response.data) {
-      if (typeof error.response.data === 'object') {
-        errorMsg = Object.entries(error.response.data)
-          .map(([key, value]) => `${key}: ${value}`)
-          .join(', ');
-      } else {
-        errorMsg = String(error.response.data);
-      }
-    } else if (error.message) {
-      errorMsg = error.message;
-    }
-    
-    toast.add({
-      severity: 'error',
-      summary: 'Update Failed',
-      detail: `Failed to update the book cover: ${errorMsg}`,
-      life: 5000
-    });
-  }
-};
-
+// Call the existing onMounted hook
 onMounted(async () => {
   await loadBook();
   await fetchQuotes();
@@ -1035,14 +717,28 @@ onMounted(async () => {
 
       <!-- Filtros de Citas -->
       <div class="mb-6 flex flex-col md:flex-row items-center justify-center gap-4">
-        <div>
+        <!-- Chapter filter -->
+        <div v-if="availableChapters.length > 0" class="filter-item">
+          <label class="mr-2 font-semibold">Filter by Chapter:</label>
+          <select v-model="selectedChapter" class="border p-1 rounded">
+            <option value="">All Chapters</option>
+            <option v-for="chapter in availableChapters" :key="chapter" :value="chapter">
+              {{ chapter }}
+            </option>
+          </select>
+        </div>
+        
+        <!-- Tag filter -->
+        <div v-if="allTags.length > 0" class="filter-item">
           <label class="mr-2 font-semibold">Filter by Tag:</label>
           <select v-model="selectedTag" class="border p-1 rounded">
-            <option value="">All</option>
+            <option value="">All Tags</option>
             <option v-for="tag in allTags" :key="tag" :value="tag">{{ tag }}</option>
           </select>
         </div>
-        <div class="flex items-center">
+        
+        <!-- Favorites filter -->
+        <div class="filter-item flex items-center">
           <label class="mr-2 font-semibold">Favorites:</label>
           <input type="checkbox" v-model="showFavorites" />
         </div>
@@ -1071,15 +767,28 @@ onMounted(async () => {
       <!-- Sección de Citas usando el componente QuoteCard -->
       <div class="mt-10">
         <div v-if="filteredQuotes && filteredQuotes.length" class="flex flex-col gap-6">
-          <QuoteCard
-            v-for="quote in filteredQuotes"
-            :key="quote.id"
-            :quote="quote"
-            :liked="likedQuotes[quote.id]"
-            @toggle-like="toggleLikeQuote"
-            @save-edit="saveEditedQuote"
-            @cancel-edit="cancelEditingQuote"
-          />
+          <div v-for="quote in filteredQuotes" :key="quote.id" class="quote-container">
+            <QuoteCard
+              :quote="quote"
+              :liked="likedQuotes[quote.id]"
+              @toggle-like="toggleLikeQuote"
+              @save-edit="saveEditedQuote"
+              @cancel-edit="cancelEditingQuote"
+            />
+            
+            <!-- Display chapter information if present -->
+            <div v-if="quote.chapter" class="text-sm text-gray-600 mt-2 ml-4">
+              <span class="font-medium">Chapter:</span> {{ quote.chapter }}
+            </div>
+            
+            <!-- Display link to Google Books if present -->
+            <div v-if="quote.book_url" class="text-sm text-blue-600 mt-1 ml-4">
+              <a :href="quote.book_url" target="_blank" class="flex items-center">
+                <i class="pi pi-external-link mr-1"></i>
+                <span>View in Google Books</span>
+              </a>
+            </div>
+          </div>
         </div>
         <div v-else class="text-center text-gray-500">
           <p>No quotes available with these filters.</p>
@@ -1093,46 +802,16 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.filter-item {
+  @apply mb-2 md:mb-0;
+}
+
+.quote-container {
+  @apply border-b pb-4 mb-4 border-gray-200 dark:border-gray-700 last:border-0;
+}
+
+/* Your existing styles */
 .rotate-30 {
   transform: rotate(30deg);
-}
-
-.book-cover {
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
-  background-repeat: repeat;
-  background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'/%3E%3C/svg%3E");
-  position: relative;
-  min-height: 500px;
-  height: 100%;
-  width: 100%;
-}
-
-/* Spine effect */
-.book-cover::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 8px;
-  height: 100%;
-  background: rgba(0,0,0,0.2);
-  z-index: 1;
-}
-
-/* Page edge effect */
-.book-cover::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 2px;
-  height: 100%;
-  background: rgba(255,255,255,0.1);
-  z-index: 1;
-}
-
-/* Fix transform class */
-.translate-n10 {
-  transform: translateX(-10px) translateY(-10px);
 }
 </style>

@@ -7,8 +7,15 @@ export const AuthorService = {
         return response.data;
     },
     async getAuthor(authorId) {
-        const response = await apiClient.get(`/authors/${authorId}/`);
-        return response.data
+        try {
+            console.log(`Getting author details for ID: ${authorId}`);
+            const response = await apiClient.get(`/authors/${authorId}/`);
+            console.log(`Author API response:`, response.data);
+            return response.data;
+        } catch (error) {
+            console.error(`Error getting author ${authorId}:`, error);
+            throw error;
+        }
     },
 
     async createAuthor(authorData) {

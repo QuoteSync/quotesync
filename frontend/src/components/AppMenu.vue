@@ -9,7 +9,7 @@
       </li>
       <li>
         <router-link to="/quotes" class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-colors transition-duration-150">
-          <i class="pi pi-quote-left mr-2"></i>
+          <i class="pi pi-comment mr-2"></i>
           <span>Quotes</span>
         </router-link>
       </li>

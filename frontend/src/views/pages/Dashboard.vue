@@ -1,27 +1,35 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { BookService } from '@/service/BookService';
+import { StatisticsService } from '@/service/StatisticsService';
 import { useToast } from 'primevue/usetoast';
+import Tag from 'primevue/tag';
 
 const toast = useToast();
 const updatingCovers = ref(false);
-const cachingCovers = ref(false);
 const stats = ref({
   totalBooks: 0,
   booksWithoutCovers: 0,
   totalAuthors: 0,
   totalQuotes: 0,
-  uncachedCovers: 0
+  quoteLists: 0,
+  quoteGroups: 0
 });
 
 // Cover preview dialog state
-const coverPreviewDialog = ref(false);
+const showCoverDialog = ref(false);
 const currentBook = ref(null);
-const previewCoverUrl = ref(null);
+const selectedCoverUrl = ref(null);
+const coverOptions = ref([]);
+const coverIndex = ref(0);
+const searchQuery = ref('');
+const processingCover = ref(false);
+const processingMessage = ref('');
+const showSearchInput = ref(true);
+const showSearchButton = ref(true);
 const booksToProcess = ref([]);
 const currentBookIndex = ref(0);
 const customSearchTitle = ref('');
-const coverOptions = ref([]);
 
 // Function to start the book cover update process
 const updateAllBookCovers = async () => {
@@ -67,8 +75,8 @@ const processCurrentBook = async () => {
   }
   
   currentBook.value = booksToProcess.value[currentBookIndex.value];
-  previewCoverUrl.value = null;
-  coverPreviewDialog.value = true;
+  selectedCoverUrl.value = null;
+  showCoverDialog.value = true;
   
   try {
     await searchCoverForCurrentBook(customSearchTitle.value);
@@ -98,7 +106,7 @@ const searchCoverForCurrentBook = async (customTitle) => {
   
   if (coverOptions.value.length > 0) {
     // Set the first cover as the preview by default
-    previewCoverUrl.value = coverOptions.value[0].url;
+    selectedCoverUrl.value = coverOptions.value[0].url;
     toast.add({
       severity: 'success',
       summary: 'Covers Found',
@@ -106,7 +114,7 @@ const searchCoverForCurrentBook = async (customTitle) => {
       life: 2000
     });
   } else {
-    previewCoverUrl.value = null;
+    selectedCoverUrl.value = null;
     toast.add({
       severity: 'info',
       summary: 'No Covers Found',
@@ -118,18 +126,18 @@ const searchCoverForCurrentBook = async (customTitle) => {
 
 // Select a cover from the options
 const selectCover = (coverUrl) => {
-  previewCoverUrl.value = coverUrl;
+  selectedCoverUrl.value = coverUrl;
 };
 
 // Accept the current cover and save it to the database
 const acceptCover = async () => {
-  if (!previewCoverUrl.value || !currentBook.value) return;
+  if (!selectedCoverUrl.value || !currentBook.value) return;
   
   try {
     // Update the book with the cover URL
     await BookService.updateBook(currentBook.value.id, {
       ...currentBook.value,
-      cover: previewCoverUrl.value
+      cover: selectedCoverUrl.value
     });
     
     toast.add({
@@ -173,7 +181,7 @@ const processNextBook = () => {
 
 // Finish the cover update process
 const finishCoverUpdate = () => {
-  coverPreviewDialog.value = false;
+  showCoverDialog.value = false;
   updatingCovers.value = false;
   
   toast.add({
@@ -187,65 +195,9 @@ const finishCoverUpdate = () => {
   fetchStats();
 };
 
-// Function to cache all book covers
-const cacheAllBookCovers = async () => {
-  try {
-    cachingCovers.value = true;
-    
-    const result = await BookService.cacheAllBookCovers();
-    
-    if (result.cachedCount === 0) {
-      toast.add({
-        severity: 'info',
-        summary: 'No Covers to Cache',
-        detail: 'All book covers are already cached',
-        life: 3000
-      });
-    } else {
-      toast.add({
-        severity: 'success',
-        summary: 'Covers Cached',
-        detail: `Successfully cached ${result.cachedCount} book covers`,
-        life: 3000
-      });
-    }
-    
-    // Refresh stats after caching
-    await fetchStats();
-    
-  } catch (error) {
-    console.error('Error caching covers:', error);
-    toast.add({
-      severity: 'error',
-      summary: 'Caching Failed',
-      detail: `Error caching covers: ${error.message}`,
-      life: 3000
-    });
-  } finally {
-    cachingCovers.value = false;
-  }
-};
-
-// Fetch statistics
-const fetchStats = async () => {
-  try {
-    const books = await BookService.getBooks();
-    stats.value.totalBooks = books.length;
-    stats.value.booksWithoutCovers = books.filter(book => !book.cover).length;
-    stats.value.uncachedCovers = books.filter(book => book.cover && !book.cover_cached).length;
-    
-    // Here you would also fetch other stats like author count and quote count
-    // For now we'll leave placeholders
-    stats.value.totalAuthors = 0;
-    stats.value.totalQuotes = 0;
-  } catch (error) {
-    console.error('Error fetching stats:', error);
-  }
-};
-
 // Exit the cover process
 const exitCoverProcess = () => {
-  coverPreviewDialog.value = false;
+  showCoverDialog.value = false;
   updatingCovers.value = false;
   
   toast.add({
@@ -256,187 +208,308 @@ const exitCoverProcess = () => {
   });
 };
 
+// Fetch statistics
+const fetchStats = async () => {
+  try {
+    const apiStats = await StatisticsService.getStatistics();
+    
+    // Map API stats to component state
+    stats.value.totalBooks = apiStats.total_books;
+    stats.value.booksWithoutCovers = apiStats.books_without_covers;
+    stats.value.totalAuthors = apiStats.total_authors;
+    stats.value.totalQuotes = apiStats.total_quotes;
+    stats.value.quoteLists = apiStats.quote_lists;
+    stats.value.quoteGroups = apiStats.quote_groups;
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Stats Error',
+      detail: 'Failed to load dashboard statistics',
+      life: 3000
+    });
+  }
+};
+
+const selectPreviousCover = () => {
+  if (coverIndex.value > 0) {
+    coverIndex.value--;
+    selectedCoverUrl.value = coverOptions.value[coverIndex.value].url;
+  }
+};
+
+const selectNextCover = () => {
+  if (coverIndex.value < coverOptions.value.length - 1) {
+    coverIndex.value++;
+    selectedCoverUrl.value = coverOptions.value[coverIndex.value].url;
+  }
+};
+
+const skipCurrentCover = () => {
+  selectedCoverUrl.value = null;
+  processNextBook();
+};
+
+const toggleSearchInput = () => {
+  showSearchInput.value = !showSearchInput.value;
+};
+
 onMounted(async () => {
   await fetchStats();
 });
 </script>
 
 <template>
-  <div class="p-6">
-    <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <!-- Stats Cards -->
-      <div class="p-6 bg-white rounded-lg shadow">
-        <h3 class="text-xl font-semibold text-gray-700">Total Books</h3>
-        <p class="text-3xl font-bold mt-2">{{ stats.totalBooks }}</p>
-      </div>
-      
-      <div class="p-6 bg-white rounded-lg shadow">
-        <h3 class="text-xl font-semibold text-gray-700">Books Without Covers</h3>
-        <p class="text-3xl font-bold mt-2">{{ stats.booksWithoutCovers }}</p>
-      </div>
-      
-      <div class="p-6 bg-white rounded-lg shadow">
-        <h3 class="text-xl font-semibold text-gray-700">Total Authors</h3>
-        <p class="text-3xl font-bold mt-2">{{ stats.totalAuthors }}</p>
-      </div>
-      
-      <div class="p-6 bg-white rounded-lg shadow">
-        <h3 class="text-xl font-semibold text-gray-700">Total Quotes</h3>
-        <p class="text-3xl font-bold mt-2">{{ stats.totalQuotes }}</p>
+  <div class="grid">
+    <div class="col-12">
+      <div class="card">
+        <h5>Dashboard Overview</h5>
+        
+        <!-- Stats Cards -->
+        <div class="grid mt-2">
+          <!-- Total Books -->
+          <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-3 border-round">
+              <div class="flex justify-content-between mb-3">
+                <div>
+                  <span class="block text-500 font-medium mb-3">Total Books</span>
+                  <div class="text-900 font-medium text-xl">{{ stats.totalBooks }}</div>
+                </div>
+                <div class="flex align-items-center justify-content-center bg-blue-100 border-round" style="width:2.5rem;height:2.5rem">
+                  <i class="pi pi-book text-blue-500 text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Books Without Covers -->
+          <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-3 border-round">
+              <div class="flex justify-content-between mb-3">
+                <div>
+                  <span class="block text-500 font-medium mb-3">Books Without Covers</span>
+                  <div class="text-900 font-medium text-xl">{{ stats.booksWithoutCovers }}</div>
+                </div>
+                <div class="flex align-items-center justify-content-center bg-orange-100 border-round" style="width:2.5rem;height:2.5rem">
+                  <i class="pi pi-image text-orange-500 text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Total Authors -->
+          <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-3 border-round">
+              <div class="flex justify-content-between mb-3">
+                <div>
+                  <span class="block text-500 font-medium mb-3">Total Authors</span>
+                  <div class="text-900 font-medium text-xl">{{ stats.totalAuthors }}</div>
+                </div>
+                <div class="flex align-items-center justify-content-center bg-cyan-100 border-round" style="width:2.5rem;height:2.5rem">
+                  <i class="pi pi-user text-cyan-500 text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Total Quotes -->
+          <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-3 border-round">
+              <div class="flex justify-content-between mb-3">
+                <div>
+                  <span class="block text-500 font-medium mb-3">Total Quotes</span>
+                  <div class="text-900 font-medium text-xl">{{ stats.totalQuotes }}</div>
+                </div>
+                <div class="flex align-items-center justify-content-center bg-purple-100 border-round" style="width:2.5rem;height:2.5rem">
+                  <i class="pi pi-comment text-purple-500 text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Collections Stats -->
+        <div class="grid mt-4">
+          <!-- Quote Lists -->
+          <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-3 border-round">
+              <div class="flex justify-content-between mb-3">
+                <div>
+                  <span class="block text-500 font-medium mb-3">Quote Lists</span>
+                  <div class="text-900 font-medium text-xl">{{ stats.quoteLists }}</div>
+                </div>
+                <div class="flex align-items-center justify-content-center bg-green-100 border-round" style="width:2.5rem;height:2.5rem">
+                  <i class="pi pi-list text-green-500 text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Quote Groups -->
+          <div class="col-12 md:col-6 lg:col-3">
+            <div class="surface-card shadow-2 p-3 border-round">
+              <div class="flex justify-content-between mb-3">
+                <div>
+                  <span class="block text-500 font-medium mb-3">Quote Groups</span>
+                  <div class="text-900 font-medium text-xl">{{ stats.quoteGroups }}</div>
+                </div>
+                <div class="flex align-items-center justify-content-center bg-indigo-100 border-round" style="width:2.5rem;height:2.5rem">
+                  <i class="pi pi-users text-indigo-500 text-xl"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
     
     <!-- Book Covers Management Card -->
-    <div class="p-6 bg-white rounded-lg shadow mb-8">
-      <h2 class="text-2xl font-bold mb-4">Book Covers Management</h2>
-      <p class="mb-4">
-        Update your book collection with covers from OpenLibrary. This will search for book covers
-        based on title and author information, and update your database.
-      </p>
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-        <div>
-          <span class="font-semibold">Books without covers: </span>
-          <span>{{ stats.booksWithoutCovers }} of {{ stats.totalBooks }}</span>
+    <div class="col-12 xl:col-6">
+      <div class="card border-round-xl shadow-3 overflow-hidden">
+        <div class="flex justify-content-between align-items-center p-3 bg-primary" style="background: linear-gradient(135deg, #3B82F6 0%, #6366F1 100%);">
+          <h3 class="m-0 text-white">Book Covers Management</h3>
+          <Button 
+            icon="pi pi-images" 
+            label="Update Covers" 
+            severity="secondary" 
+            class="p-button-rounded" 
+            @click="updateAllBookCovers"
+            :loading="updatingCovers"
+          />
         </div>
-        <Button 
-          label="Update All Book Covers" 
-          icon="pi pi-refresh" 
-          severity="primary"
-          :loading="updatingCovers"
-          @click="updateAllBookCovers"
-          :disabled="stats.booksWithoutCovers === 0"
-        />
-      </div>
-      
-      <hr class="my-4">
-      
-      <h3 class="text-xl font-bold mb-2">Performance Optimization</h3>
-      <p class="mb-4">
-        Cache book covers locally to improve performance and reduce external dependencies.
-        This will download all cover images from OpenLibrary to your server.
-      </p>
-      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <span class="font-semibold">Uncached covers: </span>
-          <span>{{ stats.uncachedCovers }} of {{ stats.totalBooks }}</span>
+        <div class="p-3 px-4 surface-0" style="background-color: #FAFBFC; border-left: 4px solid #EEF2FF;">
+          <p class="mb-3 px-2">
+            <span v-if="stats.booksWithoutCovers > 0">{{ stats.booksWithoutCovers }} books are missing covers.</span>
+            <span v-else class="text-green-600">All books have covers assigned!</span>
+          </p>
+          
+          <div class="flex align-items-center mb-2" v-if="stats.booksWithoutCovers > 0">
+            <div class="flex-1">
+              <div class="flex align-items-center">
+                <Tag icon="pi pi-image" severity="warning" class="p-tag-rounded">{{ stats.booksWithoutCovers }} Missing</Tag>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="recentlyUpdatedCovers.length > 0">
+            <div class="text-lg font-medium mt-3 mb-2">Recently Updated Covers</div>
+            <div class="grid">
+              <div 
+                v-for="book in recentlyUpdatedCovers" 
+                :key="book.id" 
+                class="col-4 md:col-3 p-2"
+              >
+                <div class="relative h-10rem border-round-lg overflow-hidden shadow-2 hover:shadow-4 transition-all transition-duration-200">
+                  <img 
+                    :src="book.cover" 
+                    :alt="book.title"
+                    class="w-full h-full object-cover"
+                  />
+                  <div class="absolute bottom-0 left-0 right-0 p-2 bg-black-alpha-70">
+                    <div class="text-white font-medium text-xs overflow-hidden text-overflow-ellipsis white-space-nowrap">
+                      {{ book.title }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <Button 
-          label="Cache All Book Covers" 
-          icon="pi pi-download" 
-          severity="secondary"
-          :loading="cachingCovers"
-          @click="cacheAllBookCovers"
-          :disabled="stats.uncachedCovers === 0"
-        />
       </div>
     </div>
     
     <!-- Cover Preview Dialog -->
     <Dialog 
-      v-model:visible="coverPreviewDialog" 
-      :style="{width: '800px'}" 
+      v-model:visible="showCoverDialog" 
+      :style="{ width: '500px' }" 
       header="Book Cover Preview" 
       :modal="true"
-      :closable="true"
-      @hide="exitCoverProcess"
+      :closable="!processingCover"
+      :closeOnEscape="!processingCover"
+      class="p-fluid"
+      :contentStyle="{ 'border-radius': '12px' }"
     >
-      <div class="flex flex-col items-center p-4">
-        <h3 class="text-xl font-semibold mb-2">{{ currentBook?.title }}</h3>
-        <p class="text-sm mb-4">by {{ currentBook?.author?.name }}</p>
+      <div v-if="currentBook" class="flex flex-column align-items-center">
+        <div class="text-center mb-4">
+          <h3 class="mt-0 mb-2">{{ currentBook.title }}</h3>
+          <p class="text-color-secondary m-0">by {{ currentBook.author_name }}</p>
+        </div>
         
-        <div class="grid grid-cols-2">
-          <!-- Selected cover preview (large) -->
-          <div class="col-span-1 flex flex-col items-center">
-            <h4 class="font-medium mb-2">Selected Cover:</h4>
-            <div class="relative mb-4 w-64 h-96 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
-              <img 
-                v-if="previewCoverUrl" 
-                :src="previewCoverUrl" 
-                :alt="currentBook?.title"
-                class="max-w-full max-h-full object-contain"
-              />
-              <div v-else class="text-gray-400">No cover selected</div>
-            </div>
+        <div class="cover-preview-container mb-4 text-center w-full" style="position: relative;">
+          <img 
+            v-if="selectedCoverUrl" 
+            :src="selectedCoverUrl" 
+            alt="Book Cover" 
+            style="max-height: 300px; max-width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);"
+          />
+          <div 
+            v-else 
+            class="flex align-items-center justify-content-center bg-gray-100 border-round" 
+            style="height: 300px; width: 200px; margin: 0 auto; border-radius: 8px;"
+          >
+            <i class="pi pi-image text-500" style="font-size: 3rem"></i>
           </div>
           
-          <!-- Cover options grid -->
-          <div class="col-span-1 flex flex-col">
-            <h4 class="font-medium mb-2">Available Covers ({{ coverOptions.length }}):</h4>
-            <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-96 p-2">
-              <div 
-                v-for="(cover, index) in coverOptions" 
-                :key="index" 
-                class="cursor-pointer border rounded hover:shadow-md transition-shadow p-1"
-                :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
-                @click="selectCover(cover.url)"
-              >
-                <div class="w-full h-40 flex items-center justify-center bg-gray-100">
-                  <img 
-                    :src="cover.url" 
-                    :alt="`Cover option ${index+1}`"
-                    class="max-w-full max-h-full object-contain"
-                  />
-                </div>
-              </div>
+          <div class="cover-controls mt-3 flex justify-content-center" v-if="coverOptions.length > 1">
+            <Button 
+              icon="pi pi-chevron-left" 
+              @click="selectPreviousCover" 
+              class="p-button-rounded p-button-text" 
+              :disabled="coverIndex === 0 || processingCover"
+            />
+            <div class="mx-3 flex align-items-center">
+              <span class="font-medium">{{ coverIndex + 1 }} of {{ coverOptions.length }}</span>
             </div>
-            <div v-else class="text-gray-500 p-4 text-center border rounded bg-gray-50">
-              No cover options found
-            </div>
+            <Button 
+              icon="pi pi-chevron-right" 
+              @click="selectNextCover" 
+              class="p-button-rounded p-button-text" 
+              :disabled="coverIndex === coverOptions.length - 1 || processingCover"
+            />
           </div>
         </div>
         
-        <!-- Manual search section -->
-        <div class="w-full my-4">
-          <h4 class="font-medium mb-2">Search for more covers:</h4>
-          <div class="flex gap-2">
+        <div class="w-full mb-4" v-if="!processingCover && showSearchInput">
+          <span class="p-input-icon-right w-full">
+            <i class="pi pi-search" />
             <InputText 
-              v-model="customSearchTitle" 
-              placeholder="Enter alternative title" 
-              class="flex-1"
-              @keydown.enter="searchCoverForCurrentBook(customSearchTitle)"
+              v-model="searchQuery" 
+              placeholder="Search for a different cover..." 
+              class="w-full" 
+              @keydown.enter="searchCovers"
             />
-            <Button 
-              icon="pi pi-search" 
-              @click="searchCoverForCurrentBook(customSearchTitle)"
-            />
-          </div>
-          <small class="text-gray-500 mt-1 block">
-            Tip: Try with a more general title or series name
+          </span>
+          <small class="block text-center mt-2 text-color-secondary">
+            Press Enter to search for alternative covers
           </small>
         </div>
-        
-        <div class="flex justify-center gap-3 mt-4 w-full">
-          <Button 
-            icon="pi pi-times" 
-            label="Reject" 
-            severity="secondary" 
-            @click="rejectCover"
-          />
-          <Button 
-            icon="pi pi-check" 
-            label="Accept" 
-            :disabled="!previewCoverUrl"
-            @click="acceptCover"
-          />
-          <Button 
-            icon="pi pi-step-forward" 
-            label="Skip" 
-            class="p-button-outlined" 
-            @click="processNextBook"
-          />
-        </div>
-        
-        <div class="w-full pt-4 mt-4 border-t border-gray-200 text-center">
-          <Button 
-            icon="pi pi-times-circle" 
-            label="Exit Without Changes" 
-            class="p-button-text p-button-danger"
-            @click="exitCoverProcess"
-          />
-        </div>
       </div>
+      
+      <div v-if="processingCover" class="flex flex-column align-items-center p-4">
+        <ProgressSpinner style="width: 50px; height: 50px;" />
+        <span class="mt-3">{{ processingMessage }}</span>
+      </div>
+      
+      <template #footer>
+        <div class="flex justify-content-between w-full">
+          <Button 
+            label="Skip" 
+            class="p-button-outlined p-button-secondary"
+            @click="rejectCover" 
+          />
+          <Button 
+            label="Accept" 
+            class="p-button-success" 
+            :disabled="!selectedCoverUrl || processingCover"
+            @click="acceptCover" 
+          />
+          <Button 
+            label="Cancel" 
+            class="p-button-outlined"
+            @click="$refs.coverDialog.hide()" 
+          />
+        </div>
+      </template>
     </Dialog>
   </div>
 </template> 
