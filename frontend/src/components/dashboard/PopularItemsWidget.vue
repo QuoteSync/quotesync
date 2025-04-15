@@ -1,5 +1,18 @@
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref, nextTick } from 'vue';
+
+// Track screen size
+const isMobile = ref(false);
+const isTablet = ref(false);
+
+// Check if the screen is mobile or tablet size
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 640; // Small screens (phones)
+  isTablet.value = window.innerWidth >= 640 && window.innerWidth < 1024; // Medium screens (tablets)
+};
+
+// Track loading state for each image by item id
+const imageLoaded = ref({});
 
 const props = defineProps({
   // Datos de elementos a mostrar
@@ -46,19 +59,43 @@ const props = defineProps({
   }
 });
 
-// Determinar cuántos elementos mostrar según el tipo
-const displayLimit = computed(() => 5);
+// Determinar cuántos elementos mostrar según el tipo y tamaño de pantalla
+const displayLimit = computed(() => {
+  if (isMobile.value) return 2; // Show only 2 on mobile
+  if (isTablet.value) return 3; // Show 3 on tablets
+  return 5; // Show 5 on larger screens
+});
 
-// Siempre usa flex layout para ambos tipos
+// Handler for image load event
+function handleImageLoad(itemId) {
+  imageLoaded.value[itemId] = true;
+}
+// Handler for image error event (fallback to gradient)
+function handleImageError(itemId) {
+  imageLoaded.value[itemId] = false;
+}
+
+// Flex layout with responsive widths
 const gridClass = computed(() => 'flex flex-wrap');
 
-// Obtener ancho según el tipo (ahora mismo es igual para ambos)
+// Obtener ancho según el tamaño de pantalla
 const getItemWidth = () => {
-  // Devuelve un objeto con estilos para una distribución de 5 elementos por fila
-  return { 
-    width: '20%',
-    padding: '12px'
-  };
+  if (isMobile.value) {
+    return { 
+      width: '50%',  // 2 per row on mobile
+      padding: '8px'
+    };
+  } else if (isTablet.value) {
+    return { 
+      width: '33.333%',  // 3 per row on tablet
+      padding: '10px'
+    };
+  } else {
+    return { 
+      width: '20%',  // 5 per row on desktop
+      padding: '12px'
+    };
+  }
 };
 
 // Helper function to get the right count value based on item type
@@ -89,6 +126,17 @@ onMounted(() => {
       console.log(`Author ${author.name} books property:`, author.books);
     });
   }
+
+  // Initialize screen size check
+  checkScreenSize();
+  
+  // Add event listener for window resize
+  window.addEventListener('resize', checkScreenSize);
+  
+  // Clean up event listener on component unmount
+  return () => {
+    window.removeEventListener('resize', checkScreenSize);
+  };
 });
 </script>
 
@@ -120,6 +168,19 @@ onMounted(() => {
   height: 300px;
 }
 
+/* Responsive heights for different screen sizes */
+@media screen and (max-width: 639px) {
+  .cover-container {
+    height: 220px;
+  }
+}
+
+@media screen and (min-width: 640px) and (max-width: 1023px) {
+  .cover-container {
+    height: 260px;
+  }
+}
+
 /* Estilos para las tarjetas de autores */
 .author-card {
   height: 100%;
@@ -129,6 +190,32 @@ onMounted(() => {
 
 .author-image {
   height: 230px;
+}
+
+/* Responsive styles for title and details */
+@media screen and (max-width: 639px) {
+  .item-details {
+    padding: 0.5rem !important;
+  }
+  
+  .item-count {
+    padding: 0.375rem !important;
+    font-size: 0.875rem;
+  }
+  
+  .item-initial {
+    font-size: 1.25rem !important;
+  }
+  
+  .item-circle {
+    width: 4rem !important;
+    height: 4rem !important;
+  }
+  
+  .item-inner-circle {
+    width: 3rem !important;
+    height: 3rem !important;
+  }
 }
 </style>
 
@@ -168,25 +255,34 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Cover image -->
+              <!-- Cover image with loading gradient -->
               <div class="cover-container" style="width: 100%; position: relative; border-top-left-radius: 1rem; border-top-right-radius: 1rem; overflow: hidden;">
+                <!-- Actual cover image that only shows when loaded -->
                 <img 
                   v-if="item.cover" 
                   :src="item.cover" 
                   :alt="itemType === 'book' ? (item.title || '') : (item.name || '')" 
-                  class="w-full h-full object-cover item-image"
+                  class="w-full h-full object-cover item-image absolute top-0 left-0"
                   style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;"
+                  :style="{ opacity: imageLoaded[item.id] ? 1 : 0, zIndex: 2, transition: 'opacity 0.3s ease' }"
+                  @load="handleImageLoad(item.id)"
+                  @error="handleImageError(item.id)"
                 />
+                
+                <!-- Gradient background (always visible when no cover, or while loading) -->
                 <div 
-                  v-else 
                   class="item-image w-full h-full"
                   :style="{ 
                     background: item.gradient_primary_color && item.gradient_secondary_color 
                       ? `linear-gradient(135deg, ${item.gradient_primary_color}, ${item.gradient_secondary_color})` 
-                      : `linear-gradient(135deg, #667eea, #764ba2)` 
+                      : `linear-gradient(135deg, #667eea, #764ba2)`,
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    zIndex: 1
                   }"
                 >
-                  <!-- Fallback design -->
+                  <!-- Fallback design (only visible when there's no cover or when the image is still loading) -->
                   <div style="width: 100%; height: 100%; display: flex; flex-direction: column; padding: 1rem; position: relative;">
                     <!-- Light reflection -->
                     <div style="position: absolute; top: -10px; right: -10px; width: 60px; height: 150%; background: rgba(255,255,255,0.1); transform: rotate(30deg); z-index: 10;"></div>
@@ -194,9 +290,9 @@ onMounted(() => {
                     <!-- Center content -->
                     <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2;">
                       <!-- Circle with initial -->
-                      <div style="width: 5rem; height: 5rem; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 15px rgba(255,255,255,0.1);">
-                        <div style="width: 4rem; height: 4rem; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">
-                          <span style="color: rgba(255,255,255,0.8); font-size: 1.5rem; font-family: serif;">
+                      <div class="item-circle" style="width: 5rem; height: 5rem; border-radius: 50%; border: 2px solid rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 15px rgba(255,255,255,0.1);">
+                        <div class="item-inner-circle" style="width: 4rem; height: 4rem; border-radius: 50%; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;">
+                          <span class="item-initial" style="color: rgba(255,255,255,0.8); font-size: 1.5rem; font-family: serif;">
                             {{ itemType === 'book' 
                               ? (item.title ? item.title.charAt(0) : '?') 
                               : (item.name ? item.name.charAt(0) : '?') }}
@@ -226,9 +322,9 @@ onMounted(() => {
               </div>
               
               <!-- Details (below the cover) -->
-              <div style="padding: 0.75rem; border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;" class="bg-white dark:bg-gray-800">
+              <div class="item-details bg-white dark:bg-gray-800" style="padding: 0.75rem; border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
                 <!-- Count (quotes or books) -->
-                <div style="display: flex; align-items: center; justify-content: center; padding: 0.5rem; border-radius: 0.75rem;" class="bg-gray-50 dark:bg-gray-900/20 transition-colors duration-200 group-hover:bg-orange-50 dark:group-hover:bg-orange-900/10">
+                <div class="item-count bg-gray-50 dark:bg-gray-900/20 transition-colors duration-200 group-hover:bg-orange-50 dark:group-hover:bg-orange-900/10" style="display: flex; align-items: center; justify-content: center; padding: 0.5rem; border-radius: 0.75rem;">
                   <i :class="`pi ${countIcon} transition-colors duration-200 group-hover:text-orange-500`" :style="`color: ${countIconColor}; margin-right: 0.5rem;`"></i>
                   <span style="font-weight: 500;" class="transition-colors duration-200 group-hover:text-orange-600 dark:group-hover:text-orange-300">
                     {{ getItemCount(item) }} {{ getItemCount(item) === 1 && itemType === 'author' ? countLabel.slice(0, -1) : countLabel }}

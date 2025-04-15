@@ -10,6 +10,7 @@ import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Textarea from "primevue/textarea";
+import { AuthorService } from "@/service/AuthorService";
 
 const route = useRoute();
 const router = useRouter();
@@ -301,6 +302,34 @@ onMounted(async () => {
   await loadBook();
   await fetchQuotes();
 });
+
+// Handle author image errors by setting a gradient
+const handleAuthorImageError = (author) => {
+  console.log(`Handling author image error for: ${author.name}`);
+  
+  // Check if author already has gradient colors
+  if (author.gradient_primary_color && author.gradient_secondary_color) {
+    author.gradient = `linear-gradient(135deg, ${author.gradient_primary_color}, ${author.gradient_secondary_color})`;
+    console.log(`Using stored gradient for ${author.name}:`, author.gradient);
+  } else {
+    // Generate and store new gradient
+    const gradient = getRandomGradient();
+    author.gradient = gradient.background;
+    
+    // Save the gradient colors to the database
+    AuthorService.updateGradientColors(
+      author.id,
+      gradient.primary,
+      gradient.secondary
+    ).catch(error => {
+      console.error(`Error saving gradient colors for author ${author.id}:`, error);
+    });
+    
+    // Update local properties
+    author.gradient_primary_color = gradient.primary;
+    author.gradient_secondary_color = gradient.secondary;
+  }
+};
 </script>
 
 <template>
@@ -697,11 +726,29 @@ onMounted(async () => {
               })
             "
           >
-            <img
-              class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
-              :src="book.author.cover"
-              alt="Author Avatar"
-            />
+            <!-- Author image with gradient fallback -->
+            <div class="w-10 h-10 rounded-full overflow-hidden transition-transform duration-300 hover:scale-105">
+              <img
+                v-if="book.author.cover"
+                class="w-full h-full object-cover"
+                :src="book.author.cover"
+                alt="Author Avatar"
+                @error="handleAuthorImageError(book.author)"
+              />
+              <!-- Gradient fallback with initial -->
+              <div 
+                v-else
+                class="w-full h-full flex items-center justify-center"
+                :style="{ 
+                  background: book.author.gradient || 
+                    (book.author.gradient_primary_color && book.author.gradient_secondary_color ? 
+                      `linear-gradient(135deg, ${book.author.gradient_primary_color}, ${book.author.gradient_secondary_color})` : 
+                      getRandomGradient().background) 
+                }"
+              >
+                <span class="text-white font-bold text-sm">{{ book.author.name.charAt(0) }}</span>
+              </div>
+            </div>
             <span class="ml-3 text-xl font-semibold">{{ book.author.name }}</span>
           </div>
           <p class="mt-4 text-lg">{{ book.description }}</p>

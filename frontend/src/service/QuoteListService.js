@@ -38,5 +38,12 @@ export const QuoteListService = {
             quote_id: quoteId
         });
         return response.data;
+    },
+    
+    async updateQuoteOrder(listId, quoteIds) {
+        const response = await apiClient.post(`quote-lists/${listId}/update_order/`, {
+            quote_ids: quoteIds
+        });
+        return response.data;
     }
 }; 

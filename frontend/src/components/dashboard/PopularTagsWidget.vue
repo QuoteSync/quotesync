@@ -8,6 +8,14 @@ const router = useRouter();
 const tags = ref([]);
 const loading = ref(true);
 const hoverTag = ref(null);
+const isMobile = ref(false);
+const isTablet = ref(false);
+
+// Check screen size
+const checkScreenSize = () => {
+  isMobile.value = window.innerWidth < 640; // Small screens (phones)
+  isTablet.value = window.innerWidth >= 640 && window.innerWidth < 1024; // Medium screens (tablets)
+};
 
 // Predefined gradient pairs for tag cards
 const gradients = [
@@ -39,6 +47,13 @@ const getTagGradient = (tag) => {
   return gradients[index];
 };
 
+// Determine the number of tags to display based on screen size
+const displayLimit = () => {
+  if (isMobile.value) return 3; // Show fewer on small screens
+  if (isTablet.value) return 4;
+  return 5; // Show all on large screens
+};
+
 const setHoverTag = (tagId) => {
   hoverTag.value = tagId;
 };
@@ -54,6 +69,13 @@ const navigateToTag = (tagId) => {
 onMounted(async () => {
   try {
     loading.value = true;
+    
+    // Initialize screen size check
+    checkScreenSize();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkScreenSize);
+    
     const allTags = await TagService.getTags();
     
     // Sort tags by number of quotes (highest to lowest)
@@ -63,8 +85,8 @@ onMounted(async () => {
       return quotesB - quotesA;
     });
     
-    // Take the top 5 tags
-    tags.value = sortedTags.slice(0, 5);
+    // Take the top tags based on screen size
+    tags.value = sortedTags.slice(0, displayLimit());
     
   } catch (error) {
     console.error('Error fetching tags:', error);
@@ -72,6 +94,10 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+  
+  return () => {
+    window.removeEventListener('resize', checkScreenSize);
+  };
 });
 </script>
 
@@ -83,7 +109,7 @@ onMounted(async () => {
     
     <div v-else-if="tags.length > 0" class="grid">
       <div v-for="tag in tags" :key="tag.id" 
-           class="col-12 md:col-6 lg:col-3 p-2" 
+           class="col-12 sm:col-6 lg:col-3 p-2" 
            @mouseenter="setHoverTag(tag.id)"
            @mouseleave="clearHoverTag()">
         <div class="tag-card" 
@@ -204,6 +230,10 @@ onMounted(async () => {
   font-weight: 600;
   margin: 0 0 0.5rem 0;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  line-height: 1.3;
 }
 
 .tag-description {
@@ -222,6 +252,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
 }
 
 .stats-item {
@@ -229,6 +260,10 @@ onMounted(async () => {
   align-items: center;
   font-size: 0.9rem;
   opacity: 0.9;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tag-favorite {
@@ -240,6 +275,8 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: white;
+  margin-left: 8px;
+  flex-shrink: 0;
 }
 
 .tag-action {
@@ -266,5 +303,40 @@ onMounted(async () => {
   background: var(--surface-card);
   border-radius: 16px;
   border: 1px dashed var(--surface-border);
+}
+
+/* Responsive styles for mobile */
+@media screen and (max-width: 639px) {
+  .tag-card {
+    padding: 1rem;
+    min-height: 160px;
+  }
+  
+  .tag-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .tag-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.3rem;
+  }
+  
+  .tag-description {
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .stats-item {
+    font-size: 0.8rem;
+  }
+  
+  .tag-favorite {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 0.75rem;
+  }
 }
 </style> 

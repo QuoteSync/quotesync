@@ -10,6 +10,9 @@ from .views import (
     upload_docx,
     upload_zip,
     get_statistics,
+    upload_avatar_direct,
+    profile_update_direct,
+    user_goals,
 )
 
 router = DefaultRouter()
@@ -30,13 +33,24 @@ router.register(r'quote-notes', QuoteNoteViewSet)
 
 urlpatterns = [
     path('api/', include(router.urls)),
-    # path('api/me/', current_user, name='current_user'),
+    path('api/me/', current_user, name='current_user'),
     path('api/_allauth/', include('allauth.headless.urls')),
-
-
     
     path('api/upload-quotes/', upload_quotes, name='upload_quotes'),
     path('api/upload-docx/', upload_docx, name='upload_docx'),
     path('api/upload-zip/', upload_zip, name='upload_zip'),
     path('api/statistics/', get_statistics, name='get_statistics'),
+    path('api/upload-avatar-direct/', upload_avatar_direct, name='upload-avatar-direct'),
+    path('api/profile-update-direct/', profile_update_direct, name='profile-update-direct'),
+    path('api/users/goals/', user_goals, name='user-goals'),
+]
+
+# Map the UserViewSet action URLs in a more friendly way
+urlpatterns += [
+    path('api/users/profile/', UserViewSet.as_view({'get': 'profile', 'patch': 'profile_update', 'put': 'profile_update'}), name='user-profile'),
+    path('api/users/change-password/', UserViewSet.as_view({'post': 'change_password'}), name='user-change-password'),
+    path('api/users/upload-avatar', UserViewSet.as_view({'post': 'upload_avatar'}), name='user-upload-avatar'),
+    path('api/users/upload-avatar/', UserViewSet.as_view({'post': 'upload_avatar'}), name='user-upload-avatar-slash'),
+    path('api/users/stats/', UserViewSet.as_view({'get': 'stats'}), name='user-stats'),
+    path('api/users/activity/', UserViewSet.as_view({'get': 'activity'}), name='user-activity'),
 ]

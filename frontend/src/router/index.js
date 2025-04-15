@@ -5,6 +5,7 @@ import QuoteLists from '@/views/pages/QuoteLists.vue';
 import QuoteListDetail from '@/views/pages/QuoteListDetail.vue';
 import QuoteGroups from '@/views/pages/QuoteGroups.vue';
 import QuoteGroupDetails from '@/views/pages/QuoteGroupDetails.vue';
+import Profile from '@/views/pages/Profile.vue';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -209,6 +210,12 @@ const router = createRouter({
           path: '/shared',
           name: 'sharedItems',
           component: () => import('@/views/pages/SharedItems.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: '/profile',
+          name: 'Profile',
+          component: Profile,
           meta: { requiresAuth: true }
         }
       ]

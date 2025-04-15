@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useLayout } from "@/layout/composables/layout";
 import AppConfigurator from "./AppConfigurator.vue";
 import { apiClient, getSession, logout } from "@/api";
@@ -9,20 +9,56 @@ import router from "@/router";
 
 const username = ref(""); // This will store the authenticated user's username
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+const avatarUrl = ref("");
 
 const fetchUserData = async () => {
     try {
         const session = await getSession();
         username.value = session.data.user.username;
         // username.value = "user2";
+        
+        // Load avatar from localStorage if available
+        const savedAvatar = localStorage.getItem('userAvatar');
+        if (savedAvatar) {
+            avatarUrl.value = savedAvatar;
+        } else {
+            avatarUrl.value = "https://primefaces.org/cdn/primevue/images/avatar/onyamalimba.png";
+        }
     } catch (error) {
         console.error("Error fetching user data:", error);
         // Optionally, handle the error (e.g. force logout or redirect)
+        
+        // Set default avatar on error
+        avatarUrl.value = "https://primefaces.org/cdn/primevue/images/avatar/onyamalimba.png";
+    }
+};
+
+// Listen for storage events to update avatar when it changes in another tab/component
+const handleStorageChange = (event) => {
+    if (event.key === 'userAvatar') {
+        avatarUrl.value = event.newValue || "https://primefaces.org/cdn/primevue/images/avatar/onyamalimba.png";
     }
 };
 
 onMounted(() => {
     fetchUserData();
+    
+    // Check for avatar changes in localStorage
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also check periodically for changes made in the same tab
+    const intervalId = setInterval(() => {
+        const currentAvatar = localStorage.getItem('userAvatar');
+        if (currentAvatar && currentAvatar !== avatarUrl.value) {
+            avatarUrl.value = currentAvatar;
+        }
+    }, 3000); // Check every 3 seconds
+    
+    // Clean up event listener and interval on component unmount
+    return () => {
+        window.removeEventListener('storage', handleStorageChange);
+        clearInterval(intervalId);
+    };
 });
 
 // Define the profile menu items
@@ -31,7 +67,7 @@ const profileMenuItems = [
         label: "Profile",
         icon: "pi pi-user",
         command: () => {
-            router.push({ name: "profile" });
+            router.push({ name: "Profile" });
         },
     },
     {
@@ -119,19 +155,20 @@ const toggleProfileMenu = (event) => {
                 </div>
             </div>
 
-            <button type="button" class="layout-topbar-action">
+            <!-- <button type="button" class="layout-topbar-action">
                 <i class="pi pi-calendar"></i>
                 <span>Calendar</span>
             </button>
             <button type="button" class="layout-topbar-action">
                 <i class="pi pi-inbox"></i>
                 <span>Messages</span>
-            </button>
+            </button> -->
             <Chip :label="username || 'user'"
-                :image="'https://primefaces.org/cdn/primevue/images/avatar/onyamalimba.png'"
+                :image="avatarUrl"
                 class="mr-2 mb-2 cursor-pointer" @click="toggleProfileMenu" />
             <!-- <Avatar label="AA" class="mr-2" size="large" :style="{ 'background-color': '#2196F3', color: '#ffffff' }" shape="circle"></Avatar> -->
             <TieredMenu :model="profileMenuItems" ref="profileMenu" popup />
         </div>
     </div>
 </template>
+

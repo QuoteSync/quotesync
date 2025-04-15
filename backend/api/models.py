@@ -19,6 +19,17 @@ class User(AbstractUser):
     email = models.EmailField(unique=True, help_text="Dirección de correo electrónico")
     first_name = models.CharField(max_length=30, blank=True, help_text="Nombre")
     last_name = models.CharField(max_length=150, blank=True, help_text="Apellido")
+    avatar = models.URLField(
+        blank=True, 
+        null=True, 
+        default="https://primefaces.org/cdn/primevue/images/avatar/onyamalimba.png",
+        help_text="URL del avatar del usuario"
+    )
+    bio = models.TextField(blank=True, null=True, help_text="Biografía del usuario")
+    location = models.CharField(max_length=100, blank=True, null=True, help_text="Ubicación del usuario")
+    website = models.URLField(blank=True, null=True, help_text="Sitio web del usuario")
+    twitter = models.CharField(max_length=50, blank=True, null=True, help_text="Usuario de Twitter")
+    github = models.CharField(max_length=50, blank=True, null=True, help_text="Usuario de GitHub")
 
     def __str__(self):
         return f"{self.username}"
@@ -364,3 +375,29 @@ class QuoteNote(models.Model):
     class Meta:
         ordering = ('created',)
         db_table = 'quote_notes'
+
+
+# Add a UserGoals model to store user goals
+class UserGoals(models.Model):
+    """
+    Stores goals for users.
+    """
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="goals",
+        help_text="User who owns these goals"
+    )
+    quotes_goal = models.PositiveIntegerField(default=100, help_text="Target number of quotes to collect")
+    books_goal = models.PositiveIntegerField(default=30, help_text="Target number of books to read")
+    authors_goal = models.PositiveIntegerField(default=20, help_text="Target number of authors to explore")
+    created = models.DateTimeField(auto_now_add=True, help_text="When these goals were created")
+    updated = models.DateTimeField(auto_now=True, help_text="When these goals were last updated")
+
+    def __str__(self):
+        return f"{self.user.username}'s Goals"
+
+    class Meta:
+        db_table = 'user_goals'
+        verbose_name = 'User Goals'
+        verbose_name_plural = 'User Goals'

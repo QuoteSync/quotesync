@@ -24,6 +24,7 @@ const showDeleteDialog = ref(false);
 const quoteToDelete = ref(null);
 const showDeleteListDialog = ref(false);
 const likedQuotes = ref({});
+const savingOrder = ref(false);
 
 // Sharing functionality
 const groups = ref([]);
@@ -100,6 +101,77 @@ const toggleLikeQuote = async (quoteId) => {
       detail: 'Failed to update favorite status',
       life: 3000
     });
+  }
+};
+
+// Move a quote up in the list (swap with the previous quote)
+const moveQuoteUp = async (quoteId) => {
+  if (!quoteList.value || !quoteList.value.quotes) return;
+  
+  const quotes = [...quoteList.value.quotes];
+  const index = quotes.findIndex(q => q.id === quoteId);
+  
+  // If the quote is already at the top, do nothing
+  if (index <= 0) return;
+  
+  // Swap the quote with the one above it
+  [quotes[index], quotes[index - 1]] = [quotes[index - 1], quotes[index]];
+  
+  // Update the list in the UI
+  quoteList.value.quotes = quotes;
+  
+  // Save the new order to the backend
+  await saveQuoteOrder();
+};
+
+// Move a quote down in the list (swap with the next quote)
+const moveQuoteDown = async (quoteId) => {
+  if (!quoteList.value || !quoteList.value.quotes) return;
+  
+  const quotes = [...quoteList.value.quotes];
+  const index = quotes.findIndex(q => q.id === quoteId);
+  
+  // If the quote is already at the bottom, do nothing
+  if (index === -1 || index >= quotes.length - 1) return;
+  
+  // Swap the quote with the one below it
+  [quotes[index], quotes[index + 1]] = [quotes[index + 1], quotes[index]];
+  
+  // Update the list in the UI
+  quoteList.value.quotes = quotes;
+  
+  // Save the new order to the backend
+  await saveQuoteOrder();
+};
+
+// Save the current quote order to the backend
+const saveQuoteOrder = async () => {
+  if (!quoteList.value || !quoteList.value.quotes || savingOrder.value) return;
+  
+  savingOrder.value = true;
+  try {
+    const quoteIds = quoteList.value.quotes.map(q => q.id);
+    await QuoteListService.updateQuoteOrder(quoteList.value.id, quoteIds);
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Quote order updated successfully',
+      life: 2000
+    });
+  } catch (error) {
+    console.error('Error updating quote order:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update quote order',
+      life: 3000
+    });
+    
+    // Reload the list to reset to the server's order
+    await loadQuoteList();
+  } finally {
+    savingOrder.value = false;
   }
 };
 
@@ -302,15 +374,31 @@ onMounted(async () => {
         <!-- Quotes Grid -->
         <div class="mt-10">
           <div v-if="quoteList.quotes && quoteList.quotes.length" class="flex flex-col gap-6">
-            <QuoteCard
-              v-for="quote in quoteList.quotes"
-              :key="quote.id"
-              :quote="quote"
-              :liked="likedQuotes[quote.id]"
-              :showActions="true"
-              @toggle-like="toggleLikeQuote"
-              @remove-quote="handleRemoveQuote"
-            />
+            <div v-for="(quote, index) in quoteList.quotes" :key="quote.id" class="quote-item">
+              <div class="flex justify-end mb-2 gap-2 reorder-buttons">
+                <Button
+                  icon="pi pi-arrow-up"
+                  class="p-button-rounded p-button-outlined p-button-sm"
+                  :disabled="index === 0 || savingOrder"
+                  @click="moveQuoteUp(quote.id)"
+                  title="Move Up"
+                />
+                <Button
+                  icon="pi pi-arrow-down"
+                  class="p-button-rounded p-button-outlined p-button-sm"
+                  :disabled="index === quoteList.quotes.length - 1 || savingOrder"
+                  @click="moveQuoteDown(quote.id)"
+                  title="Move Down"
+                />
+              </div>
+              <QuoteCard
+                :quote="quote"
+                :liked="likedQuotes[quote.id]"
+                :showActions="true"
+                @toggle-like="toggleLikeQuote"
+                @remove-quote="handleRemoveQuote"
+              />
+            </div>
           </div>
           <div v-else class="text-center text-gray-500">
             <p>No quotes in this list.</p>
@@ -453,4 +541,26 @@ onMounted(async () => {
       </div>
     </Dialog>
   </div>
-</template> 
+</template>
+
+<style scoped>
+/* Add styles for the reorder buttons */
+.quote-item {
+  position: relative;
+}
+
+.reorder-buttons {
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+}
+
+.quote-item:hover .reorder-buttons {
+  opacity: 1;
+}
+
+.p-button-sm {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.75rem;
+}
+</style> 

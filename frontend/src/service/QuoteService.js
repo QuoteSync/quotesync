@@ -70,6 +70,11 @@ export const QuoteService = {
         return response.data;
     },
 
+    async getRandomFavorites() {
+        const response = await apiClient.get('quotes/random_favorites/');
+        return response.data;
+    },
+
     async getSharedQuotes() {
         const response = await apiClient.get('quote-lists/shared/');
         return response.data;

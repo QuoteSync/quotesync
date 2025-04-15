@@ -1,6 +1,10 @@
 import axios from 'axios';
 import router from './router';
 
+// Backend base URL - centralized here for reuse
+export const BACKEND_URL = 'http://localhost:8000';
+export const API_BASE_URL = `${BACKEND_URL}/api`;
+
 // Helper function to get the value of a cookie
 function getCookie(name) {
   let cookieValue = null;
@@ -18,7 +22,7 @@ function getCookie(name) {
 }
 
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true, // Cookies are sent with every request
 });

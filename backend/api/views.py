@@ -10,7 +10,7 @@ from django.db.models import Count, Q
 from .models import (
     Author, Book, Tag, Quote, QuoteTag,
     QuoteGroup, QuoteGroupMembership, QuoteGroupShare,
-    QuoteList, QuoteListQuote, Document, ImportLog, QuoteNote
+    QuoteList, QuoteListQuote, Document, ImportLog, QuoteNote, UserGoals
 )
 from .serializers import (
     UserSerializer, AuthorSerializer, BookSerializer, TagSerializer,
@@ -48,14 +48,151 @@ User = get_user_model()
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def get_permissions(self):
         if self.action == 'create':
             return [permissions.AllowAny()]
         return [permissions.IsAuthenticated()]
     
+    @action(detail=False, methods=['get'])
+    def profile(self, request):
+        """Get the current user's profile"""
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
     
-
+    @action(detail=False, methods=['patch', 'put'])
+    def profile_update(self, request):
+        """Update the current user's profile"""
+        user = request.user
+        serializer = self.get_serializer(user, data=request.data, partial=True)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=400)
+    
+    @action(detail=False, methods=['post'])
+    def change_password(self, request):
+        """Change the current user's password"""
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        
+        if not user.check_password(current_password):
+            return Response({'error': 'Current password is incorrect'}, status=400)
+        
+        user.set_password(new_password)
+        user.save()
+        return Response({'success': True, 'message': 'Password changed successfully'})
+    
+    @action(detail=False, methods=['post'])
+    def upload_avatar(self, request):
+        """Upload a new avatar for the current user"""
+        from rest_framework.parsers import MultiPartParser, FormParser
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        logger.info(f"Upload avatar request received. Method: {request.method}")
+        logger.info(f"Content-Type: {request.content_type}")
+        logger.info(f"FILES: {request.FILES}")
+        logger.info(f"DATA: {request.data}")
+        
+        # Force proper parser usage for file uploads
+        self.parser_classes = (MultiPartParser, FormParser)
+        
+        user = request.user
+        avatar_file = request.FILES.get('avatar')
+        
+        if not avatar_file:
+            logger.error("No avatar file found in request")
+            return Response({'error': 'No avatar file provided'}, status=400)
+        
+        # Set a logical filename based on the user
+        filename = f"avatar_{user.id}_{avatar_file.name}"
+        
+        # Save the file to media/avatars/
+        avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+        os.makedirs(avatar_dir, exist_ok=True)
+        
+        filepath = os.path.join(avatar_dir, filename)
+        with open(filepath, 'wb+') as destination:
+            for chunk in avatar_file.chunks():
+                destination.write(chunk)
+        
+        # Update the user's avatar field with the URL
+        user.avatar = f"{settings.MEDIA_URL}avatars/{filename}"
+        user.save()
+        
+        logger.info(f"Avatar uploaded successfully: {user.avatar}")
+        
+        return Response({
+            'success': True,
+            'avatar_url': user.avatar,
+            'message': 'Avatar uploaded successfully'
+        })
+    
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Get statistics for the current user"""
+        user = request.user
+        
+        # Count various entities belonging to this user
+        total_quotes = Quote.objects.filter(owner=user).count()
+        total_books = Book.objects.filter(quotes__owner=user).distinct().count()
+        total_authors = Author.objects.filter(books__quotes__owner=user).distinct().count()
+        total_tags = Tag.objects.filter(quotes__owner=user).distinct().count()
+        
+        return Response({
+            'totalQuotes': total_quotes,
+            'totalBooks': total_books,
+            'totalAuthors': total_authors,
+            'totalTags': total_tags
+        })
+    
+    @action(detail=False, methods=['get'])
+    def activity(self, request):
+        """Get recent activity for the current user"""
+        user = request.user
+        
+        # Get quotes created/updated in the last 7 days, grouped by date
+        from django.utils import timezone
+        from datetime import timedelta
+        from django.db.models.functions import TruncDate
+        
+        # Get the start date (7 days ago)
+        start_date = timezone.now().date() - timedelta(days=6)
+        
+        # For each of the last 7 days, count the quotes created or updated
+        activity_data = []
+        
+        for day_offset in range(7):
+            current_date = start_date + timedelta(days=day_offset)
+            next_date = current_date + timedelta(days=1)
+            
+            # Count quotes created or updated on this day
+            quotes_count = Quote.objects.filter(
+                owner=user,
+                created__gte=current_date,
+                created__lt=next_date
+            ).count()
+            
+            # Count imports completed on this day
+            imports_count = ImportLog.objects.filter(
+                owner=user,
+                created_at__date=current_date,
+                status='completed'
+            ).count()
+            
+            activity_data.append({
+                'date': current_date.isoformat(),
+                'quotes_count': quotes_count,
+                'imports_count': imports_count,
+                'total_count': quotes_count + imports_count
+            })
+        
+        return Response(activity_data)
 
 
 class AuthorViewSet(viewsets.ModelViewSet):
@@ -159,6 +296,42 @@ class QuoteViewSet(viewsets.ModelViewSet):
         quote.is_favorite = not quote.is_favorite
         quote.save()
         return Response({'is_favorite': quote.is_favorite})
+
+    @action(detail=False, methods=['get'])
+    def random_favorites(self, request):
+        """
+        Return 5 random quotes, prioritizing favorites.
+        - Takes up to 5 random favorite quotes
+        - Fills remaining slots with random non-favorite quotes
+        - Shuffling is done on the backend
+        """
+        import random
+        
+        # Get quotes for the current user
+        user_quotes = Quote.objects.filter(owner=request.user)
+        
+        # Get and shuffle favorite quotes
+        favorite_quotes = list(user_quotes.filter(is_favorite=True))
+        random.shuffle(favorite_quotes)
+        
+        # Take up to 5 favorite quotes
+        selected_favorites = favorite_quotes[:5]
+        
+        # Calculate how many more quotes we need to reach 5 total
+        remaining_slots = max(0, 5 - len(selected_favorites))
+        
+        # If we need more quotes, get random non-favorites
+        selected_random_quotes = []
+        if remaining_slots > 0:
+            non_favorite_quotes = list(user_quotes.filter(is_favorite=False))
+            random.shuffle(non_favorite_quotes)
+            selected_random_quotes = non_favorite_quotes[:remaining_slots]
+        
+        # Combine the lists and serialize
+        selected_quotes = selected_favorites + selected_random_quotes
+        serializer = self.get_serializer(selected_quotes, many=True)
+        
+        return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         logger.info("Received PUT data: %s", request.data)
@@ -373,6 +546,45 @@ class QuoteListViewSet(viewsets.ModelViewSet):
             return Response(
                 {'error': 'Group not found'}, 
                 status=status.HTTP_404_NOT_FOUND
+            )
+            
+    @action(detail=True, methods=['post'])
+    def update_order(self, request, pk=None):
+        """
+        Update the order of quotes in a list
+        Expects a list of quote_ids in the order they should appear
+        """
+        quote_list = self.get_object()
+        quote_ids = request.data.get('quote_ids', [])
+        
+        if not quote_ids:
+            return Response(
+                {'error': 'quote_ids parameter is required'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            # First clear the existing relationships
+            QuoteListQuote.objects.filter(quote_list=quote_list).delete()
+            
+            # Then create new ones with proper order
+            for index, quote_id in enumerate(quote_ids):
+                try:
+                    quote = Quote.objects.get(id=quote_id)
+                    QuoteListQuote.objects.create(
+                        quote_list=quote_list,
+                        quote=quote,
+                        order=index
+                    )
+                except Quote.DoesNotExist:
+                    # Skip quotes that don't exist
+                    continue
+                    
+            return Response({'status': 'order updated'})
+        except Exception as e:
+            return Response(
+                {'error': str(e)}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
 
@@ -1113,3 +1325,138 @@ def get_statistics(request):
     }
     
     return Response(stats, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_avatar_direct(request):
+    """
+    Dedicated view function for avatar uploads.
+    This bypasses the ViewSet architecture for troubleshooting.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Direct upload avatar request received. Method: {request.method}")
+    logger.info(f"Content-Type: {request.content_type}")
+    logger.info(f"FILES: {request.FILES}")
+    logger.info(f"DATA: {request.data}")
+    
+    user = request.user
+    avatar_file = request.FILES.get('avatar')
+    
+    if not avatar_file:
+        logger.error("No avatar file found in request")
+        return Response({'error': 'No avatar file provided'}, status=400)
+    
+    # Set a logical filename based on the user
+    filename = f"avatar_{user.id}_{avatar_file.name}"
+    
+    # Save the file to media/avatars/
+    avatar_dir = os.path.join(settings.MEDIA_ROOT, 'avatars')
+    os.makedirs(avatar_dir, exist_ok=True)
+    
+    filepath = os.path.join(avatar_dir, filename)
+    with open(filepath, 'wb+') as destination:
+        for chunk in avatar_file.chunks():
+            destination.write(chunk)
+    
+    # Update the user's avatar field with the URL
+    user.avatar = f"{settings.MEDIA_URL}avatars/{filename}"
+    user.save()
+    
+    logger.info(f"Avatar uploaded successfully: {user.avatar}")
+    
+    return Response({
+        'success': True,
+        'avatar_url': user.avatar,
+        'message': 'Avatar uploaded successfully'
+    })
+
+@api_view(['PATCH', 'PUT'])
+@permission_classes([IsAuthenticated])
+def profile_update_direct(request):
+    """
+    Dedicated view function for profile updates.
+    This bypasses the ViewSet architecture for troubleshooting.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Direct profile update request received. Method: {request.method}")
+    logger.info(f"Content-Type: {request.content_type}")
+    logger.info(f"DATA: {request.data}")
+    
+    user = request.user
+    serializer = UserSerializer(user, data=request.data, partial=True)
+    
+    if serializer.is_valid():
+        serializer.save()
+        logger.info(f"Profile updated successfully for user: {user.username}")
+        return Response(serializer.data)
+    
+    logger.error(f"Profile update validation errors: {serializer.errors}")
+    return Response(serializer.errors, status=400)
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def user_goals(request):
+    """
+    View function for handling user goals.
+    GET: Retrieve current user goals
+    PATCH: Update user goals
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    # Get the UserGoals model for the current user, or create it if it doesn't exist
+    from django.conf import settings
+    from .models import User, UserGoals
+    
+    user = request.user
+    
+    try:
+        # Try to get existing goals or create default goals
+        goals, created = UserGoals.objects.get_or_create(
+            user=user,
+            defaults={
+                'quotes_goal': 100,
+                'books_goal': 30,
+                'authors_goal': 20
+            }
+        )
+        
+        if request.method == 'GET':
+            # Return the user's goals
+            return Response({
+                'quotes_goal': goals.quotes_goal,
+                'books_goal': goals.books_goal,
+                'authors_goal': goals.authors_goal
+            })
+        
+        elif request.method == 'PATCH':
+            # Update the user's goals
+            data = request.data
+            
+            if 'quotes_goal' in data:
+                goals.quotes_goal = max(1, int(data['quotes_goal']))
+            if 'books_goal' in data:
+                goals.books_goal = max(1, int(data['books_goal']))
+            if 'authors_goal' in data:
+                goals.authors_goal = max(1, int(data['authors_goal']))
+                
+            goals.save()
+            
+            logger.info(f"Updated goals for user {user.username}: quotes={goals.quotes_goal}, books={goals.books_goal}, authors={goals.authors_goal}")
+            
+            return Response({
+                'quotes_goal': goals.quotes_goal,
+                'books_goal': goals.books_goal,
+                'authors_goal': goals.authors_goal
+            })
+    
+    except Exception as e:
+        logger.error(f"Error handling user goals: {e}")
+        return Response(
+            {'error': 'Failed to process user goals'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

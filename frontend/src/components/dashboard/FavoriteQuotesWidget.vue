@@ -64,32 +64,12 @@ const navigateToQuote = (quoteId) => {
 onMounted(async () => {
   try {
     loading.value = true;
-    const allQuotes = await QuoteService.getQuotes();
     
-    // Get favorite quotes first and shuffle them for randomness
-    const favoriteQuotes = shuffleArray(allQuotes.filter(quote => quote.is_favorite));
+    // Use the new backend endpoint that returns already-shuffled favorite quotes
+    const randomFavorites = await QuoteService.getRandomFavorites();
+    quotes.value = randomFavorites;
     
-    // Also shuffle non-favorite quotes for randomness
-    const nonFavoriteQuotes = shuffleArray(allQuotes.filter(quote => !quote.is_favorite));
-    
-    // Take random favorites (up to 5)
-    const selectedFavorites = favoriteQuotes.slice(0, 5);
-    
-    // Calculate how many more quotes we need
-    const remainingSlots = Math.max(0, 5 - selectedFavorites.length);
-    
-    // Take random non-favorites to fill remaining slots
-    const selectedRandomQuotes = nonFavoriteQuotes.slice(0, remainingSlots);
-    
-    // Combine favorites and random quotes
-    quotes.value = [...selectedFavorites, ...selectedRandomQuotes];
-    
-    // If no quotes available, show an empty array
-    if (allQuotes.length === 0) {
-      quotes.value = [];
-    }
-    
-    console.log(`Displaying ${selectedFavorites.length} random favorite quotes and ${selectedRandomQuotes.length} random non-favorite quotes`);
+    console.log(`Displaying ${randomFavorites.length} quotes from backend random-favorites endpoint`);
   } catch (error) {
     console.error('Error fetching quotes:', error);
     quotes.value = [];
