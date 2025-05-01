@@ -53,10 +53,12 @@ const saveColors = async () => {
   try {
     result.value = { status: 'Saving...' };
     
-    const response = await BookService.updateGradientColors(
+    const response = await BookService.updateBook(
       bookId.value,
-      primaryColor.value,
-      secondaryColor.value
+      {
+        gradient_primary_color: primaryColor.value,
+        gradient_secondary_color: secondaryColor.value
+      }
     );
     
     result.value = {
@@ -79,11 +81,14 @@ const checkColors = async () => {
   try {
     result.value = { status: 'Checking...' };
     
-    const colors = await BookService.getGradientColors(bookId.value);
+    const book = await BookService.getBook(bookId.value);
     
     result.value = {
       status: 'Check Result',
-      colors
+      colors: {
+        gradient_primary_color: book.gradient_primary_color,
+        gradient_secondary_color: book.gradient_secondary_color
+      }
     };
   } catch (error) {
     result.value = {

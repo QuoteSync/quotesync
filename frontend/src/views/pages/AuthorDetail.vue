@@ -315,7 +315,7 @@
             <template v-if="book.cover">
               <img
                 class="rounded-lg w-full h-60 object-cover transition-transform duration-300 hover:scale-105"
-                :src="book.cover"
+                :src="book.cover + '?nocache=' + new Date().getTime()"
                 :alt="book.title"
                 @error="handleBookImageError(book)"
               />
@@ -668,10 +668,12 @@ const handleBookImageError = (book) => {
     
     // Store the new gradient colors for consistency
     if (book.id) {
-      BookService.updateGradientColors(
+      BookService.updateBook(
         book.id,
-        book.gradient.primary,
-        book.gradient.secondary
+        {
+          gradient_primary_color: book.gradient.primary,
+          gradient_secondary_color: book.gradient.secondary
+        }
       ).catch(error => {
         console.error(`Error saving gradient colors for book ${book.id}:`, error);
       });
@@ -1078,10 +1080,12 @@ onMounted(async () => {
         
         // Save the new gradient colors to the database for future consistency
         if (book.id) {
-          BookService.updateGradientColors(
+          BookService.updateBook(
             book.id,
-            gradient.primary,
-            gradient.secondary
+            {
+              gradient_primary_color: book.gradient.primary,
+              gradient_secondary_color: book.gradient.secondary
+            }
           ).catch(error => {
             console.error(`Error saving gradient colors for book ${book.id}:`, error);
           });

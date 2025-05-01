@@ -20,9 +20,4 @@ class Migration(migrations.Migration):
             name='cover_cached',
             field=models.BooleanField(default=False),
         ),
-        migrations.AlterField(
-            model_name='quote',
-            name='tags',
-            field=models.ManyToManyField(blank=True, help_text='Etiquetas asociadas', related_name='quotes', through='api.QuoteTag', to='api.tag'),
-        ),
     ]

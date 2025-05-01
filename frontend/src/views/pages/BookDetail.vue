@@ -211,10 +211,12 @@ const loadBook = async () => {
         book.value.gradient = getRandomGradient();
         
         // Save the gradient colors to the database
-        BookService.updateGradientColors(
+        BookService.updateBook(
           book.value.id,
-          book.value.gradient.primary,
-          book.value.gradient.secondary
+          {
+            gradient_primary_color: book.value.gradient.primary,
+            gradient_secondary_color: book.value.gradient.secondary
+          }
         ).catch(error => {
           console.error(`Error saving gradient colors for book ${book.value.id}:`, error);
         });
@@ -260,10 +262,12 @@ const handleImageError = () => {
       book.value.gradient = getRandomGradient();
       
       // Save the gradient colors to the database
-      BookService.updateGradientColors(
+      BookService.updateBook(
         book.value.id,
-        book.value.gradient.primary,
-        book.value.gradient.secondary
+        {
+          gradient_primary_color: book.value.gradient.primary,
+          gradient_secondary_color: book.value.gradient.secondary
+        }
       ).catch(error => {
         console.error(`Error saving gradient colors for book ${book.value.id}:`, error);
       });

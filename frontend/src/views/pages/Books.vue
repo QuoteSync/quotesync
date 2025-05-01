@@ -548,6 +548,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { BookService } from "@/service/BookService";
+import { AuthorService } from "@/service/AuthorService";
 import { useToast } from "primevue/usetoast";
 import { useRouter } from "vue-router";
 
@@ -691,7 +692,7 @@ const searchCoverForCurrentBook = async (customTitle) => {
   const searchTitle = customTitle || currentBook.value.title;
   
   // Fetch cover options from OpenLibrary
-  const result = await BookService.fetchCoverFromOpenLibrary(
+  const result = await BookService.fetchBookCovers(
     searchTitle, 
     currentBook.value.author.name
   );
@@ -817,10 +818,12 @@ onMounted(async () => {
       console.log(`Generated colors for book ${book.id}:`, book.gradient.primary, book.gradient.secondary);
       
       // Save the gradient colors to the database
-      BookService.updateGradientColors(
+      BookService.updateBook(
         book.id,
-        book.gradient.primary,
-        book.gradient.secondary
+        {
+          gradient_primary_color: book.gradient.primary,
+          gradient_secondary_color: book.gradient.secondary
+        }
       ).then(response => {
         console.log(`Successfully saved gradient colors for book ${book.id}:`, response);
         // Verify the colors were actually saved
@@ -915,10 +918,12 @@ const handleImageError = (bookId) => {
         book.gradient = getRandomGradient();
         
         // Save the generated gradient to the database
-        BookService.updateGradientColors(
+        BookService.updateBook(
           book.id,
-          book.gradient.primary,
-          book.gradient.secondary
+          {
+            gradient_primary_color: book.gradient.primary,
+            gradient_secondary_color: book.gradient.secondary
+          }
         ).catch(error => {
           console.error(`Error saving gradient colors for book ${book.id}:`, error);
         });
@@ -987,10 +992,13 @@ const verifyGradientColors = async (bookId) => {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // Fetch the book data to check if colors were saved
-    const colors = await BookService.getGradientColors(bookId);
+    const book = await BookService.getBook(bookId);
     
-    if (colors && colors.gradient_primary_color && colors.gradient_secondary_color) {
-      console.log(`VERIFICATION: Book ${bookId} has gradient colors saved:`, colors);
+    if (book && book.gradient_primary_color && book.gradient_secondary_color) {
+      console.log(`VERIFICATION: Book ${bookId} has gradient colors saved:`, {
+        gradient_primary_color: book.gradient_primary_color,
+        gradient_secondary_color: book.gradient_secondary_color
+      });
       return true;
     } else {
       console.warn(`VERIFICATION: Book ${bookId} does not have gradient colors saved!`);
@@ -1019,8 +1027,8 @@ const handleAuthorImageError = (authorId, authorName) => {
       book.author.gradientSecondary = gradient.secondary;
       
       // Try to save the gradient colors to the database (if implemented)
-      // AuthorService.updateGradientColors(authorId, gradient.primary, gradient.secondary)
-      //   .catch(error => console.error(`Error saving author gradient colors:`, error));
+      AuthorService.updateGradientColors(authorId, gradient.primary, gradient.secondary)
+        .catch(error => console.error(`Error saving author gradient colors:`, error));
     }
   }
 };

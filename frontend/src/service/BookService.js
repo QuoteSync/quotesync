@@ -194,9 +194,12 @@ const preloadBookCover = async (book) => {
 
 // Enhancement for existing book service methods to cache covers
 const enhanceWithCoverCache = (bookService) => {
+  // Create a new object that preserves all original methods
+  const enhancedService = { ...bookService };
+  
   // Wrap the original getBooks method to cache covers
-  const originalGetBooks = bookService.getBooks;
-  bookService.getBooks = async function() {
+  const originalGetBooks = enhancedService.getBooks;
+  enhancedService.getBooks = async function() {
     try {
       const books = await originalGetBooks.apply(this, arguments);
       
@@ -210,9 +213,38 @@ const enhanceWithCoverCache = (bookService) => {
     }
   };
   
-  // Similar enhancements for other methods that return books
+  // Wrap getBooksByAuthor to also cache covers
+  const originalGetBooksByAuthor = enhancedService.getBooksByAuthor;
+  enhancedService.getBooksByAuthor = async function(authorId) {
+    try {
+      const books = await originalGetBooksByAuthor.apply(this, arguments);
+      
+      // Preload covers for the first 10 books (to avoid too many requests)
+      Promise.all(books.slice(0, 10).map(book => preloadBookCover(book)));
+      
+      return books;
+    } catch (error) {
+      console.error('Error in enhanced getBooksByAuthor:', error);
+      throw error;
+    }
+  };
   
-  return bookService;
+  // Add backward compatibility for updateGradientColors
+  enhancedService.updateGradientColors = async function(bookId, primaryColor, secondaryColor) {
+    try {
+      // Use PATCH instead of PUT for partial updates
+      const response = await apiClient.patch(`/books/${bookId}/`, {
+        gradient_primary_color: primaryColor,
+        gradient_secondary_color: secondaryColor
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error in enhanced updateGradientColors:', error);
+      throw error;
+    }
+  };
+  
+  return enhancedService;
 };
 
 // Get cover URL (from cache if available, otherwise fetch and cache)
@@ -288,14 +320,6 @@ const baseBookService = {
     
     async getBooksByAuthor(authorId) {
         const response = await apiClient.get(`/books/?author=${authorId}`);
-        return response.data;
-    },
-    
-    async updateGradientColors(bookId, primaryColor, secondaryColor) {
-        const response = await apiClient.patch(`/books/${bookId}/`, {
-            gradient_primary_color: primaryColor,
-            gradient_secondary_color: secondaryColor
-        });
         return response.data;
     },
     
