@@ -1460,3 +1460,54 @@ def user_goals(request):
             {'error': 'Failed to process user goals'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def search(request):
+    """
+    Global search endpoint for books, authors, tags, and quotes
+    """
+    query = request.query_params.get('query', '')
+    
+    if not query:
+        return Response({
+            'books': [],
+            'authors': [],
+            'tags': [],
+            'quotes': []
+        })
+    
+    # Perform search across models
+    books = Book.objects.filter(
+        Q(title__icontains=query) | 
+        Q(author__name__icontains=query)
+    )[:10]  # Limit to 10 results per category
+    
+    authors = Author.objects.filter(
+        name__icontains=query
+    )[:10]
+    
+    tags = Tag.objects.filter(
+        title__icontains=query
+    )[:10]
+    
+    # Add quotes search by body content
+    quotes = Quote.objects.filter(
+        Q(body__icontains=query) |
+        Q(title__icontains=query)
+    ).filter(
+        owner=request.user  # Only return quotes owned by the current user
+    )[:10]
+    
+    # Serialize the results
+    book_serializer = BookSerializer(books, many=True)
+    author_serializer = AuthorSerializer(authors, many=True)
+    tag_serializer = TagSerializer(tags, many=True)
+    quote_serializer = QuoteSerializer(quotes, many=True)
+    
+    return Response({
+        'books': book_serializer.data,
+        'authors': author_serializer.data,
+        'tags': tag_serializer.data,
+        'quotes': quote_serializer.data
+    })

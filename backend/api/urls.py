@@ -13,6 +13,7 @@ from .views import (
     upload_avatar_direct,
     profile_update_direct,
     user_goals,
+    search,
 )
 
 router = DefaultRouter()
@@ -43,6 +44,7 @@ urlpatterns = [
     path('api/upload-avatar-direct/', upload_avatar_direct, name='upload-avatar-direct'),
     path('api/profile-update-direct/', profile_update_direct, name='profile-update-direct'),
     path('api/users/goals/', user_goals, name='user-goals'),
+    path('api/search/', search, name='search'),
 ]
 
 # Map the UserViewSet action URLs in a more friendly way

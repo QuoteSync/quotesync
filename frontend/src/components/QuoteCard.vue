@@ -57,7 +57,7 @@
       </div>
     </div>
     <div v-else>
-      <p class="text-xl italic cursor-pointer hover:text-primary-500 transition-colors" @click="navigateToQuoteDetails">"{{ quote.body }}"</p>
+      <p class="text-xl italic cursor-pointer hover:text-primary-500 transition-colors" @click="openQuoteModal">"{{ quote.body }}"</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <div
           v-for="(tag, idx) in quote.tags"
@@ -108,6 +108,20 @@
       </div>
     </div>
     
+    <!-- Quote Modal -->
+    <QuoteModal
+      v-model:visible="showModal"
+      :quote="quote"
+      :liked="liked"
+      :has-previous="hasPrevious"
+      :has-next="hasNext"
+      @toggle-like="$emit('toggle-like', quote.id)"
+      @add-tag="handleAddTag"
+      @remove-tag="handleRemoveTag"
+      @previous-quote="emitPreviousQuote"
+      @next-quote="emitNextQuote"
+    />
+    
     <!-- Actions Menu -->
     <div v-if="showActions" class="absolute top-2 right-2">
       <Button
@@ -133,7 +147,9 @@ import { ref, watch, computed, defineProps, defineEmits } from "vue";
 import { useRouter } from "vue-router";
 import { TagService } from "@/service/TagService";
 import { QuoteListService } from '@/service/QuoteListService';
+import { QuoteService } from '@/service/QuoteService';
 import QuoteListMenu from './QuoteListMenu.vue';
+import QuoteModal from './QuoteModal.vue';
 import Menu from 'primevue/menu';
 
 const router = useRouter();
@@ -151,15 +167,35 @@ const props = defineProps({
   showRemoveButton: {
     type: Boolean,
     default: true
+  },
+  hasPrevious: {
+    type: Boolean,
+    default: false
+  },
+  hasNext: {
+    type: Boolean,
+    default: false
   }
 });
 
-const emit = defineEmits(["toggle-like", "save-edit", "save-new", "cancel-edit", "remove-quote"]);
+const emit = defineEmits([
+  "toggle-like", 
+  "save-edit", 
+  "save-new", 
+  "cancel-edit", 
+  "remove-quote",
+  "previous-quote",
+  "next-quote",
+  "click",
+  "update-quote"
+]);
 
 const isEditing = ref(props.isNew); // Si es nueva, ya iniciamos en modo edición.
 const editedText = ref(props.isNew ? "" : props.quote.body);
 const editedTagsArray = ref(props.quote.tags.map((tag) => tag.title) || []);
 const newTag = ref("");
+const showModal = ref(false);
+const isAnyModalOpen = ref(false);
 
 // Computed property para el icono del corazón.
 const heartIconClass = computed(() =>
@@ -194,6 +230,7 @@ const startEdit = () => {
   editedText.value = props.quote.body;
   editedTagsArray.value = props.quote.tags.map((tag) => tag.title);
   newTag.value = "";
+  showModal.value = false; // Close modal if open
 };
 
 const cancelEdit = () => {
@@ -311,10 +348,78 @@ const toggleMenu = (event) => {
   menu.value.toggle(event);
 };
 
-const navigateToQuoteDetails = () => {
-  console.log("Navigating to quote details:", props.quote.id);
-  router.push({ name: 'quoteDetails', params: { id: props.quote.id } });
+const openQuoteModal = () => {
+  if (!isAnyModalOpen.value) {
+    isAnyModalOpen.value = true;
+    showModal.value = true;
+    
+    // We'll emit the click event to let the parent know which quote is active
+    emit("click", {
+      ...props.quote,
+      _preventModalOpen: true
+    });
+  }
 };
+
+const handleAddTag = async ({ quoteId, tag }) => {
+  try {
+    // First, create or get the tag
+    const tagResponse = await TagService.createTag({ title: tag });
+    const tagId = tagResponse.id;
+
+    // Then, add the tag to the quote
+    await QuoteService.addTagToQuote(quoteId, tagId);
+
+    // Update the local quote data
+    const updatedQuote = await QuoteService.getQuote(quoteId);
+    if (updatedQuote) {
+      emit('update-quote', updatedQuote);
+    }
+  } catch (error) {
+    console.error('Error adding tag:', error);
+    // You might want to show an error message to the user here
+  }
+};
+
+const handleRemoveTag = async ({ quoteId, tagId }) => {
+  try {
+    await QuoteService.removeTagFromQuote(quoteId, tagId);
+    
+    // Update the local quote data
+    const updatedQuote = await QuoteService.getQuote(quoteId);
+    if (updatedQuote) {
+      emit('update-quote', updatedQuote);
+    }
+  } catch (error) {
+    console.error('Error removing tag:', error);
+    // You might want to show an error message to the user here
+  }
+};
+
+const emitPreviousQuote = () => {
+  // Close the modal first
+  showModal.value = false;
+  // Then emit the event after a short delay
+  setTimeout(() => {
+    emit('previous-quote');
+  }, 50);
+};
+
+const emitNextQuote = () => {
+  // Close the modal first
+  showModal.value = false;
+  // Then emit the event after a short delay
+  setTimeout(() => {
+    emit('next-quote');
+  }, 50);
+};
+
+watch(() => showModal.value, (newValue) => {
+  if (!newValue) {
+    // Our modal was closed
+    isAnyModalOpen.value = false;
+  }
+});
 </script>
 
 <style scoped>

@@ -10,6 +10,7 @@ import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import QuoteCard from '@/components/QuoteCard.vue';
+import QuoteModal from '@/components/QuoteModal.vue';
 import Checkbox from 'primevue/checkbox';
 
 const route = useRoute();
@@ -25,6 +26,11 @@ const quoteToDelete = ref(null);
 const showDeleteListDialog = ref(false);
 const likedQuotes = ref({});
 const savingOrder = ref(false);
+
+// Quote Modal state
+const showQuoteModal = ref(false);
+const selectedQuote = ref(null);
+const selectedQuoteIndex = ref(-1);
 
 // Sharing functionality
 const groups = ref([]);
@@ -324,6 +330,57 @@ const toggleGroupShare = async (groupId) => {
   }
 };
 
+// Handle opening the quote modal
+const openQuoteModal = (quote, index) => {
+  // Check if we should prevent opening a new modal (when the quote's modal is already open)
+  if (quote._preventModalOpen) {
+    // Just update the selected quote and index without toggling the modal visibility
+    selectedQuote.value = quote;
+    selectedQuoteIndex.value = index;
+    return;
+  }
+
+  // Normal flow - open the modal
+  selectedQuote.value = quote;
+  selectedQuoteIndex.value = index;
+  showQuoteModal.value = true;
+};
+
+// Handle navigating to the previous quote
+const navigateToPreviousQuote = () => {
+  if (selectedQuoteIndex.value > 0) {
+    selectedQuoteIndex.value -= 1;
+    selectedQuote.value = quoteList.value.quotes[selectedQuoteIndex.value];
+  }
+};
+
+// Handle navigating to the next quote
+const navigateToNextQuote = () => {
+  if (selectedQuoteIndex.value < quoteList.value.quotes.length - 1) {
+    selectedQuoteIndex.value += 1;
+    selectedQuote.value = quoteList.value.quotes[selectedQuoteIndex.value];
+  }
+};
+
+// Handle editing a quote from the modal
+const handleEditFromModal = (quote) => {
+  // Find the quote and trigger edit
+  const quoteInList = quoteList.value.quotes.find(q => q.id === quote.id);
+  if (quoteInList) {
+    showQuoteModal.value = false;
+    // Any additional logic for editing would go here
+  }
+};
+
+// Add this function after the other modal-related functions
+const closeAllModals = () => {
+  showQuoteModal.value = false;
+  showEditDialog.value = false;
+  showDeleteDialog.value = false;
+  showDeleteListDialog.value = false;
+  showShareDialog.value = false;
+};
+
 onMounted(async () => {
   await loadQuoteList();
   await loadGroups();
@@ -395,8 +452,13 @@ onMounted(async () => {
                 :quote="quote"
                 :liked="likedQuotes[quote.id]"
                 :showActions="true"
+                :has-previous="index > 0"
+                :has-next="index < quoteList.quotes.length - 1"
                 @toggle-like="toggleLikeQuote"
                 @remove-quote="handleRemoveQuote"
+                @previous-quote="navigateToPreviousQuote"
+                @next-quote="navigateToNextQuote"
+                @click="openQuoteModal(quote, index)"
               />
             </div>
           </div>
@@ -406,6 +468,21 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <!-- Quote Modal -->
+    <QuoteModal
+      v-if="selectedQuote"
+      v-model:visible="showQuoteModal"
+      :quote="selectedQuote"
+      :liked="selectedQuote ? likedQuotes[selectedQuote.id] : false"
+      :has-previous="selectedQuoteIndex > 0"
+      :has-next="selectedQuoteIndex < (quoteList?.quotes?.length || 0) - 1"
+      @toggle-like="toggleLikeQuote"
+      @edit-quote="handleEditFromModal"
+      @previous-quote="navigateToPreviousQuote"
+      @next-quote="navigateToNextQuote"
+      @close="closeAllModals"
+    />
 
     <!-- Share List Dialog -->
     <Dialog

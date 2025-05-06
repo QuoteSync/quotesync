@@ -11,6 +11,7 @@ import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import Textarea from "primevue/textarea";
 import { AuthorService } from "@/service/AuthorService";
+import QuoteModal from '@/components/QuoteModal.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -44,6 +45,11 @@ const likedQuotes = ref({});
 const selectedTag = ref("");
 const showFavorites = ref(false);
 const selectedChapter = ref(""); // New: For chapter filtering
+
+// Add the modal state variables
+const showQuoteModal = ref(false);
+const selectedQuote = ref(null);
+const selectedQuoteIndex = ref(-1);
 
 // Compute all unique chapters from quotes
 const availableChapters = computed(() => {
@@ -333,6 +339,34 @@ const handleAuthorImageError = (author) => {
     author.gradient_primary_color = gradient.primary;
     author.gradient_secondary_color = gradient.secondary;
   }
+};
+
+// Add functions to handle the modal
+const openQuoteModal = (quote) => {
+  // Find the index of the quote in filteredQuotes
+  const index = filteredQuotes.value.findIndex(q => q.id === quote.id);
+  selectedQuote.value = quote;
+  selectedQuoteIndex.value = index;
+  showQuoteModal.value = true;
+};
+
+const navigateToPreviousQuote = () => {
+  if (selectedQuoteIndex.value > 0) {
+    selectedQuoteIndex.value -= 1;
+    selectedQuote.value = filteredQuotes.value[selectedQuoteIndex.value];
+  }
+};
+
+const navigateToNextQuote = () => {
+  if (selectedQuoteIndex.value < filteredQuotes.value.length - 1) {
+    selectedQuoteIndex.value += 1;
+    selectedQuote.value = filteredQuotes.value[selectedQuoteIndex.value];
+  }
+};
+
+const handleEditFromModal = (quote) => {
+  showQuoteModal.value = false;
+  // Any additional logic for editing would go here
 };
 </script>
 
@@ -818,13 +852,18 @@ const handleAuthorImageError = (author) => {
       <!-- Sección de Citas usando el componente QuoteCard -->
       <div class="mt-10">
         <div v-if="filteredQuotes && filteredQuotes.length" class="flex flex-col gap-6">
-          <div v-for="quote in filteredQuotes" :key="quote.id" class="quote-container">
+          <div v-for="(quote, index) in filteredQuotes" :key="quote.id" class="quote-container">
             <QuoteCard
               :quote="quote"
               :liked="likedQuotes[quote.id]"
+              :has-previous="index > 0"
+              :has-next="index < filteredQuotes.length - 1"
               @toggle-like="toggleLikeQuote"
               @save-edit="saveEditedQuote"
               @cancel-edit="cancelEditingQuote"
+              @previous-quote="navigateToPreviousQuote"
+              @next-quote="navigateToNextQuote"
+              @click="openQuoteModal(quote)"
             />
             
             <!-- Display chapter information if present -->
@@ -850,6 +889,20 @@ const handleAuthorImageError = (author) => {
   <div v-else class="flex justify-center items-center h-full">
     <p>Loading...</p>
   </div>
+
+  <!-- Add the QuoteModal component -->
+  <QuoteModal
+    v-if="selectedQuote"
+    v-model:visible="showQuoteModal"
+    :quote="selectedQuote"
+    :liked="selectedQuote ? likedQuotes[selectedQuote.id] : false"
+    :has-previous="selectedQuoteIndex > 0"
+    :has-next="selectedQuoteIndex < (filteredQuotes?.length || 0) - 1"
+    @toggle-like="toggleLikeQuote"
+    @edit-quote="handleEditFromModal"
+    @previous-quote="navigateToPreviousQuote"
+    @next-quote="navigateToNextQuote"
+  />
 </template>
 
 <style scoped>

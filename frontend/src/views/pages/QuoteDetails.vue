@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { QuoteService } from '@/service/QuoteService';
 import { useToast } from 'primevue/usetoast';
@@ -310,6 +310,13 @@ const deleteQuote = async () => {
 const goBack = () => {
   router.back();
 };
+
+// Watch for route parameter changes to reload data when navigating between quotes
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId && newId !== oldId) {
+    fetchQuote();
+  }
+}, { immediate: false });
 
 onMounted(() => {
   fetchQuote();
