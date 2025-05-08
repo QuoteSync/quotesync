@@ -45,5 +45,10 @@ export const QuoteListService = {
             quote_ids: quoteIds
         });
         return response.data;
+    },
+    
+    async getSharedLists() {
+        const response = await apiClient.get("quote-lists/shared/");
+        return response.data;
     }
 }; 

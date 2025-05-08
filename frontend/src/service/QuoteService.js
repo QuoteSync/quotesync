@@ -1,5 +1,6 @@
 // src/service/QuoteService.js
 import { apiClient } from "@/api";
+import { EventBus } from "./EventBusService";
 
 export const QuoteService = {
     // Fetch all quotes from the Django API
@@ -67,6 +68,11 @@ export const QuoteService = {
     
     async toggleFavorite(quoteId) {
         const response = await apiClient.post(`quotes/${quoteId}/toggle_favorite/`);
+        // Emit an event for the favorite status change
+        EventBus.emit('quote:favoriteChanged', {
+            quoteId: quoteId,
+            isFavorite: response.data.is_favorite
+        });
         return response.data;
     },
 
