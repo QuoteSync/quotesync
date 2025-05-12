@@ -15,6 +15,7 @@ from .views import (
     user_goals,
     search,
 )
+from .views_deepseek import DeepSeekTagView, DeepSeekRelatedView, DeepSeekChatView, DeepSeekRelatedByTextView, DeepSeekContextView
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -45,6 +46,13 @@ urlpatterns = [
     path('api/profile-update-direct/', profile_update_direct, name='profile-update-direct'),
     path('api/users/goals/', user_goals, name='user-goals'),
     path('api/search/', search, name='search'),
+    
+    # DeepSeek AI endpoints
+    path('api/deepseek/tag', DeepSeekTagView.as_view(), name='deepseek-tag'),
+    path('api/deepseek/related', DeepSeekRelatedView.as_view(), name='deepseek-related'),
+    path('api/deepseek/related-by-text', DeepSeekRelatedByTextView.as_view(), name='deepseek-related-by-text'),
+    path('api/deepseek/chat', DeepSeekChatView.as_view(), name='deepseek-chat'),
+    path('api/deepseek/context', DeepSeekContextView.as_view(), name='deepseek-context'),
 ]
 
 # Map the UserViewSet action URLs in a more friendly way

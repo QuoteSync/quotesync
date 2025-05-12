@@ -60,9 +60,10 @@
       <p class="text-xl italic cursor-pointer hover:text-primary-500 transition-colors" @click="openQuoteModal">"{{ quote.body }}"</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <div
-          v-for="(tag, idx) in quote.tags"
-          :key="idx"
-          class="px-3 py-1 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90"
+          v-for="(tag, idx) in localQuote.tags"
+          :key="tag.id || idx"
+          class="px-3 py-1 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90 tag-pill"
+          :class="{ 'newly-added-tag': tag.isNew }"
           :style="{ background: tag.gradient_primary_color && tag.gradient_secondary_color ? 
             `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
             'linear-gradient(135deg, #3B82F6, #1E3A8A)' }"
@@ -98,6 +99,11 @@
             icon="pi pi-pencil"
             class="p-button-rounded p-button-text"
             @click="startEdit"
+          />
+          <GenerateTagsButton
+            :quote="quote"
+            class="p-button-rounded p-button-text"
+            @tag-accepted="handleAddTag"
           />
           <QuoteListMenu
             :quoteId="quote.id"
@@ -139,6 +145,16 @@
         aria-controls="overlay_menu"
       />
     </div>
+    
+    <!-- AI Tag Review Panel -->
+    <Sidebar v-model:visible="showTagReviewPanel" position="right" :style="{ width: '30rem' }">
+      <TagReviewPanel 
+        :quote="quote" 
+        @close="showTagReviewPanel = false"
+        @update-quote="handleTagUpdate" 
+        @view-quote="handleRelatedQuoteView"
+      />
+    </Sidebar>
   </div>
 </template>
 
@@ -150,7 +166,11 @@ import { QuoteListService } from '@/service/QuoteListService';
 import { QuoteService } from '@/service/QuoteService';
 import QuoteListMenu from './QuoteListMenu.vue';
 import QuoteModal from './QuoteModal.vue';
+import TagReviewPanel from './TagReviewPanel.vue';
+import GenerateTagsButton from './GenerateTagsButton.vue';
 import Menu from 'primevue/menu';
+import Sidebar from 'primevue/sidebar';
+import { useToast } from "primevue/usetoast";
 
 const router = useRouter();
 const props = defineProps({
@@ -196,6 +216,15 @@ const editedTagsArray = ref(props.quote.tags.map((tag) => tag.title) || []);
 const newTag = ref("");
 const showModal = ref(false);
 const isAnyModalOpen = ref(false);
+const toast = useToast();
+
+// Make a reactive copy of the quote for local modifications
+const localQuote = ref({ ...props.quote });
+
+// Watch for changes in props.quote and update localQuote
+watch(() => props.quote, (newQuote) => {
+  localQuote.value = { ...newQuote };
+}, { deep: true });
 
 // Computed property para el icono del corazón.
 const heartIconClass = computed(() =>
@@ -341,8 +370,29 @@ const menuItems = ref([
     command: () => {
       emit('remove-quote', props.quote.id);
     }
+  },
+  {
+    label: 'AI Tag Suggestions',
+    icon: 'pi pi-bolt',
+    command: () => {
+      showTagReviewPanel.value = true;
+    }
   }
 ]);
+
+// AI Tag Review Panel
+const showTagReviewPanel = ref(false);
+
+// Handle tag update from AI
+const handleTagUpdate = ({ quoteId, tag }) => {
+  handleAddTag(tag.title);
+};
+
+// Handle related quote view
+const handleRelatedQuoteView = (quote) => {
+  // Navigate to the related quote
+  window.location.href = `/quotes/${quote.id}`;
+};
 
 const toggleMenu = (event) => {
   menu.value.toggle(event);
@@ -361,23 +411,73 @@ const openQuoteModal = () => {
   }
 };
 
-const handleAddTag = async ({ quoteId, tag }) => {
+const handleAddTag = async (tagTitle) => {
   try {
-    // First, create or get the tag
-    const tagResponse = await TagService.createTag({ title: tag });
-    const tagId = tagResponse.id;
-
-    // Then, add the tag to the quote
-    await QuoteService.addTagToQuote(quoteId, tagId);
-
-    // Update the local quote data
-    const updatedQuote = await QuoteService.getQuote(quoteId);
-    if (updatedQuote) {
-      emit('update-quote', updatedQuote);
+    console.log('Adding tag:', tagTitle);
+    
+    // Create a new tag object with the original title for display
+    const newTag = {
+      id: `temp-${Date.now()}`, // Temporary ID until the backend provides one
+      title: tagTitle, // Original title with spaces and accents
+      // Use default gradient colors
+      gradient_primary_color: '#3B82F6',
+      gradient_secondary_color: '#1E3A8A',
+      isNew: true // Mark as newly added for animation
+    };
+    
+    // Initialize tags array if it doesn't exist
+    if (!localQuote.value.tags) {
+      localQuote.value.tags = [];
+    }
+    
+    // Add the tag to the quote's tags if it doesn't already exist
+    if (!localQuote.value.tags.some(tag => tag.title.toLowerCase() === tagTitle.toLowerCase())) {
+      // Add the new tag to the local quote object - directly updating the reactive variable
+      localQuote.value.tags = [...localQuote.value.tags, newTag];
+      
+      console.log('Updated localQuote tags:', localQuote.value.tags);
+      
+      // Emit the update-quote event to update parent state for persistence
+      emit('update-quote', { ...localQuote.value });
+      
+      // Remove the "new" status after animation completes
+      setTimeout(() => {
+        const tagIndex = localQuote.value.tags.findIndex(t => t.id === newTag.id);
+        if (tagIndex !== -1) {
+          localQuote.value.tags[tagIndex].isNew = false;
+        }
+      }, 6000); // 3 iterations of 2s animation
+      
+      // Call the backend to persist the change
+      try {
+        // First try to create or get the tag using TagService
+        // TagService will convert the title to a slug format internally
+        const tagResponse = await TagService.createTag({ 
+          title: tagTitle,
+          // Store the original title in the description field
+          description: tagTitle
+        });
+        
+        // Then add it to the quote if we have a valid tag ID
+        if (tagResponse && tagResponse.id) {
+          // Update our temporary tag with the real ID from the server
+          const tagIndex = localQuote.value.tags.findIndex(t => t.id === newTag.id);
+          if (tagIndex !== -1) {
+            // Update the tag in our local quote with the real ID
+            localQuote.value.tags[tagIndex].id = tagResponse.id;
+          }
+          
+          // Persist to backend
+          await QuoteService.addTagToQuote(localQuote.value.id, tagResponse.id);
+        }
+      } catch (apiError) {
+        console.error('API error adding tag:', apiError);
+      }
+    } else {
+      console.log('Tag already exists:', tagTitle);
     }
   } catch (error) {
     console.error('Error adding tag:', error);
-    // You might want to show an error message to the user here
   }
 };
 
@@ -604,5 +704,30 @@ watch(() => showModal.value, (newValue) => {
 
 :deep(.dark .p-menu-item .p-menuitem-icon) {
   color: #9CA3AF;
+}
+
+.tag-pill {
+  transition: all 0.3s ease;
+}
+
+.newly-added-tag {
+  animation: pulsate 2s ease-out;
+  animation-iteration-count: 3;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+}
+
+@keyframes pulsate {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 24px rgba(59, 130, 246, 1);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+  }
 }
 </style>

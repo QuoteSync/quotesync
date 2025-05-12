@@ -30,6 +30,14 @@ const model = ref([
     ],
   },
   {
+    label: "AI Tools",
+    items: [
+      { label: "AI Chat Assistant", icon: "pi pi-fw pi-comments", to: "/ai-chat" },
+      { label: "Advanced Search", icon: "pi pi-fw pi-search", to: "/advanced-search" },
+      { label: "Auto Tag Quotes", icon: "pi pi-fw pi-tags", to: "/auto-tag-quotes" },
+    ],
+  },
+  {
     label: "Social",
     items: socialItems
   },

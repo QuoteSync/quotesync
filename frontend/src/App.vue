@@ -1,6 +1,7 @@
 <script setup>
 import { useLayout } from './layout/composables/layout';
 import { onMounted } from 'vue';
+import Toast from 'primevue/toast';
 
 // Import our SpotlightOverlay component
 import SpotlightOverlay from './components/SpotlightOverlay.vue';
@@ -35,6 +36,7 @@ onMounted(() => {
 
 <template>
   <div :class="{ 'dark': isDarkTheme }">
+    <Toast position="top-right" />
     <router-view />
     <SpotlightOverlay />
   </div>

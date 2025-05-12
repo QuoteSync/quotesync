@@ -14,4 +14,9 @@ docx2txt>=0.8
 python-docx>=1.0.0
 
 # Utilities
-pillow>=10.0.0 
+pillow>=10.0.0
+
+# Ollama integration
+numpy>=1.24.3
+httpx>=0.24.1
+requests>=2.31.0 

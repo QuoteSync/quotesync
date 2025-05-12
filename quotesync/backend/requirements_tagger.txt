@@ -1,6 +1,0 @@
-torch>=1.10.0
-transformers>=4.16.0
-numpy>=1.20.0
-# Using a pre-built wheel for sentencepiece when available
-sentencepiece>=0.1.96; platform_system != "Darwin"  
-# For macOS, provide instructions in the setup script instead 

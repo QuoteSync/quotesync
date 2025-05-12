@@ -217,6 +217,29 @@ const router = createRouter({
           name: 'Profile',
           component: Profile,
           meta: { requiresAuth: true }
+        },
+        {
+          path: '/chat',
+          name: 'chat',
+          component: () => import('@/views/pages/QuoteSyncChat.vue'),
+        },
+        {
+          path: '/ai-chat',
+          name: 'aiChat',
+          component: () => import('@/views/pages/QuoteSyncChat.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: '/advanced-search',
+          name: 'advancedSearch',
+          component: () => import('@/views/pages/AdvancedSearch.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: '/auto-tag-quotes',
+          name: 'autoTagQuotes',
+          component: () => import('@/views/pages/AutoTagQuotes.vue'),
+          meta: { requiresAuth: true }
         }
       ]
     },

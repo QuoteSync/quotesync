@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { QuoteService } from '@/service/QuoteService';
+import { TagService } from '@/service/TagService';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
 import Card from 'primevue/card';
@@ -13,6 +14,7 @@ import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 import axios from 'axios';
 import { getCookie } from '@/api';
+import GenerateTagsButton from '@/components/GenerateTagsButton.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -318,6 +320,111 @@ watch(() => route.params.id, (newId, oldId) => {
   }
 }, { immediate: false });
 
+// Utility to capitalize the first letter of each word
+const capitalizeWords = (str) => {
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
+// Handle adding a tag from AI suggestion
+const handleAddTag = async (tagTitle) => {
+  try {
+    console.log('Adding tag in QuoteDetails:', tagTitle);
+    
+    // Ensure the tag is properly capitalized
+    const capitalizedTagTitle = capitalizeWords(tagTitle);
+    
+    // Update the UI immediately with a temporary tag
+    if (quote.value) {
+      // Initialize tags_data array if it doesn't exist
+      if (!quote.value.tags_data) {
+        quote.value.tags_data = [];
+      }
+      
+      // Avoid duplicates
+      if (!quote.value.tags_data.some(tag => tag.title === capitalizedTagTitle)) {
+        // Add new tag locally with temporary ID and default gradient
+        const tempTag = {
+          id: `temp-${Date.now()}`,
+          title: capitalizedTagTitle, // Capitalized title
+          gradient_primary_color: '#3B82F6',
+          gradient_secondary_color: '#1E3A8A',
+          isNew: true // Mark as newly added for animation
+        };
+        
+        // Update local state
+        quote.value.tags_data = [...quote.value.tags_data, tempTag];
+        
+        // If tags array exists, update it too
+        if (quote.value.tags) {
+          quote.value.tags.push(tempTag);
+        }
+        
+        // Remove the "new" status after animation completes
+        setTimeout(() => {
+          if (quote.value && quote.value.tags_data) {
+            const tagIndex = quote.value.tags_data.findIndex(t => t.id === tempTag.id);
+            if (tagIndex !== -1) {
+              quote.value.tags_data[tagIndex].isNew = false;
+            }
+          }
+        }, 6000); // 3 iterations of 2s animation
+      
+        // Then persist the change to the backend
+        try {
+          // First, create or get the tag using TagService
+          // TagService will convert the title to a slug format internally
+          const tagResponse = await TagService.createTag({ 
+            title: capitalizedTagTitle,
+            // Store the original title in the description field
+            description: capitalizedTagTitle
+          });
+          const tagId = tagResponse.id;
+  
+          // Then, add the tag to the quote
+          await QuoteService.addTagToQuote(quote.value.id, tagId);
+  
+          // Replace our temporary tag with the real one from the server
+          const tempTagIndex = quote.value.tags_data.findIndex(t => t.id === tempTag.id);
+          if (tempTagIndex !== -1) {
+            const realTag = {
+              ...tempTag,
+              id: tagId
+            };
+            quote.value.tags_data[tempTagIndex] = realTag;
+          }
+          
+          toast.add({
+            severity: 'success',
+            summary: 'Tag Added',
+            detail: `Added tag "${capitalizedTagTitle}" to quote`,
+            life: 3000
+          });
+        } catch (apiError) {
+          console.error('API error:', apiError);
+          // Since we've already updated the UI, no need to show an error to the user
+          // Just refresh the quote to get the accurate state
+          await fetchQuote();
+        }
+      } else {
+        toast.add({
+          severity: 'info',
+          summary: 'Tag Already Exists',
+          detail: `The tag "${capitalizedTagTitle}" is already applied to this quote`,
+          life: 3000
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error adding tag:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Failed to Add Tag',
+      detail: 'An error occurred while adding the tag',
+      life: 3000
+    });
+  }
+};
+
 onMounted(() => {
   fetchQuote();
 });
@@ -328,6 +435,11 @@ onMounted(() => {
     <div class="flex justify-content-between align-items-center mb-4">
       <Button icon="pi pi-arrow-left" label="Back" class="p-button-text" @click="goBack" />
       <div v-if="!loading && quote">
+        <GenerateTagsButton
+          :quote="quote"
+          class="p-button-text mr-2"
+          @tag-accepted="handleAddTag"
+        />
         <Button icon="pi pi-pencil" class="p-button-text mr-2" @click="openEditDialog" />
         <Button 
           :icon="quote.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'" 
@@ -427,8 +539,9 @@ onMounted(() => {
               <div v-if="quote.tags_data && quote.tags_data.length > 0" class="flex flex-wrap gap-2">
                 <div
                   v-for="(tag, idx) in quote.tags_data"
-                  :key="idx"
-                  class="px-3 py-1 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90"
+                  :key="tag.id || idx"
+                  class="px-3 py-1 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90 tag-pill"
+                  :class="{ 'newly-added-tag': tag.isNew }"
                   :style="{ background: tag.gradient_primary_color && tag.gradient_secondary_color ? 
                     `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
                     'linear-gradient(135deg, #3B82F6, #1E3A8A)' }"
@@ -779,15 +892,27 @@ onMounted(() => {
 }
 
 .tag-pill {
-  border-radius: 50px;
-  display: inline-flex;
-  align-items: center;
-  transition: all 0.2s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
-.tag-pill:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+.newly-added-tag {
+  animation: pulsate 2s ease-out;
+  animation-iteration-count: 3;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+}
+
+@keyframes pulsate {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 24px rgba(59, 130, 246, 1);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+  }
 }
 </style> 

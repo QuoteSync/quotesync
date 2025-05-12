@@ -248,3 +248,9 @@ AUTH_USER_MODEL = 'api.User'
 
 # Change email backend to console for development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Importing local settings if available
+try:
+    from .local_settings import *
+except ImportError:
+    pass

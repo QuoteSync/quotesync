@@ -1,11 +1,13 @@
 <script setup>
 import { QuoteService } from "@/service/QuoteService";
+import { TagService } from "@/service/TagService";
 import { FilterMatchMode } from "@primevue/core/api";
 import { useToast } from "primevue/usetoast";
 import { onMounted, ref } from "vue";
 import axios from "axios";
 // import { getCookie } from "@/utils/csrf"; // Ensure you have a utility to get CSRF token
 import { apiClient, getCookie } from "@/api";
+import GenerateTagsButton from '@/components/GenerateTagsButton.vue';
 
 // Reactive variables
 const toast = useToast();
@@ -28,7 +30,7 @@ function fetchQuotes() {
     console.log("API Response:", data);
     quotes.value = data.map((item) => ({
       archive: item.archive,
-      // Map the API’s "body" field to our "quote" property
+      // Map the API's "body" field to our "quote" property
       quote: item.body,
       created: item.created,
       id: item.id,
@@ -228,6 +230,113 @@ async function handleFileUpload(event) {
     });
   }
 }
+
+// Utility to capitalize the first letter of each word
+const capitalizeWords = (str) => {
+  return str.replace(/\b\w/g, char => char.toUpperCase());
+};
+
+// Add a new method to handle tag addition
+function handleAddTag(quoteData, tagTitle) {
+  console.log('Adding tag in Quotes view:', tagTitle);
+  
+  // Ensure the tag is properly capitalized
+  const capitalizedTagTitle = capitalizeWords(tagTitle);
+  
+  // Update UI immediately
+  const quoteIndex = quotes.value.findIndex(q => q.id === quoteData.id);
+  
+  if (quoteIndex !== -1) {
+    // Clone the quote
+    const updatedQuote = { ...quotes.value[quoteIndex] };
+    
+    // Initialize tags array if needed
+    if (!updatedQuote.tags) {
+      updatedQuote.tags = [];
+    }
+    
+    // Create a temporary tag with generated ID
+    const tempTag = {
+      id: `temp-${Date.now()}`,
+      title: capitalizedTagTitle, // Capitalized title
+      isNew: true // Mark as newly added for animation
+    };
+    
+    // Add the tag if it doesn't exist already
+    if (!updatedQuote.tags.some(tag => tag.title === capitalizedTagTitle)) {
+      updatedQuote.tags = [...updatedQuote.tags, tempTag];
+      
+      // Update the quotes array
+      quotes.value[quoteIndex] = updatedQuote;
+      
+      // Remove the "new" status after animation completes
+      setTimeout(() => {
+        const quoteToUpdate = quotes.value[quoteIndex];
+        if (quoteToUpdate && quoteToUpdate.tags) {
+          const tagIndex = quoteToUpdate.tags.findIndex(t => t.id === tempTag.id);
+          if (tagIndex !== -1) {
+            quoteToUpdate.tags[tagIndex].isNew = false;
+            // Update the quotes array
+            quotes.value[quoteIndex] = { ...quoteToUpdate };
+          }
+        }
+      }, 6000); // 3 iterations of 2s animation
+      
+      // Then call your existing service to create and add the tag
+      // TagService will convert the title to a slug format internally
+      TagService.createTag({ 
+        title: capitalizedTagTitle,
+        // Store the original title in the description field
+        description: capitalizedTagTitle
+      })
+        .then(newTag => {
+          // Update the temporary tag with the real ID
+          const realTag = {
+            ...tempTag,
+            id: newTag.id
+          };
+          
+          // Find and update the tag in our quotes array
+          const quoteToUpdate = quotes.value[quoteIndex];
+          const tagIndex = quoteToUpdate.tags.findIndex(t => t.id === tempTag.id);
+          if (tagIndex !== -1) {
+            quoteToUpdate.tags[tagIndex] = realTag;
+            // Update the quotes array
+            quotes.value[quoteIndex] = quoteToUpdate;
+          }
+          
+          return QuoteService.addTagToQuote(quoteData.id, newTag.id);
+        })
+        .then(() => {
+          toast.add({
+            severity: 'success',
+            summary: 'Tag Added',
+            detail: `Added tag "${capitalizedTagTitle}" to quote`,
+            life: 3000
+          });
+        })
+        .catch(error => {
+          console.error('Error adding tag:', error);
+          // Refresh quotes to ensure consistent state
+          fetchQuotes();
+          
+          toast.add({
+            severity: 'error',
+            summary: 'Failed to Add Tag',
+            detail: 'An error occurred while adding the tag',
+            life: 3000
+          });
+        });
+    } else {
+      toast.add({
+        severity: 'info',
+        summary: 'Tag Already Exists',
+        detail: `The tag "${capitalizedTagTitle}" is already applied to this quote`,
+        life: 3000
+      });
+    }
+  }
+}
 </script>
 
 <template>
@@ -314,27 +423,36 @@ async function handleFileUpload(event) {
         <Column field="quote" header="Quote" sortable style="min-width: 16rem" />
         <Column field="tags" header="Tags" sortable style="min-width: 12rem">
           <template #body="slotProps">
-            <span v-for="tag in slotProps.data.tags" :key="tag.id" class="mr-2">
-              <Tag :value="tag.title" />
-            </span>
+            <div class="flex flex-wrap gap-1">
+              <span v-for="tag in slotProps.data.tags" :key="tag.id || tag.title" class="mr-1">
+                <Tag 
+                  :value="tag.title" 
+                  :class="{'newly-added-tag': tag.isNew}" 
+                  severity="info"
+                />
+              </span>
+            </div>
           </template>
         </Column>
         <Column :exportable="false" style="min-width: 12rem">
           <template #body="slotProps">
-            <Button
-              icon="pi pi-pencil"
-              outlined
-              rounded
-              class="mr-2"
-              @click="editQuote(slotProps.data)"
-            />
-            <Button
-              icon="pi pi-trash"
-              outlined
-              rounded
-              severity="danger"
-              @click="confirmDeleteQuote(slotProps.data)"
-            />
+            <div class="flex">
+              <Button
+                icon="pi pi-pencil"
+                class="p-button-rounded p-button-text p-button-sm"
+                @click="editQuote(slotProps.data)"
+              />
+              <GenerateTagsButton
+                :quote="slotProps.data"
+                class="p-button-rounded p-button-text p-button-sm"
+                @tag-accepted="handleAddTag(slotProps.data, $event)"
+              />
+              <Button
+                icon="pi pi-trash"
+                class="p-button-rounded p-button-text p-button-danger p-button-sm"
+                @click="confirmDeleteQuote(slotProps.data)"
+              />
+            </div>
           </template>
         </Column>
       </DataTable>
@@ -462,3 +580,26 @@ async function handleFileUpload(event) {
     </Dialog>
   </div>
 </template>
+
+<style>
+.newly-added-tag {
+  animation: pulsate 2s ease-out;
+  animation-iteration-count: 3;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.8) !important;
+}
+
+@keyframes pulsate {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8) !important;
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 18px rgba(59, 130, 246, 1) !important;
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8) !important;
+  }
+}
+</style>
