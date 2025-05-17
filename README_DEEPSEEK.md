@@ -4,6 +4,21 @@ This guide explains how to set up the DeepSeek-7b model via Ollama to power AI-d
 
 ## Features
 
+Extrae todos los tags únicos de la base de datos
+Pide a la IA (LLM) que identifique cuáles de esos tags son relevantes para la consulta del usuario
+Filtra las citas que tengan esos tags específicos identificados por la IA
+El nuevo proceso de búsqueda funciona así:
+Obtener todos los tags: Primero recoge todas las citas y extrae los tags únicos, normalizando cualquier formato extraño.
+Consultar a la IA: Le envía al LLM local la consulta del usuario y la lista completa de tags disponibles, pidiéndole que identifique cuáles son relevantes para la búsqueda.
+Filtrar por tags relevantes: Una vez la IA identifica los tags pertinentes, buscamos citas que contengan esos tags específicos.
+Métodos de respaldo: Si no encuentra citas con los tags sugeridos por la IA, usa búsqueda semántica o busca términos específicos en el contenido de las citas.
+Esto debería solucionar el problema por completo, ya que:
+La IA entenderá mejor el contexto de la consulta y seleccionará los tags adecuados
+No dependeremos de endpoints que no existen
+Trabajaremos con los tags reales disponibles en tu base de datos
+Tendremos varios métodos de respaldo para garantizar que siempre se encuentren citas
+Por ejemplo, cuando busques "citas sobre amor", la IA identificará tags como "amor", "pasión", "corazón", etc., y luego mostrará las citas que tengan esos tags.
+
 1. **Auto-Tagging Service**: Automatically generate tags for quotes using DeepSeek's language understanding
 2. **Related-Quote Search**: Find semantically similar quotes using vector embeddings
 3. **Real-Time Review UI**: Review and edit AI-suggested tags for your quotes

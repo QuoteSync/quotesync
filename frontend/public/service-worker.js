@@ -159,9 +159,20 @@ self.addEventListener('fetch', event => {
           }
           return response;
         })
-        .catch(() => {
+        .catch(error => {
+          console.error('[Service Worker] API fetch error:', error);
           // If network fails, try from cache
-          return caches.match(request);
+          return caches.match(request)
+            .then(cachedResponse => {
+              if (cachedResponse) {
+                return cachedResponse;
+              }
+              // If not in cache, return a proper error response
+              return new Response(JSON.stringify({ error: 'Network request failed' }), {
+                status: 503,
+                headers: { 'Content-Type': 'application/json' }
+              });
+            });
         })
     );
     return;

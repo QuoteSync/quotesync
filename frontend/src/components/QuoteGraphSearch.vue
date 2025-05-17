@@ -164,11 +164,12 @@
         </div>
         
         <!-- Search Button -->
-        <div class="search-button">
+        <div class="search-button mt-4">
           <Button 
             label="Search Quotes" 
             icon="pi pi-search" 
-            class="p-button-primary" 
+            class="w-full md:w-auto p-button-primary shadow-md" 
+            style="min-width: 150px; padding: 0.75rem 1.25rem;"
             @click="searchQuotes"
             :loading="loading"
             :disabled="filters.length === 0"
@@ -201,81 +202,28 @@
             </div>
           </template>
           
-          <template #list="slotProps">
+          <template #grid="slotProps">
             <div class="grid">
-              <div v-for="(item, index) in slotProps.items" :key="item.id" class="col-12">
-                <div class="flex flex-column md:flex-row align-items-start p-3 w-full border-bottom-1 surface-border">
-                  <div class="w-full">
-                    <p class="text-lg italic">"{{ item.body }}"</p>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                      <div
-                        v-for="(tag, idx) in item.tags"
-                        :key="idx"
-                        class="px-3 py-1 rounded-full text-white text-xs shadow-sm"
-                        :style="{ background: tag.gradient_primary_color && tag.gradient_secondary_color ? 
-                          `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
-                          'linear-gradient(135deg, #3B82F6, #1E3A8A)' }"
-                      >
-                        {{ tag.title }}
-                      </div>
-                    </div>
-                    <div class="mt-2 text-sm text-gray-500">
-                      {{ item.book?.title || 'Unknown book' }} - {{ item.book?.author?.name || 'Unknown author' }}
-                    </div>
-                    <div class="flex items-center gap-2 mt-2">
-                      <Button
-                        icon="pi pi-eye"
-                        class="p-button-rounded p-button-text"
-                        @click="viewQuote(item)"
-                      />
-                      <Button
-                        icon="pi pi-heart"
-                        :class="{ 'p-button-rounded': true, 'p-button-text': !item.is_favorite, 'p-button-danger': item.is_favorite }"
-                        @click="toggleFavorite(item)"
-                      />
-                    </div>
-                  </div>
-                </div>
+              <div v-for="item in slotProps.items" :key="item.id" class="col-12 sm:col-6 lg:col-4 xl:col-3 p-2">
+                <QuoteCard 
+                  :quote="item" 
+                  :liked="item.is_favorite"
+                  @toggle-like="toggleFavorite(item.id)"
+                  @click="viewQuote(item)"
+                />
               </div>
             </div>
           </template>
           
-          <template #grid="slotProps">
+          <template #list="slotProps">
             <div class="grid">
-              <div v-for="item in slotProps.items" :key="item.id" class="col-12 sm:col-6 lg:col-4 xl:col-3 p-2">
-                <div class="p-4 border border-surface-200 dark:border-surface-700 rounded-lg bg-white dark:bg-gray-800 h-full flex flex-column">
-                  <p class="text-base italic flex-grow">"{{ item.body.length > 150 ? item.body.substring(0, 150) + '...' : item.body }}"</p>
-                  <div class="flex flex-wrap gap-2 mt-2">
-                    <div
-                      v-for="(tag, idx) in item.tags.slice(0, 3)"
-                      :key="idx"
-                      class="px-3 py-1 rounded-full text-white text-xs shadow-sm"
-                      :style="{ background: tag.gradient_primary_color && tag.gradient_secondary_color ? 
-                        `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
-                        'linear-gradient(135deg, #3B82F6, #1E3A8A)' }"
-                    >
-                      {{ tag.title }}
-                    </div>
-                    <div v-if="item.tags.length > 3" class="px-3 py-1 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-xs">
-                      +{{ item.tags.length - 3 }}
-                    </div>
-                  </div>
-                  <div class="mt-2 text-sm text-gray-500">
-                    {{ item.book?.title || 'Unknown book' }}
-                  </div>
-                  <div class="flex items-center justify-between mt-3">
-                    <Button
-                      icon="pi pi-eye"
-                      class="p-button-rounded p-button-text p-button-sm"
-                      @click="viewQuote(item)"
-                    />
-                    <Button
-                      icon="pi pi-heart"
-                      :class="{ 'p-button-rounded': true, 'p-button-text': !item.is_favorite, 'p-button-danger': item.is_favorite, 'p-button-sm': true }"
-                      @click="toggleFavorite(item)"
-                    />
-                  </div>
-                </div>
+              <div v-for="(item, index) in slotProps.items" :key="item.id" class="col-12 mb-3">
+                <QuoteCard 
+                  :quote="item" 
+                  :liked="item.is_favorite"
+                  @toggle-like="toggleFavorite(item.id)"
+                  @click="viewQuote(item)"
+                />
               </div>
             </div>
           </template>
@@ -294,6 +242,7 @@ import { TagService } from '@/service/TagService';
 import { AuthorService } from '@/service/AuthorService';
 import { BookService } from '@/service/BookService';
 import { QuoteSyncChatService } from '@/service/QuoteSyncChatService';
+import QuoteCard from '@/components/QuoteCard.vue';
 
 import Panel from 'primevue/panel';
 import Button from 'primevue/button';
@@ -517,22 +466,22 @@ const viewQuote = (quote) => {
   router.push({ path: `/quotes/${quote.id}` });
 };
 
-const toggleFavorite = async (quote) => {
+const toggleFavorite = async (quoteId) => {
   try {
-    await QuoteService.toggleFavorite(quote.id);
-    
-    // Update the item in the results
-    const index = results.value.findIndex(q => q.id === quote.id);
+    const index = results.value.findIndex(q => q.id === quoteId);
     if (index !== -1) {
+      await QuoteService.toggleFavorite(quoteId);
+      
+      // Update the item in the results
       results.value[index].is_favorite = !results.value[index].is_favorite;
+      
+      toast.add({
+        severity: 'success',
+        summary: results.value[index].is_favorite ? 'Added to Favorites' : 'Removed from Favorites',
+        detail: results.value[index].is_favorite ? 'Quote added to favorites' : 'Quote removed from favorites',
+        life: 2000
+      });
     }
-    
-    toast.add({
-      severity: 'success',
-      summary: quote.is_favorite ? 'Removed from Favorites' : 'Added to Favorites',
-      detail: quote.is_favorite ? 'Quote removed from favorites' : 'Quote added to favorites',
-      life: 2000
-    });
   } catch (error) {
     console.error('Error toggling favorite:', error);
     toast.add({
@@ -594,6 +543,24 @@ onMounted(() => {
   font-size: 0.875rem;
 }
 
+.search-button :deep(.p-button) {
+  transition: all 0.2s ease;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  border: 1px solid var(--primary-color);
+}
+
+.search-button :deep(.p-button:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+  border-color: var(--primary-600);
+}
+
+.search-button :deep(.p-button:active) {
+  transform: translateY(0);
+  border-color: var(--primary-700);
+}
+
 :deep(.p-dataview .p-dataview-header) {
   background: transparent;
   border: none;
@@ -602,5 +569,31 @@ onMounted(() => {
 
 :deep(.p-dataview-grid .p-dataview-content) {
   background-color: transparent;
+}
+
+/* Quote card styles */
+.results-grid .grid .cursor-pointer {
+  cursor: pointer;
+}
+
+.results-grid .tag-pill {
+  transition: all 0.3s ease;
+}
+
+.results-grid :deep(.p-button:hover) {
+  background: #F3F4F6;
+}
+
+.results-grid :deep(.dark .p-button:hover) {
+  background: #374151;
+}
+
+.results-grid .p-4 {
+  transition: all 0.3s ease;
+}
+
+.results-grid .p-4:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 </style> 

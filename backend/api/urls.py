@@ -14,6 +14,7 @@ from .views import (
     profile_update_direct,
     user_goals,
     search,
+    import_history,
 )
 from .views_deepseek import DeepSeekTagView, DeepSeekRelatedView, DeepSeekChatView, DeepSeekRelatedByTextView, DeepSeekContextView
 
@@ -41,6 +42,7 @@ urlpatterns = [
     path('api/upload-quotes/', upload_quotes, name='upload_quotes'),
     path('api/upload-docx/', upload_docx, name='upload_docx'),
     path('api/upload-zip/', upload_zip, name='upload_zip'),
+    path('api/import-history/', import_history, name='import_history'),
     path('api/statistics/', get_statistics, name='get_statistics'),
     path('api/upload-avatar-direct/', upload_avatar_direct, name='upload-avatar-direct'),
     path('api/profile-update-direct/', profile_update_direct, name='profile-update-direct'),

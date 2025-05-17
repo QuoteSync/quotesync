@@ -240,9 +240,16 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 
 class ImportLogSerializer(serializers.ModelSerializer):
+    file_name = serializers.SerializerMethodField()
+    
     class Meta:
         model = ImportLog
-        fields = '__all__'
+        fields = ['id', 'platform', 'file', 'file_name', 'created_at', 'status', 'quotes_added', 'duplicates_skipped']
+    
+    def get_file_name(self, obj):
+        if obj.file:
+            return obj.file.name.split('/')[-1]
+        return ""
 
 
 class QuoteNoteSerializer(serializers.ModelSerializer):

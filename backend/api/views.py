@@ -673,6 +673,7 @@ def save_quotes_from_file(file_content, owner):
     quote_blocks = re.split(r'(\n?==========\n?)', file_content)
 
     quotes_created = 0
+    duplicates_skipped = 0
     for block in quote_blocks:
         block = block.strip()
         if block:
@@ -719,6 +720,19 @@ def save_quotes_from_file(file_content, owner):
                 }
             )
 
+            # Verificar si ya existe una cita con el mismo contenido, libro y usuario
+            existing_quote = Quote.objects.filter(
+                owner=owner,
+                body=quote_body,
+                book=book
+            ).first()
+
+            if existing_quote:
+                # Si ya existe, ignoramos esta cita y contamos como duplicado
+                duplicates_skipped += 1
+                print(f"Duplicate quote skipped: {book_title} by {author_name}.")
+                continue
+
             # Create the quote, setting the owner
             quote = Quote.objects.create(
                 owner=owner,
@@ -738,7 +752,8 @@ def save_quotes_from_file(file_content, owner):
             print(f"Quote saved: {quote.title} from {book.title} by {author.name}.")
             
     return {
-        "quotes_created": quotes_created
+        "quotes_created": quotes_created,
+        "duplicates_skipped": duplicates_skipped
     }
 
 @api_view(['POST'])
@@ -765,19 +780,26 @@ def upload_quotes(request):
         # Process the file content and save quotes with the current user as owner
         result = save_quotes_from_file(file_content, request.user)
         
-        # Create import log
+        # Create import log with accurate counts
         import_log = ImportLog.objects.create(
             owner=request.user,
             platform='kindle',
             file=file_obj,
-            status='completed'
+            status='completed',
+            quotes_added=result['quotes_created'],
+            duplicates_skipped=result.get('duplicates_skipped', 0)
         )
     except Exception as e:
         return Response({"error": f"Error processing file: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    message = f"Quotes uploaded successfully. Created {result['quotes_created']} quotes."
+    if result.get('duplicates_skipped', 0) > 0:
+        message += f" Skipped {result['duplicates_skipped']} duplicates."
+    
     return Response({
-        "message": f"Quotes uploaded successfully. Created {result['quotes_created']} quotes.",
-        "quotes_count": result['quotes_created']
+        "message": message,
+        "quotes_count": result['quotes_created'],
+        "duplicates_skipped": result.get('duplicates_skipped', 0)
     }, status=status.HTTP_201_CREATED)
 
 # Add the new function for DOCX processing
@@ -1089,6 +1111,7 @@ def save_quotes_from_docx(book_data, owner):
     
     # Create quotes
     quotes_created = 0
+    duplicates_skipped = 0
     for quote_data in book_data.get("quotes", []):
         # Skip empty quotes
         if not quote_data.get("text"):
@@ -1108,6 +1131,18 @@ def save_quotes_from_docx(book_data, owner):
             quote_url = quote_data["urls"][0]
         elif book_url:
             quote_url = book_url
+            
+        # Verificar si ya existe una cita con el mismo contenido, libro y usuario
+        existing_quote = Quote.objects.filter(
+            owner=owner,
+            body=quote_text,
+            book=book
+        ).first()
+
+        if existing_quote:
+            # Si ya existe, ignoramos esta cita y contamos como duplicado
+            duplicates_skipped += 1
+            continue
         
         # Create the quote
         quote = Quote(
@@ -1130,6 +1165,7 @@ def save_quotes_from_docx(book_data, owner):
         "author_created": author_created,
         "book_created": book_created,
         "quotes_created": quotes_created,
+        "duplicates_skipped": duplicates_skipped,
         "author": author,
         "book": book
     }
@@ -1171,19 +1207,26 @@ def upload_docx(request):
         # Process the book data and save quotes with the current user as owner
         result = save_quotes_from_docx(book_data, request.user)
         
-        # Create import log
+        # Create import log with accurate counts
         import_log = ImportLog.objects.create(
             owner=request.user,
             platform='google_books',
             file=file_obj,
-            status='completed'
+            status='completed',
+            quotes_added=result['quotes_created'],
+            duplicates_skipped=result.get('duplicates_skipped', 0)
         )
         
+        message = f"Document processed successfully. Created {result['quotes_created']} quotes."
+        if result.get('duplicates_skipped', 0) > 0:
+            message += f" Skipped {result['duplicates_skipped']} duplicates."
+        
         return Response({
-            "message": f"Document processed successfully. Created {result['quotes_created']} quotes.",
+            "message": message,
             "book": result["book"].title,
             "author": result["author"].name,
             "quotes_count": result["quotes_created"],
+            "duplicates_skipped": result.get('duplicates_skipped', 0),
             "book_id": result["book"].id,
             "json_data": book_data  # Include full JSON data in response
         }, status=status.HTTP_201_CREATED)
@@ -1228,6 +1271,7 @@ def upload_zip(request):
         "total_docx_files": 0,
         "processed_files": 0,
         "total_quotes": 0,
+        "duplicates_skipped": 0,
         "books": [],
         "errors": []
     }
@@ -1267,10 +1311,12 @@ def upload_zip(request):
                 
                 results["processed_files"] += 1
                 results["total_quotes"] += result["quotes_created"]
+                results["duplicates_skipped"] += result.get("duplicates_skipped", 0)
                 results["books"].append({
                     "title": result["book"].title,
                     "author": result["author"].name,
                     "quotes_count": result["quotes_created"],
+                    "duplicates_skipped": result.get("duplicates_skipped", 0),
                     "book_id": result["book"].id
                 })
                 
@@ -1279,16 +1325,22 @@ def upload_zip(request):
                 logger.error(error_msg)
                 results["errors"].append(error_msg)
         
-        # Create import log
+        # Create import log with accurate counts
         import_log = ImportLog.objects.create(
             owner=request.user,
             platform='google_books_batch',
             file=file_obj,
-            status='completed'
+            status='completed',
+            quotes_added=results["total_quotes"],
+            duplicates_skipped=results["duplicates_skipped"]
         )
         
+        message = f"Processed {results['processed_files']} of {results['total_docx_files']} DOCX files, creating {results['total_quotes']} quotes."
+        if results['duplicates_skipped'] > 0:
+            message += f" Skipped {results['duplicates_skipped']} duplicates."
+        
         return Response({
-            "message": f"Processed {results['processed_files']} of {results['total_docx_files']} DOCX files, creating {results['total_quotes']} quotes.",
+            "message": message,
             "results": results
         }, status=status.HTTP_201_CREATED)
     
@@ -1511,3 +1563,34 @@ def search(request):
         'tags': tag_serializer.data,
         'quotes': quote_serializer.data
     })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def import_history(request):
+    """
+    API view to retrieve import history for the current user.
+    Returns a list of import logs.
+    """
+    user = request.user
+    
+    # Get import logs
+    import_logs = ImportLog.objects.filter(owner=user).order_by('-created_at')
+    
+    # Problemas detectados: algunos registros muestran el mismo número de citas duplicadas y añadidas
+    # Por definición, si hay N duplicados, entonces solo se añadieron 0 citas
+    for log in import_logs:
+        # Corregir registros incoherentes:
+        # Si el número de duplicados es igual al número de citas añadidas, las citas añadidas deben ser 0
+        if log.duplicates_skipped > 0 and log.duplicates_skipped == log.quotes_added:
+            log.quotes_added = 0
+            log.save(update_fields=['quotes_added'])
+        
+        # Actualizar registros antiguos que no tengan duplicados registrados
+        elif log.quotes_added == 0 and log.duplicates_skipped == 0 and log.status == 'completed':
+            # Mantener el registro como está, con 0 citas añadidas y 0 duplicados
+            # Este caso ocurre cuando se reintentan importaciones y todas las citas son duplicadas
+            pass
+    
+    serializer = ImportLogSerializer(import_logs, many=True)
+    
+    return Response(serializer.data, status=status.HTTP_200_OK)

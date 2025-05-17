@@ -327,6 +327,7 @@ class ImportLog(models.Model):
     PLATFORM_CHOICES = (
         ('kindle', 'Kindle'),
         ('google_books', 'Google Books'),
+        ('google_books_batch', 'Google Books (Batch)'),
         ('apple_books', 'Apple Books'),
     )
     owner = models.ForeignKey(
@@ -339,6 +340,14 @@ class ImportLog(models.Model):
     file = models.FileField(upload_to='imports/', help_text="Archivo importado")
     created_at = models.DateTimeField(auto_now_add=True, help_text="Fecha de importación")
     status = models.CharField(max_length=50, default='pending', help_text="Estado de la importación")
+    quotes_added = models.IntegerField(default=0, help_text="Número de citas realmente añadidas durante esta importación")
+    duplicates_skipped = models.IntegerField(default=0, help_text="Número de citas duplicadas omitidas durante esta importación")
+
+    def save(self, *args, **kwargs):
+        # No puede haber el mismo número de citas añadidas y duplicados (si todas son duplicadas, entonces quotes_added = 0)
+        if self.duplicates_skipped > 0 and self.duplicates_skipped == self.quotes_added:
+            self.quotes_added = 0
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return "Importación de {} el {}".format(self.platform, self.created_at)

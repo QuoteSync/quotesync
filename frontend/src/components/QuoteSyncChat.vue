@@ -75,7 +75,7 @@
         </div>
         
         <!-- Chat Messages -->
-        <div ref="messagesContainer" class="chat-history">
+        <div ref="messagesContainer" class="chat-history" @scroll="handleScroll">
           <div 
             v-for="(message, index) in chatHistory" 
             :key="index" 
@@ -134,12 +134,25 @@
                       :key="ctxIndex"
                       class="context-quote"
                     >
-                      <div class="quote-text">
-                        <i class="pi pi-quote-left text-indigo-300 opacity-50 text-xs"></i>
-                        <span class="italic">{{ context.quote }}</span>
-                        <i class="pi pi-quote-right text-indigo-300 opacity-50 text-xs"></i>
+                      <div class="quote-content">
+                        <div class="quote-text">
+                          <i class="pi pi-quote-left text-indigo-500 text-sm"></i>
+                          <span class="italic">{{ context.quote }}</span>
+                          <i class="pi pi-quote-right text-indigo-500 text-sm"></i>
+                        </div>
+                        <div class="quote-source">{{ context.source }}</div>
+                        
+                        <div v-if="displayableTags(context.tags).length > 0" class="quote-tags">
+                          <span 
+                            v-for="(tag, idx) in displayableTags(context.tags)" 
+                            :key="idx" 
+                            class="tag-pill"
+                          >
+                            <i class="pi pi-tag text-xs mr-1"></i>{{ tag }}
+                          </span>
+                        </div>
                       </div>
-                      <div class="quote-source">{{ context.source }}</div>
+                      <div class="quote-decoration"></div>
                     </div>
                   </div>
                 </div>
@@ -189,11 +202,18 @@
               :disabled="isTyping"
             ></textarea>
             <Button 
+              v-if="!isTyping"
               icon="pi pi-send" 
               class="send-button"
-              :loading="isTyping"
               @click="submitQuestion"
               :disabled="!question.trim() || isTyping"
+            />
+            <Button 
+              v-else
+              icon="pi pi-times" 
+              class="stop-button"
+              @click="stopResponse"
+              severity="danger"
             />
           </div>
           <div class="input-help-text">
@@ -206,7 +226,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { QuoteSyncChatService } from '@/service/QuoteSyncChatService';
 import { useLayout } from '@/layout/composables/layout';
 import Button from 'primevue/button';
@@ -295,17 +315,74 @@ watch(() => props.quote, (newQuote) => {
 
 // Methods
 const formatMessage = (content) => {
-  // Convert markdown to HTML and sanitize
-  const formattedContent = DOMPurify.sanitize(marked(content));
+  // Verificar si tenemos contenido de texto
+  if (!content) return '';
+  
+  // Primero, formatear cualquier caso de [object Object] en el texto
+  let formattedText = content.replace(/\[object Object\]/g, '');
+  
+  // Formatear los tags en las referencias de citas
+  const tagPattern = /Tags: ((\[object Object\],?\s*)+)/g;
+  formattedText = formattedText.replace(tagPattern, (match, tagsPart) => {
+    return 'Tags: various tags';
+  });
+  
+  // Convertir markdown a HTML y sanitizar
+  const formattedContent = DOMPurify.sanitize(marked(formattedText));
   return formattedContent;
 };
 
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+      // Verificar si el usuario estaba en la parte inferior antes de actualizar
+      const isAtBottom = isUserAtBottom();
+      
+      // Solo hacer auto-scroll si el usuario estaba en la parte inferior
+      if (isAtBottom) {
+        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+      }
     }
   });
+};
+
+// Verificar si el usuario está en la parte inferior del chat
+const isUserAtBottom = () => {
+  if (!messagesContainer.value) return true;
+  
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value;
+  const scrollBottom = scrollTop + clientHeight;
+  
+  // Consideramos que está en la parte inferior si está a menos de 100px del final
+  return scrollHeight - scrollBottom < 100;
+};
+
+// Variables para control de scroll
+const userHasScrolled = ref(false);
+const lastScrollPosition = ref(0);
+
+// Manejar evento de scroll manual del usuario
+const handleScroll = () => {
+  if (!messagesContainer.value) return;
+  
+  // Guardar la posición de scroll para referencia
+  lastScrollPosition.value = messagesContainer.value.scrollTop;
+  
+  // Marcar que el usuario ha desplazado manualmente
+  userHasScrolled.value = true;
+  
+  // Resetear el flag si el usuario llega al fondo
+  if (isUserAtBottom()) {
+    userHasScrolled.value = false;
+  }
+};
+
+const stopResponse = () => {
+  if (streamController.value) {
+    // Call the cancel method on the controller
+    streamController.value.abort();
+    isTyping.value = false;
+  }
 };
 
 const submitQuestion = async () => {
@@ -337,7 +414,11 @@ const submitQuestion = async () => {
     let responseContent = '';
     let contextData = [];
     
-    streamController.value = QuoteSyncChatService.streamChat(
+    // Create a new AbortController for this request
+    streamController.value = new AbortController();
+    
+    // Call the service with the controller
+    QuoteSyncChatService.streamChat(
       messages,
       (chunk) => {
         if (chunk && chunk.message) {
@@ -384,7 +465,9 @@ const submitQuestion = async () => {
           context: []
         });
         scrollToBottom();
-      }
+      },
+      // Pass the abort signal to the service
+      streamController.value.signal
     );
   } catch (error) {
     console.error('Error in chat:', error);
@@ -409,10 +492,50 @@ watch(() => chatHistory.value.length, () => {
   scrollToBottom();
 });
 
-// Initial scroll to bottom
+// Initial scroll to bottom and set up scroll event listener
 onMounted(() => {
   scrollToBottom();
+  
+  // Agregar event listener para detectar scroll manual
+  if (messagesContainer.value) {
+    messagesContainer.value.addEventListener('scroll', handleScroll);
+  }
 });
+
+// Clean up event listener
+onBeforeUnmount(() => {
+  // Cancel any ongoing requests when component unmounts
+  if (streamController.value) {
+    streamController.value.abort();
+  }
+  
+  // Eliminar event listener
+  if (messagesContainer.value) {
+    messagesContainer.value.removeEventListener('scroll', handleScroll);
+  }
+});
+
+// Método para verificar y formatear los tags para que sean mostrables
+const displayableTags = (tags) => {
+  if (!tags) return [];
+  
+  if (Array.isArray(tags)) {
+    return tags.map(tag => {
+      if (typeof tag === 'string') return tag;
+      if (typeof tag === 'object' && tag !== null) {
+        if (tag.name) return tag.name;
+        return JSON.stringify(tag);
+      }
+      return String(tag);
+    }).filter(tag => tag && typeof tag === 'string' && tag.trim() !== '');
+  }
+  
+  if (typeof tags === 'string') {
+    return tags.split(',').map(t => t.trim()).filter(Boolean);
+  }
+  
+  return [];
+};
 </script>
 
 <style scoped>
@@ -532,15 +655,130 @@ onMounted(() => {
 }
 
 .context-quote {
-  padding: 0.75rem;
+  padding: 1rem;
   background-color: var(--surface-section, #f9fafb);
-  border-radius: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  border-left: 4px solid var(--primary-color, #4f46e5);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.quote-content {
+  position: relative;
+  z-index: 2;
+}
+
+.quote-decoration {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 100px;
+  height: 100px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, transparent 70%);
+  border-radius: 0 0 0 100px;
+  z-index: 1;
+}
+
+.context-quote:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  border-left-width: 6px;
 }
 
 .dark-theme .context-quote {
-  background-color: var(--surface-section, rgba(0, 0, 0, 0.2));
+  background-color: var(--surface-card, #1e293b);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+.quote-text {
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  font-family: 'Georgia', serif;
+  font-size: 1.05rem;
+  color: var(--text-color-secondary, #4b5563);
+  position: relative;
+  padding: 0 1.5rem;
+}
+
+.quote-text i.pi-quote-left {
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  color: var(--primary-color, #4f46e5);
+  opacity: 0.6;
+}
+
+.quote-text i.pi-quote-right {
+  position: absolute;
+  right: 0;
+  bottom: 0.25rem;
+  color: var(--primary-color, #4f46e5);
+  opacity: 0.6;
+}
+
+.dark-theme .quote-text {
+  color: var(--text-color, #e2e8f0);
+}
+
+.quote-source {
+  font-size: 0.85rem;
+  color: var(--text-color-secondary, #6b7280);
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.quote-source::before {
+  content: "—";
+  position: absolute;
+  left: 0.5rem;
+  color: var(--primary-color, #4f46e5);
+  opacity: 0.7;
+}
+
+.dark-theme .quote-source {
+  color: var(--text-color-secondary, #9ca3af);
+}
+
+.quote-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.tag-pill {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  background-color: var(--primary-100, #e0e7ff);
+  color: var(--primary-700, #4338ca);
+  border-radius: 2rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.tag-pill:hover {
+  transform: translateY(-1px);
+  background-color: var(--primary-200, #c7d2fe);
+}
+
+.dark-theme .tag-pill {
+  background-color: var(--primary-900, #312e81);
+  color: var(--primary-100, #e0e7ff);
+}
+
+.dark-theme .tag-pill:hover {
+  background-color: var(--primary-800, #3730a3);
 }
 
 /* Main Chat Area */
@@ -736,20 +974,124 @@ onMounted(() => {
 }
 
 .context-quote {
-  padding: 0.75rem;
+  padding: 1rem;
   background-color: var(--surface-section, #f9fafb);
-  border-radius: 0.5rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  font-size: 0.95rem;
+  border-left: 4px solid var(--primary-color, #4f46e5);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.context-quote::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, transparent 50%);
+  border-radius: 0 0 0 60px;
+  z-index: 1;
+}
+
+.context-quote:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  border-left-width: 6px;
+}
+
+.dark-theme .context-quote {
+  background-color: var(--surface-card, #1e293b);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
 }
 
 .quote-text {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.6;
+  font-family: 'Georgia', serif;
+  font-size: 1.05rem;
+  color: var(--text-color-secondary, #4b5563);
+  position: relative;
+  padding: 0 1.5rem;
+}
+
+.quote-text i.pi-quote-left {
+  position: absolute;
+  left: 0;
+  top: 0.25rem;
+  color: var(--primary-color, #4f46e5);
+  opacity: 0.6;
+}
+
+.quote-text i.pi-quote-right {
+  position: absolute;
+  right: 0;
+  bottom: 0.25rem;
+  color: var(--primary-color, #4f46e5);
+  opacity: 0.6;
+}
+
+.dark-theme .quote-text {
+  color: var(--text-color, #e2e8f0);
 }
 
 .quote-source {
-  font-size: 0.75rem;
-  color: #6b7280;
+  font-size: 0.85rem;
+  color: var(--text-color-secondary, #6b7280);
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.quote-source::before {
+  content: "—";
+  position: absolute;
+  left: 0.5rem;
+  color: var(--primary-color, #4f46e5);
+  opacity: 0.7;
+}
+
+.dark-theme .quote-source {
+  color: var(--text-color-secondary, #9ca3af);
+}
+
+.quote-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.tag-pill {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  background-color: var(--primary-100, #e0e7ff);
+  color: var(--primary-700, #4338ca);
+  border-radius: 2rem;
+  font-weight: 500;
+  letter-spacing: 0.025em;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.tag-pill:hover {
+  transform: translateY(-1px);
+  background-color: var(--primary-200, #c7d2fe);
+}
+
+.dark-theme .tag-pill {
+  background-color: var(--primary-900, #312e81);
+  color: var(--primary-100, #e0e7ff);
+}
+
+.dark-theme .tag-pill:hover {
+  background-color: var(--primary-800, #3730a3);
 }
 
 /* Chat Input */
@@ -799,18 +1141,21 @@ onMounted(() => {
   color: var(--text-color, #f9fafb);
 }
 
-.send-button {
+.send-button, .stop-button {
   position: absolute;
   bottom: 0.75rem;
   right: 0.75rem;
   width: 2.25rem;
   height: 2.25rem;
   border-radius: 50%;
-  background-color: var(--primary-color, #4f46e5);
-  color: var(--primary-color-text, white);
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.send-button {
+  background-color: var(--primary-color, #4f46e5);
+  color: var(--primary-color-text, white);
 }
 
 .send-button:hover {
@@ -820,6 +1165,15 @@ onMounted(() => {
 .send-button:disabled {
   background-color: var(--primary-200, #c7d2fe);
   cursor: not-allowed;
+}
+
+.stop-button {
+  background-color: var(--red-500, #ef4444);
+  color: white;
+}
+
+.stop-button:hover {
+  background-color: var(--red-600, #dc2626);
 }
 
 .input-help-text {

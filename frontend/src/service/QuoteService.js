@@ -67,16 +67,6 @@ export const QuoteService = {
         return response.data;
     },
     
-    async toggleFavorite(quoteId) {
-        const response = await apiClient.post(`quotes/${quoteId}/toggle_favorite/`);
-        // Emit an event for the favorite status change
-        EventBus.emit('quote:favoriteChanged', {
-            quoteId: quoteId,
-            isFavorite: response.data.is_favorite
-        });
-        return response.data;
-    },
-
     async getRandomFavorites() {
         const response = await apiClient.get('quotes/random_favorites/');
         return response.data;
@@ -94,8 +84,61 @@ export const QuoteService = {
      */
     async searchQuotes(searchParams) {
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/quotes/search`, searchParams);
-            return response.data;
+            // Get all quotes for the current user
+            const allQuotes = await this.getQuotes();
+            
+            // If there are no filters, return all quotes
+            if (!searchParams.filters || searchParams.filters.length === 0) {
+                return {
+                    results: allQuotes
+                };
+            }
+            
+            // Apply filters using the specified logic operator
+            let filteredQuotes = [];
+            
+            // Process each quote with the filters
+            filteredQuotes = allQuotes.filter(quote => {
+                // Check if the quote matches each filter based on the logic operator
+                const filterResults = searchParams.filters.map(filter => {
+                    return matchesFilter(quote, filter);
+                });
+                
+                // Apply logic operator (AND requires all true, OR requires at least one true)
+                return searchParams.logic_operator === 'AND' 
+                    ? filterResults.every(result => result)
+                    : filterResults.some(result => result);
+            });
+            
+            // Apply sorting
+            if (searchParams.sort_by) {
+                filteredQuotes.sort((a, b) => {
+                    let valueA = a[searchParams.sort_by];
+                    let valueB = b[searchParams.sort_by];
+                    
+                    // Handle special cases
+                    if (searchParams.sort_by === 'created' || searchParams.sort_by === 'updated') {
+                        valueA = new Date(valueA || 0).getTime();
+                        valueB = new Date(valueB || 0).getTime();
+                    }
+                    
+                    // Apply sort direction
+                    const direction = searchParams.sort_order === 'desc' ? -1 : 1;
+                    
+                    if (valueA < valueB) return -1 * direction;
+                    if (valueA > valueB) return 1 * direction;
+                    return 0;
+                });
+            }
+            
+            // Apply limit
+            if (searchParams.limit && searchParams.limit > 0) {
+                filteredQuotes = filteredQuotes.slice(0, searchParams.limit);
+            }
+            
+            return {
+                results: filteredQuotes
+            };
         } catch (error) {
             console.error('Error searching quotes:', error);
             throw error;
@@ -109,7 +152,12 @@ export const QuoteService = {
      */
     async toggleFavorite(quoteId) {
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/quotes/${quoteId}/toggle-favorite`);
+            const response = await apiClient.post(`quotes/${quoteId}/toggle_favorite/`);
+            // Emit an event for the favorite status change
+            EventBus.emit('quote:favoriteChanged', {
+                quoteId: quoteId,
+                isFavorite: response.data.is_favorite
+            });
             return response.data;
         } catch (error) {
             console.error('Error toggling favorite status:', error);
@@ -208,3 +256,110 @@ export const QuoteService = {
         }
     },
 };
+
+/**
+ * Helper function to check if a quote matches a given filter
+ * @param {Object} quote - The quote object to check
+ * @param {Object} filter - The filter to apply
+ * @returns {boolean} - Whether the quote matches the filter
+ */
+function matchesFilter(quote, filter) {
+    const { type, operator, value } = filter;
+    
+    // If value is empty, consider it a match (to avoid filtering out everything)
+    if (value === null || value === undefined || value === '' || 
+       (Array.isArray(value) && value.length === 0)) {
+        return true;
+    }
+    
+    switch (type) {
+        case 'quote_content':
+            const quoteContent = (quote.body || '').toLowerCase();
+            const searchValue = (value || '').toLowerCase();
+            
+            switch (operator) {
+                case 'contains':
+                    return quoteContent.includes(searchValue);
+                case 'exact':
+                    return quoteContent === searchValue;
+                case 'starts_with':
+                    return quoteContent.startsWith(searchValue);
+                case 'ends_with':
+                    return quoteContent.endsWith(searchValue);
+                default:
+                    return quoteContent.includes(searchValue);
+            }
+            
+        case 'tags':
+            const quoteTags = quote.tags || [];
+            
+            switch (operator) {
+                case 'has_any':
+                    return value.some(tagId => 
+                        quoteTags.some(tag => tag.id === tagId || tag.title === tagId));
+                case 'has_all':
+                    return value.every(tagId => 
+                        quoteTags.some(tag => tag.id === tagId || tag.title === tagId));
+                case 'not_has':
+                    return !value.some(tagId => 
+                        quoteTags.some(tag => tag.id === tagId || tag.title === tagId));
+                default:
+                    return false;
+            }
+            
+        case 'author':
+            if (!quote.book || !quote.book.author) return false;
+            
+            const authorId = quote.book.author.id;
+            
+            switch (operator) {
+                case 'is':
+                    return authorId === value;
+                case 'is_not':
+                    return authorId !== value;
+                default:
+                    return false;
+            }
+            
+        case 'book':
+            if (!quote.book) return false;
+            
+            const bookId = quote.book.id;
+            
+            switch (operator) {
+                case 'is':
+                    return bookId === value;
+                case 'is_not':
+                    return bookId !== value;
+                default:
+                    return false;
+            }
+            
+        case 'date':
+            if (!quote.created_at) return false;
+            
+            const quoteDate = new Date(quote.created_at);
+            
+            switch (operator) {
+                case 'between':
+                    if (!Array.isArray(value) || value.length !== 2) return false;
+                    const fromDate = new Date(value[0]);
+                    const toDate = new Date(value[1]);
+                    return quoteDate >= fromDate && quoteDate <= toDate;
+                case 'before':
+                    const beforeDate = new Date(value);
+                    return quoteDate < beforeDate;
+                case 'after':
+                    const afterDate = new Date(value);
+                    return quoteDate > afterDate;
+                default:
+                    return false;
+            }
+            
+        case 'is_favorite':
+            return quote.is_favorite === value;
+            
+        default:
+            return true;
+    }
+}

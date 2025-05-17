@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
 import { useToast } from "primevue/usetoast";
 import axios from "axios";
 import { getCookie } from "@/api";
@@ -11,6 +11,8 @@ const docxFileInput = ref(null); // Hidden file input for importing docx files
 const zipFileInput = ref(null); // Hidden file input for importing zip files
 const isUploading = ref(false);
 const importResults = ref(null); // Store batch import results
+const importHistory = ref([]); // Store import history
+const isLoadingHistory = ref(false);
 
 // Drag and drop reactive variables
 const isDraggingKindle = ref(false);
@@ -56,6 +58,60 @@ async function handleZipFileUpload(event) {
   await uploadZipFile(file);
 }
 
+// Fetch import history
+async function fetchImportHistory() {
+  isLoadingHistory.value = true;
+  try {
+    const response = await axios.get("/api/import-history/", {
+      headers: { "X-CSRFToken": getCookie("csrftoken") }
+    });
+    importHistory.value = response.data;
+  } catch (error) {
+    console.error("Error fetching import history:", error);
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: "Failed to load import history",
+      life: 3000,
+    });
+  } finally {
+    isLoadingHistory.value = false;
+  }
+}
+
+// Format date for display
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('default', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date);
+}
+
+// Get platform display name
+function getPlatformName(platform) {
+  const platforms = {
+    'kindle': 'Kindle',
+    'google_books': 'Google Books',
+    'google_books_batch': 'Google Books (Batch)',
+  };
+  return platforms[platform] || platform;
+}
+
+// Get platform tag class
+function getPlatformTagClass(platform) {
+  const classes = {
+    'kindle': 'bg-blue-50 text-blue-700',
+    'google_books': 'bg-green-50 text-green-700',
+    'google_books_batch': 'bg-purple-50 text-purple-700',
+    'apple_books': 'bg-orange-50 text-orange-700'
+  };
+  return classes[platform] || 'bg-gray-50 text-gray-700';
+}
+
 // Upload Kindle file function (extracted for reuse with drag and drop)
 async function uploadKindleFile(file) {
   if (!file || !file.name.endsWith('.txt')) {
@@ -73,6 +129,7 @@ async function uploadKindleFile(file) {
   // Create a FormData object to send the file
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("check_duplicates", "true"); // Add flag to check for duplicates
   
   try {
     const response = await axios.post("/api/upload-quotes/", formData, {
@@ -91,6 +148,9 @@ async function uploadKindleFile(file) {
     
     // Reset the file input if it exists
     if (fileInput.value) fileInput.value.value = '';
+    
+    // Refresh import history after successful import
+    fetchImportHistory();
     
     console.log(response.data);
   } catch (error) {
@@ -123,6 +183,7 @@ async function uploadDocxFile(file) {
   // Create a FormData object to send the file
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("check_duplicates", "true"); // Add flag to check for duplicates
   
   try {
     const response = await axios.post("/api/upload-docx/", formData, {
@@ -141,6 +202,9 @@ async function uploadDocxFile(file) {
     
     // Reset the file input if it exists
     if (docxFileInput.value) docxFileInput.value.value = '';
+    
+    // Refresh import history after successful import
+    fetchImportHistory();
     
     console.log(response.data);
   } catch (error) {
@@ -174,6 +238,7 @@ async function uploadZipFile(file) {
   // Create a FormData object to send the file
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("check_duplicates", "true"); // Add flag to check for duplicates
   
   try {
     const response = await axios.post("/api/upload-zip/", formData, {
@@ -195,6 +260,9 @@ async function uploadZipFile(file) {
     
     // Reset the file input if it exists
     if (zipFileInput.value) zipFileInput.value.value = '';
+    
+    // Refresh import history after successful import
+    fetchImportHistory();
     
     console.log(response.data);
   } catch (error) {
@@ -246,6 +314,11 @@ function handleDrop(event, type) {
     uploadZipFile(file);
   }
 }
+
+// Load import history when component mounts
+onMounted(() => {
+  fetchImportHistory();
+});
 </script>
 
 <template>
@@ -355,9 +428,15 @@ function handleDrop(event, type) {
           />
           
           <!-- Upload status -->
-          <div v-if="isUploading" class="flex align-items-center mt-3">
-            <i class="pi pi-spin pi-spinner mr-2"></i>
-            <span>Uploading and processing your file...</span>
+          <div v-if="isUploading" class="import-loader-overlay">
+            <div class="import-loader-container">
+              <div class="import-loader-circle">
+                <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
+              </div>
+              <h3 class="mt-3 text-center">Processing Your Import</h3>
+              <p class="text-center text-500">Your quotes are being extracted and saved...</p>
+              <div class="loader-progress mt-2"></div>
+            </div>
           </div>
           
           <!-- Import Results -->
@@ -366,7 +445,13 @@ function handleDrop(event, type) {
             
             <div class="mb-3">
               <div><strong>Files Processed:</strong> {{ importResults.processed_files }} of {{ importResults.total_docx_files }}</div>
-              <div><strong>Total Quotes Imported:</strong> {{ importResults.total_quotes }}</div>
+              <div><strong>Successfully Imported:</strong> {{ importResults.total_quotes }}</div>
+              <div v-if="importResults.duplicates_skipped" class="text-orange-500">
+                <strong>Duplicates Skipped:</strong> {{ importResults.duplicates_skipped }}
+              </div>
+              <div v-if="importResults.duplicates_skipped" class="text-sm text-500 mt-1">
+                <i class="pi pi-info-circle mr-1"></i> Duplicate quotes were found and not imported to avoid duplication.
+              </div>
             </div>
             
             <div v-if="importResults.books.length > 0" class="mb-3">
@@ -374,6 +459,9 @@ function handleDrop(event, type) {
               <ul class="m-0 pl-4">
                 <li v-for="(book, index) in importResults.books" :key="index" class="mb-1">
                   <strong>{{ book.title }}</strong> by {{ book.author }} - {{ book.quotes_count }} quotes
+                  <span v-if="book.duplicates_skipped" class="text-orange-500">
+                    ({{ book.duplicates_skipped }} duplicates skipped)
+                  </span>
                 </li>
               </ul>
             </div>
@@ -414,6 +502,73 @@ function handleDrop(event, type) {
           </ol>
         </div>
       </div>
+      
+      <!-- Import History Section (moved out of the flex-column) -->
+      <div class="card mt-6">
+        <div class="p-4 bg-white dark:bg-gray-900 border-round shadow-2">
+          <div class="flex align-items-center justify-content-between mb-3">
+            <h3 class="text-xl font-semibold m-0">Import History</h3>
+            <button v-if="importHistory.length > 0" class="p-button p-button-text p-button-secondary" @click="fetchImportHistory()">
+              <i class="pi pi-refresh mr-1"></i> Refresh
+            </button>
+          </div>
+          
+          <div v-if="isLoadingHistory" class="flex align-items-center justify-content-center p-5">
+            <div class="text-center">
+              <i class="pi pi-spin pi-spinner text-primary" style="font-size: 1.5rem;"></i>
+              <div class="mt-2 font-medium">Loading import history...</div>
+            </div>
+          </div>
+          
+          <div v-else-if="importHistory.length === 0" class="p-3 text-center text-500">
+            <i class="pi pi-inbox text-xl mb-2"></i>
+            <p>No previous imports found</p>
+          </div>
+          
+          <div v-else class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead class="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th class="text-left p-3 border-bottom-1 border-300">Date</th>
+                  <th class="text-left p-3 border-bottom-1 border-300">Platform</th>
+                  <th class="text-left p-3 border-bottom-1 border-300">File</th>
+                  <th class="text-left p-3 border-bottom-1 border-300">Quotes Added</th>
+                  <th class="text-left p-3 border-bottom-1 border-300">Duplicates</th>
+                  <th class="text-left p-3 border-bottom-1 border-300">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(log, index) in importHistory" :key="index" 
+                    class="border-bottom-1 border-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors transition-duration-200">
+                  <td class="p-3">{{ formatDate(log.created_at) }}</td>
+                  <td class="p-3">
+                    <span class="p-tag" :class="getPlatformTagClass(log.platform)">
+                      {{ getPlatformName(log.platform) }}
+                    </span>
+                  </td>
+                  <td class="p-3">{{ log.file_name }}</td>
+                  <td class="p-3 font-medium">{{ log.quotes_added }}</td>
+                  <td class="p-3">
+                    <span v-if="log.duplicates_skipped > 0" class="p-tag bg-orange-50 text-orange-700">
+                      {{ log.duplicates_skipped }}
+                    </span>
+                    <span v-else>-</span>
+                  </td>
+                  <td class="p-3">
+                    <span class="p-tag" :class="{
+                      'p-tag-success': log.status === 'completed', 
+                      'p-tag-danger': log.status === 'failed', 
+                      'p-tag-info': log.status === 'pending'
+                    }">
+                      {{ log.status }}
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -425,5 +580,85 @@ function handleDrop(event, type) {
   box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.3);
   transform: scale(1.01);
   transition: all 0.2s ease-in-out;
+}
+
+.import-loader-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.import-loader-container {
+  background-color: var(--surface-card, white);
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  width: 100%;
+  max-width: 400px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.import-loader-circle {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background-color: var(--primary-color-lighter, #f0f7ff);
+  color: var(--primary-color, #4f46e5);
+}
+
+.loader-progress {
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary-color, #4f46e5) 0%, var(--primary-color-lighter, #f0f7ff) 50%, var(--primary-color, #4f46e5) 100%);
+  background-size: 200% 100%;
+  animation: progress-animation 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes progress-animation {
+  0% { background-position: 100% 0; }
+  100% { background-position: 0 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.p-tag {
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.p-tag-success {
+  background-color: #EBF9F1;
+  color: #36B37E;
+}
+
+.p-tag-danger {
+  background-color: #FFEBE6;
+  color: #FF5630;
+}
+
+.p-tag-info {
+  background-color: #E6F7FF;
+  color: #0095FF;
 }
 </style> 
