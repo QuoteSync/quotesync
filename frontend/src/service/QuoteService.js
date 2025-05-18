@@ -10,6 +10,38 @@ export const QuoteService = {
         return response.data;
     },
 
+    // Get quotes with pagination
+    async getQuotesPaginated(page = 1, rows = 10, sortField = null, sortOrder = null, filters = null) {
+        let queryParams = `?page=${page}&limit=${rows}`;
+        
+        // Add sorting if provided
+        if (sortField) {
+            queryParams += `&sort_field=${sortField}&sort_order=${sortOrder || 'asc'}`;
+        }
+        
+        // Add filters if provided
+        if (filters) {
+            // Handle global search filter
+            if (filters.global && filters.global.value) {
+                queryParams += `&search=${encodeURIComponent(filters.global.value)}`;
+            }
+            
+            // Handle specific field filters
+            Object.entries(filters).forEach(([key, filter]) => {
+                if (key !== 'global' && filter.value) {
+                    queryParams += `&${key}=${encodeURIComponent(filter.value)}`;
+                }
+            });
+        }
+        
+        const response = await apiClient.get(`quotes/paginated/${queryParams}`);
+        return {
+            data: response.data.results,
+            total: response.data.count,
+            page: page
+        };
+    },
+
     async getQuote(quoteId) {
         const response = await apiClient.get(`quotes/${quoteId}/`);
         return response.data;

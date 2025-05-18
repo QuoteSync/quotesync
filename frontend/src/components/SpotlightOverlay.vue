@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router';
 const searchStore = useSearchStore();
 const router = useRouter();
 const searchInput = ref(null);
+const spotlightModal = ref(null);
 
 // Accessing store state
 const isOpen = computed(() => searchStore.isOpen);
@@ -114,13 +115,25 @@ const handleGlobalKeydown = (event) => {
   }
 };
 
+// Handle document click to close the search overlay when clicking outside
+const handleDocumentClick = (event) => {
+  if (!isOpen.value) return;
+  
+  // Check if click is outside the spotlight modal
+  if (spotlightModal.value && !spotlightModal.value.contains(event.target)) {
+    searchStore.closeOverlay();
+  }
+};
+
 // Setup and cleanup
 onMounted(() => {
   document.addEventListener('keydown', handleGlobalKeydown);
+  document.addEventListener('mousedown', handleDocumentClick);
 });
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleGlobalKeydown);
+  document.removeEventListener('mousedown', handleDocumentClick);
 });
 
 // Close overlay when clicking on backdrop
@@ -149,6 +162,7 @@ const handleBackdropClick = (event) => {
       
       <!-- Search modal -->
       <div 
+        ref="spotlightModal"
         class="spotlight-modal relative w-full max-w-2xl bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden transform transition-all duration-300 ease-out"
         :class="{ 'animate-scaleIn': isOpen }"
       >

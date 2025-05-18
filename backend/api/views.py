@@ -346,6 +346,90 @@ class QuoteViewSet(viewsets.ModelViewSet):
             logger.error("PUT validation error: %s", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['get'])
+    def paginated(self, request):
+        """
+        Get paginated quotes with optional sorting and filtering.
+        
+        Query parameters:
+        - page: Page number (1-based index)
+        - limit: Number of items per page
+        - sort_field: Field to sort by
+        - sort_order: 'asc' or 'desc'
+        - search: Global search term
+        - Other filter fields: Specific fields to filter on
+        """
+        # Get query parameters
+        page = int(request.query_params.get('page', 1))
+        limit = int(request.query_params.get('limit', 10))
+        sort_field = request.query_params.get('sort_field')
+        sort_order = request.query_params.get('sort_order', 'asc')
+        search = request.query_params.get('search')
+        
+        # Calculate offset for pagination
+        offset = (page - 1) * limit
+        
+        # Base queryset filtered by user
+        queryset = self.get_queryset()
+        
+        # Apply search if provided
+        if search:
+            queryset = queryset.filter(
+                Q(body__icontains=search) |
+                Q(book__title__icontains=search) |
+                Q(book__author__name__icontains=search) |
+                Q(tags__title__icontains=search)
+            ).distinct()
+        
+        # Apply field-specific filters
+        for param, value in request.query_params.items():
+            if param not in ['page', 'limit', 'sort_field', 'sort_order', 'search'] and value:
+                # Handle nested field filters (e.g., 'book.title')
+                if '.' in param:
+                    parts = param.split('.')
+                    filter_param = '__'.join(parts) + '__icontains'
+                    queryset = queryset.filter(**{filter_param: value})
+                else:
+                    # Try direct filter first
+                    try:
+                        queryset = queryset.filter(**{f"{param}__icontains": value})
+                    except:
+                        # Ignore invalid filter fields
+                        pass
+        
+        # Count total results (before pagination)
+        total_count = queryset.count()
+        
+        # Apply sorting
+        if sort_field:
+            # Handle nested field sorting (e.g., 'book.title')
+            if '.' in sort_field:
+                parts = sort_field.split('.')
+                sort_param = '__'.join(parts)
+            else:
+                sort_param = sort_field
+                
+            # Apply sort direction
+            if sort_order.lower() == 'desc':
+                sort_param = f"-{sort_param}"
+                
+            queryset = queryset.order_by(sort_param)
+        
+        # Apply pagination
+        paginated_queryset = queryset[offset:offset + limit]
+        
+        # Serialize the results
+        serializer = self.get_serializer(paginated_queryset, many=True)
+        
+        # Return paginated response
+        return Response({
+            'count': total_count,
+            'results': serializer.data,
+            'page': page,
+            'limit': limit,
+            'pages': (total_count + limit - 1) // limit,  # Ceiling division
+        })
+
 
 class QuoteTagViewSet(viewsets.ModelViewSet):
     queryset = QuoteTag.objects.all()

@@ -1,7 +1,10 @@
 <script setup>
 import { ref } from "vue";
-
+import { useLayout } from "@/layout/composables/layout";
+import AppConfigurator from "./AppConfigurator.vue";
 import AppMenuItem from "./AppMenuItem.vue";
+
+const { toggleDarkMode, isDarkTheme } = useLayout();
 
 const socialItems = [
   {
@@ -18,14 +21,19 @@ const socialItems = [
 
 const model = ref([
   {
-    label: "Pages",
+    label: "Home",
     items: [
       { label: "Dashboard", icon: "pi pi-fw pi-home", to: "/" },
+    ],
+  },
+  {
+    label: "Library",
+    items: [
       { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
       { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
-      { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
-      { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
       { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
+      { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
+      { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
       { label: "Import Quotes", icon: "pi pi-fw pi-download", to: "/import-quotes" },
     ],
   },
@@ -40,159 +48,7 @@ const model = ref([
   {
     label: "Social",
     items: socialItems
-  },
-  {
-    label: "Admin Tools",
-    icon: "pi pi-fw pi-cog",
-    items: [
-      { label: "Book Covers", icon: "pi pi-fw pi-images", to: "/" },
-    ],
-  },
-  {
-    label: "UI Components",
-    icon: "pi pi-fw pi-desktop",
-    items: [
-      {
-        label: "UIKit",
-        icon: "pi pi-fw pi-id-card",
-        items: [
-          { label: "Form Layout", icon: "pi pi-fw pi-id-card", to: "/uikit/formlayout" },
-          { label: "Input", icon: "pi pi-fw pi-check-square", to: "/uikit/input" },
-          {
-            label: "Button",
-            icon: "pi pi-fw pi-mobile",
-            to: "/uikit/button",
-            class: "rotated-icon",
-          },
-          { label: "Table", icon: "pi pi-fw pi-table", to: "/uikit/table" },
-          { label: "List", icon: "pi pi-fw pi-list", to: "/uikit/list" },
-          { label: "Tree", icon: "pi pi-fw pi-share-alt", to: "/uikit/tree" },
-          { label: "Panel", icon: "pi pi-fw pi-tablet", to: "/uikit/panel" },
-          { label: "Overlay", icon: "pi pi-fw pi-clone", to: "/uikit/overlay" },
-          { label: "Media", icon: "pi pi-fw pi-image", to: "/uikit/media" },
-          { label: "Menu", icon: "pi pi-fw pi-bars", to: "/uikit/menu" },
-          { label: "Message", icon: "pi pi-fw pi-comment", to: "/uikit/message" },
-          { label: "File", icon: "pi pi-fw pi-file", to: "/uikit/file" },
-          { label: "Chart", icon: "pi pi-fw pi-chart-bar", to: "/uikit/charts" },
-          { label: "Timeline", icon: "pi pi-fw pi-calendar", to: "/uikit/timeline" },
-        ],
-      },
-      {
-        label: "Pages",
-        icon: "pi pi-fw pi-clone",
-        items: [
-          {
-            label: "Landing",
-            icon: "pi pi-fw pi-globe",
-            to: "/landing",
-          },
-          {
-            label: "Auth",
-            icon: "pi pi-fw pi-user",
-            items: [
-              {
-                label: "Login",
-                icon: "pi pi-fw pi-sign-in",
-                to: "/auth/login",
-              },
-              {
-                label: "Register",
-                icon: "pi pi-fw pi-user-plus",
-                to: "/auth/register",
-              },
-              {
-                label: "Error",
-                icon: "pi pi-fw pi-times-circle",
-                to: "/auth/error",
-              },
-              {
-                label: "Access Denied",
-                icon: "pi pi-fw pi-lock",
-                to: "/auth/access",
-              },
-            ],
-          },
-          {
-            label: "Crud",
-            icon: "pi pi-fw pi-pencil",
-            to: "/pages/crud",
-          },
-          {
-            label: "Not Found",
-            icon: "pi pi-fw pi-exclamation-circle",
-            to: "/pages/notfound",
-          },
-          {
-            label: "Empty",
-            icon: "pi pi-fw pi-circle-off",
-            to: "/pages/empty",
-          },
-        ],
-      },
-      {
-        label: "Get Started",
-        icon: "pi pi-fw pi-play",
-        items: [
-          {
-            label: "Documentation",
-            icon: "pi pi-fw pi-book",
-            to: "/documentation",
-          },
-          {
-            label: "View Source",
-            icon: "pi pi-fw pi-github",
-            url: "https://github.com/primefaces/sakai-vue",
-            target: "_blank",
-          },
-        ],
-      },
-      {
-        label: "Hierarchy",
-        icon: "pi pi-fw pi-align-left",
-        items: [
-          {
-            label: "Submenu 1",
-            icon: "pi pi-fw pi-bookmark",
-            items: [
-              {
-                label: "Submenu 1.1",
-                icon: "pi pi-fw pi-bookmark",
-                items: [
-                  { label: "Submenu 1.1.1", icon: "pi pi-fw pi-bookmark" },
-                  { label: "Submenu 1.1.2", icon: "pi pi-fw pi-bookmark" },
-                  { label: "Submenu 1.1.3", icon: "pi pi-fw pi-bookmark" },
-                ],
-              },
-              {
-                label: "Submenu 1.2",
-                icon: "pi pi-fw pi-bookmark",
-                items: [{ label: "Submenu 1.2.1", icon: "pi pi-fw pi-bookmark" }],
-              },
-            ],
-          },
-          {
-            label: "Submenu 2",
-            icon: "pi pi-fw pi-bookmark",
-            items: [
-              {
-                label: "Submenu 2.1",
-                icon: "pi pi-fw pi-bookmark",
-                items: [
-                  { label: "Submenu 2.1.1", icon: "pi pi-fw pi-bookmark" },
-                  { label: "Submenu 2.1.2", icon: "pi pi-fw pi-bookmark" },
-                ],
-              },
-              {
-                label: "Submenu 2.2",
-                icon: "pi pi-fw pi-bookmark",
-                items: [{ label: "Submenu 2.2.1", icon: "pi pi-fw pi-bookmark" }],
-              },
-            ],
-          },
-        ],
-      },
-    ],
-  },
+  }
 ]);
 </script>
 
@@ -202,7 +58,85 @@ const model = ref([
       <app-menu-item v-if="!item.separator" :item="item" :index="i"></app-menu-item>
       <li v-if="item.separator" class="menu-separator"></li>
     </template>
+    
+    <!-- Mobile-only theme settings section -->
+    <li class="mobile-only-settings">
+      <div class="settings-header">Theme Settings</div>
+      <div class="settings-items">
+        <button type="button" class="mobile-theme-toggle" @click="toggleDarkMode">
+          <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
+          <span>{{ isDarkTheme ? 'Dark Mode' : 'Light Mode' }}</span>
+        </button>
+        
+        <div class="mobile-palette-wrapper">
+          <button v-styleclass="{
+            selector: '@next',
+            enterFromClass: 'hidden',
+            enterActiveClass: 'animate-scalein',
+            leaveToClass: 'hidden',
+            leaveActiveClass: 'animate-fadeout',
+            hideOnOutsideClick: true,
+          }" type="button" class="mobile-palette-button">
+            <i class="pi pi-palette"></i>
+            <span>Change Theme</span>
+          </button>
+          <AppConfigurator />
+        </div>
+      </div>
+    </li>
   </ul>
 </template>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.mobile-only-settings {
+  display: none;
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--surface-border);
+}
+
+.settings-header {
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding: 0 1rem;
+  color: var(--text-color);
+}
+
+.settings-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.mobile-theme-toggle,
+.mobile-palette-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--text-color);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font-size: 1rem;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+  
+  &:hover {
+    background-color: var(--surface-hover);
+  }
+  
+  i {
+    font-size: 1.25rem;
+  }
+}
+
+/* Show mobile settings only on mobile */
+@media screen and (max-width: 768px) {
+  .mobile-only-settings {
+    display: block;
+  }
+}
+</style>

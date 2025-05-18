@@ -9,14 +9,14 @@
       </p>
     </div>
     
-    <div class="mb-4 flex flex-row gap-2">
+    <div class="mb-4 flex flex-wrap gap-2">
       <Button 
         label="Generate Tags" 
         icon="pi pi-tag" 
         :disabled="selectedQuotes.length === 0 || processing" 
         :loading="processing"
         @click="generateTagsForSelected" 
-        class="p-button-primary" 
+        class="p-button-primary flex-grow sm:flex-grow-0" 
       />
       <Button 
         label="Apply All Tags" 
@@ -24,29 +24,29 @@
         :disabled="!hasProcessedQuotes || applyingTags" 
         :loading="applyingTags"
         @click="applyAllTags" 
-        class="p-button-success" 
+        class="p-button-success flex-grow sm:flex-grow-0" 
       />
       <Button 
         label="Clear Selection" 
         icon="pi pi-times" 
         :disabled="selectedQuotes.length === 0" 
         @click="clearSelection" 
-        class="p-button-secondary" 
+        class="p-button-secondary flex-grow sm:flex-grow-0" 
       />
       <Button 
         label="Clear Filters" 
         icon="pi pi-filter-slash" 
         @click="clearAllFilters" 
-        class="p-button-outlined" 
+        class="p-button-outlined flex-grow sm:flex-grow-0" 
       />
     </div>
     
     <!-- AI Settings Panel -->
     <Panel header="AI Settings" :toggleable="true" class="mb-4">
-      <div class="flex items-center gap-4">
+      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         <div class="flex items-center">
           <label for="useOllama" class="mr-2 font-bold">Use Ollama</label>
-          <InputSwitch v-model="useOllama" inputId="useOllama" />
+          <ToggleSwitch v-model="useOllama" inputId="useOllama" />
           <span v-if="useOllama" class="ml-2">
             <i 
               v-if="ollamaAvailable" 
@@ -85,29 +85,37 @@
       :value="quotes" 
       dataKey="id" 
       :paginator="true" 
-      :rows="10"
+      :rows="rows"
+      :totalRecords="totalRecords"
       :loading="loading"
       :filters="filters"
+      :lazy="true"
       filterDisplay="menu"
+      :rowsPerPageOptions="[5, 10, 20, 50]"
       class="p-datatable-sm mb-4"
       :scrollable="true"
-      scrollHeight="500px"
+      :scrollHeight="getScrollHeight()"
+      @page="onPage"
+      @sort="onSort"
+      @filter="onFilter"
+      responsiveLayout="stack"
+      breakpoint="960px"
     >
       <template #header>
-        <div class="flex justify-between">
+        <div class="flex flex-col sm:flex-row justify-between gap-2">
           <Button 
             icon="pi pi-refresh" 
             @click="loadQuotes" 
-            class="p-button-text p-button-rounded" 
+            class="p-button-text p-button-rounded w-full sm:w-auto" 
           />
-          <span class="p-input-icon-left">
+          <span class="p-input-icon-left w-full sm:w-auto">
             <i class="pi pi-search" />
-            <InputText v-model="filters['global'].value" placeholder="Search quotes..." />
+            <InputText v-model="filters['global'].value" placeholder="Search quotes..." class="w-full" />
           </span>
         </div>
       </template>
       
-      <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
+      <Column selectionMode="multiple" headerStyle="width: 3rem" :showFilterMenu="false"></Column>
       
       <Column field="body" header="Quote" style="min-width: 50%" :sortable="true" filterField="body">
         <template #body="{ data }">
@@ -124,9 +132,9 @@
         </template>
       </Column>
       
-      <Column field="book.title" header="Book" :sortable="true" style="width: 12rem">
+      <Column field="book.title" header="Book" :sortable="true" class="break-words" style="min-width: 12rem" :showFilterMenu="false">
         <template #body="{ data }">
-          <div class="text-sm">{{ data.book ? data.book.title : 'Unknown' }}</div>
+          <div class="text-sm break-words">{{ data.book ? data.book.title : 'Unknown' }}</div>
         </template>
         <template #filter="{ filterModel }">
           <div>
@@ -145,9 +153,9 @@
         </template>
       </Column>
       
-      <Column field="book.author.name" header="Author" :sortable="true" style="width: 12rem">
+      <Column field="book.author.name" header="Author" :sortable="true" class="break-words" style="min-width: 12rem" :showFilterMenu="false">
         <template #body="{ data }">
-          <div class="text-sm">{{ data.book && data.book.author ? data.book.author.name : 'Unknown' }}</div>
+          <div class="text-sm break-words">{{ data.book && data.book.author ? data.book.author.name : 'Unknown' }}</div>
         </template>
         <template #filter="{ filterModel }">
           <div>
@@ -166,7 +174,7 @@
         </template>
       </Column>
       
-      <Column field="tags" header="Current Tags" :sortable="true" :filterFunction="tagFilter" @sort="tagSorter">
+      <Column field="tags" header="Current Tags" :sortable="true" :filterFunction="tagFilter" @sort="tagSorter" class="break-words" :showFilterMenu="false">
         <template #body="{ data }">
           <div class="flex flex-wrap gap-1">
             <Chip 
@@ -196,10 +204,10 @@
         </template>
       </Column>
       
-      <Column field="generatedTags" header="Generated Tags">
+      <Column field="generatedTags" header="Generated Tags" class="break-words" :showFilterMenu="false">
         <template #body="{ data }">
           <div v-if="processedQuoteIds.has(data.id)" class="flex flex-wrap gap-1">
-            <div v-for="(tag, i) in generatedTags[data.id]" :key="i" class="flex items-center">
+            <div v-for="(tag, i) in generatedTags[data.id]" :key="i" class="flex items-center mb-1">
               <Checkbox 
                 :inputId="`tag-${data.id}-${i}`" 
                 v-model="tagSelections[data.id][i]" 
@@ -210,15 +218,32 @@
                 {{ tag }}
               </label>
             </div>
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-2 w-full">
+              <AutoComplete 
+                v-model="customTags[data.id]" 
+                placeholder="Add custom tag..." 
+                class="text-xs w-full sm:w-2/3"
+                :suggestions="filteredCustomTagSuggestions"
+                @complete="suggestCustomTags"
+                @keydown.enter="addCustomTag(data.id)"
+                dropdown
+              />
+              <Button 
+                icon="pi pi-plus" 
+                class="p-button-sm p-button-outlined mt-1 sm:mt-0"
+                @click="addCustomTag(data.id)" 
+                v-tooltip.top="'Add custom tag'"
+              />
+            </div>
           </div>
           <ProgressSpinner v-else-if="processingQuotes.has(data.id)" style="width: 20px; height: 20px" />
           <span v-else class="text-gray-500 text-xs italic">Not generated yet</span>
         </template>
       </Column>
       
-      <Column header="Actions" style="width: 8rem">
+      <Column header="Actions" :showFilterMenu="false">
         <template #body="{ data }">
-          <div class="flex gap-1">
+          <div class="flex gap-1 flex-wrap justify-start">
             <Button 
               icon="pi pi-tag" 
               class="p-button-rounded p-button-sm p-button-outlined"
@@ -234,15 +259,76 @@
               @click="applyTagsForQuote(data)" 
               v-tooltip.top="'Apply tags'"
             />
+            <Button 
+              icon="pi pi-plus" 
+              class="p-button-rounded p-button-sm p-button-info p-button-outlined"
+              @click="showCustomTagDialog(data)"
+              v-tooltip.top="'Add custom tag'"
+            />
           </div>
         </template>
       </Column>
     </DataTable>
+
+    <!-- Custom Tag Dialog -->
+    <Dialog 
+      v-model:visible="customTagDialogVisible" 
+      :style="{ width: '100%', maxWidth: '450px' }" 
+      header="Add Custom Tag" 
+      :modal="true"
+      :closable="true"
+      class="p-fluid"
+    >
+      <div class="flex flex-col p-3">
+        <div class="mb-3">
+          <label for="customTagInput" class="block mb-2 font-medium">Enter tag:</label>
+          <AutoComplete 
+            id="customTagInput" 
+            v-model="newCustomTag" 
+            class="w-full" 
+            placeholder="New tag..."
+            :suggestions="filteredCustomTagSuggestions"
+            @complete="suggestCustomTags"
+            @keydown.enter="addCustomTagFromDialog"
+            dropdown
+          />
+        </div>
+        <div v-if="availableTags.length > 0" class="mb-3">
+          <label class="block mb-2 font-medium">Or select existing tag:</label>
+          <div class="flex flex-wrap gap-1 max-h-40 overflow-y-auto p-2 border rounded">
+            <Chip
+              v-for="tag in availableTags" 
+              :key="tag.value" 
+              :label="tag.label" 
+              class="cursor-pointer hover:bg-primary-100 transition-colors my-1" 
+              @click="selectExistingTag(tag.label)"
+            />
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <Button 
+            label="Cancel" 
+            icon="pi pi-times" 
+            @click="customTagDialogVisible = false" 
+            class="p-button-text"
+          />
+          <Button 
+            label="Add Tag" 
+            icon="pi pi-check" 
+            @click="addCustomTagFromDialog" 
+            class="p-button-primary" 
+            :disabled="!newCustomTag || newCustomTag.trim() === ''"
+          />
+        </div>
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { QuoteService } from '@/service/QuoteService';
@@ -256,9 +342,10 @@ import Chip from 'primevue/chip';
 import InputText from 'primevue/inputtext';
 import ProgressSpinner from 'primevue/progressspinner';
 import Checkbox from 'primevue/checkbox';
-import InputSwitch from 'primevue/inputswitch';
+import ToggleSwitch from 'primevue/toggleswitch';
 import Panel from 'primevue/panel';
 import AutoComplete from 'primevue/autocomplete';
+import Dialog from 'primevue/dialog';
 
 const toast = useToast();
 
@@ -276,6 +363,14 @@ const applyingTagsForQuote = ref({});
 const useOllama = ref(true); // Default to using Ollama
 const ollamaAvailable = ref(false);
 const checkingOllamaStatus = ref(false);
+const customTags = ref({});
+const customTagDialogVisible = ref(false);
+const newCustomTag = ref('');
+const currentQuote = ref(null);
+
+// Window size tracking for responsive design
+const windowWidth = ref(window.innerWidth);
+const windowHeight = ref(window.innerHeight);
 
 // Filters
 const filters = ref({
@@ -301,15 +396,64 @@ const filteredBooks = ref([]);
 const filteredAuthors = ref([]);
 const filteredTags = ref([]);
 
+// Add after the other state references
+const filteredCustomTagSuggestions = ref([]);
+
+// Pagination state
+const rows = ref(10);
+const totalRecords = ref(0);
+const currentPage = ref(1);
+const currentSortField = ref(null);
+const currentSortOrder = ref(null);
+
 // Computed properties
 const hasProcessedQuotes = computed(() => processedQuoteIds.value.size > 0);
+
+// Window resize handler for responsive design
+const handleResize = () => {
+  windowWidth.value = window.innerWidth;
+  windowHeight.value = window.innerHeight;
+};
+
+// Get dynamic scroll height based on screen size
+const getScrollHeight = () => {
+  // Mobile devices (portrait)
+  if (windowWidth.value < 640) {
+    return '400px';
+  }
+  // Tablets and small screens
+  if (windowWidth.value < 1024) {
+    return '450px';
+  }
+  // Larger screens
+  return '500px';
+};
+
+// Listen for window resize
+onMounted(() => {
+  window.addEventListener('resize', handleResize);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', handleResize);
+});
 
 // Methods
 const loadQuotes = async () => {
   try {
     loading.value = true;
-    const data = await QuoteService.getQuotes();
-    quotes.value = data;
+    
+    // Use paginated API
+    const result = await QuoteService.getQuotesPaginated(
+      currentPage.value, 
+      rows.value, 
+      currentSortField.value, 
+      currentSortOrder.value, 
+      filters.value
+    );
+    
+    quotes.value = result.data;
+    totalRecords.value = result.total;
     
     // Load filter options after quotes are loaded
     loadFilterOptions();
@@ -691,6 +835,130 @@ const tagSorter = (event) => {
   });
 };
 
+const addCustomTag = (quoteId) => {
+  // Make sure there's something to add
+  if (!customTags.value[quoteId] || customTags.value[quoteId].trim() === '') {
+    return;
+  }
+  
+  // Capitalize first letter
+  const newTag = customTags.value[quoteId].trim();
+  const formattedTag = newTag.charAt(0).toUpperCase() + newTag.slice(1);
+  
+  // Initialize if needed
+  if (!generatedTags.value[quoteId]) {
+    generatedTags.value[quoteId] = [];
+    tagSelections.value[quoteId] = [];
+    processedQuoteIds.value.add(quoteId);
+  }
+  
+  // Check for duplicates
+  if (generatedTags.value[quoteId].includes(formattedTag)) {
+    toast.add({
+      severity: 'info',
+      summary: 'Duplicate Tag',
+      detail: `The tag "${formattedTag}" already exists for this quote`,
+      life: 2000
+    });
+    return;
+  }
+  
+  // Add the new tag and set it as selected
+  generatedTags.value[quoteId].push(formattedTag);
+  tagSelections.value[quoteId].push(true);
+  
+  // Clear the input
+  customTags.value[quoteId] = '';
+  
+  toast.add({
+    severity: 'success',
+    summary: 'Custom Tag Added',
+    detail: `Added "${formattedTag}" to tags`,
+    life: 2000
+  });
+};
+
+const showCustomTagDialog = (quote) => {
+  currentQuote.value = quote;
+  customTagDialogVisible.value = true;
+  newCustomTag.value = '';
+};
+
+const addCustomTagFromDialog = () => {
+  if (!newCustomTag.value || newCustomTag.value.trim() === '') return;
+  
+  const quoteId = currentQuote.value.id;
+  
+  // Initialize if needed
+  if (!generatedTags.value[quoteId]) {
+    generatedTags.value[quoteId] = [];
+    tagSelections.value[quoteId] = [];
+    processedQuoteIds.value.add(quoteId);
+  }
+  
+  // Process and add the tag
+  let formattedTag = newCustomTag.value.trim();
+  formattedTag = formattedTag.charAt(0).toUpperCase() + formattedTag.slice(1);
+  
+  // Check for duplicates
+  if (generatedTags.value[quoteId].includes(formattedTag)) {
+    toast.add({
+      severity: 'info',
+      summary: 'Duplicate Tag',
+      detail: `The tag "${formattedTag}" already exists for this quote`,
+      life: 2000
+    });
+    return;
+  }
+  
+  // Add the tag
+  generatedTags.value[quoteId].push(formattedTag);
+  tagSelections.value[quoteId].push(true);
+  
+  // Clear and close
+  newCustomTag.value = '';
+  customTagDialogVisible.value = false;
+  
+  toast.add({
+    severity: 'success',
+    summary: 'Custom Tag Added',
+    detail: `Added "${formattedTag}" to tags`,
+    life: 2000
+  });
+};
+
+const selectExistingTag = (tagName) => {
+  newCustomTag.value = tagName;
+};
+
+// Add after the suggestTags function
+const suggestCustomTags = (event) => {
+  let query = event.query.toLowerCase();
+  filteredCustomTagSuggestions.value = availableTags.value
+    .filter(tag => tag.label.toLowerCase().includes(query))
+    .map(tag => tag.label);
+};
+
+// Event handlers for pagination
+const onPage = (event) => {
+  currentPage.value = event.page + 1; // PrimeVue uses 0-based pagination
+  rows.value = event.rows;
+  loadQuotes();
+};
+
+const onSort = (event) => {
+  currentSortField.value = event.sortField;
+  currentSortOrder.value = event.sortOrder === 1 ? 'asc' : 'desc';
+  loadQuotes();
+};
+
+const onFilter = (event) => {
+  // Reset to first page when filtering
+  currentPage.value = 1;
+  filters.value = event.filters;
+  loadQuotes();
+};
+
 // Load quotes and check Ollama on mount
 onMounted(() => {
   loadQuotes();
@@ -730,6 +998,56 @@ onMounted(() => {
 
 :deep(.p-dropdown) {
   width: 100%;
+}
+
+/* Responsive styles */
+:deep(.p-datatable.p-datatable-sm .p-datatable-thead > tr > th) {
+  padding: 0.5rem 0.5rem;
+}
+
+:deep(.p-datatable.p-datatable-sm .p-datatable-tbody > tr > td) {
+  padding: 0.5rem 0.5rem;
+}
+
+:deep(.p-datatable.p-datatable-responsive-stack tbody tr) {
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border-radius: 0.5rem;
+}
+
+:deep(.p-datatable.p-datatable-responsive-stack tbody td .p-column-title) {
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+:deep(.p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td) {
+  text-align: left;
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--surface-border);
+}
+
+:deep(.p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td:last-child) {
+  border-bottom: none;
+}
+
+@media (max-width: 640px) {
+  :deep(.p-dialog) {
+    width: 95% !important;
+    margin: 0 auto;
+  }
+  
+  :deep(.p-button) {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  :deep(.p-button .p-button-label) {
+    font-size: 0.875rem;
+  }
 }
 
 @media (min-width: 768px) {

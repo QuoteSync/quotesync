@@ -139,7 +139,7 @@ const toggleProfileMenu = (event) => {
         <div class="layout-topbar-actions">
             <SearchButton />
             
-            <div class="layout-config-menu">
+            <div class="layout-config-menu hide-on-mobile">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
                 </button>
@@ -174,4 +174,17 @@ const toggleProfileMenu = (event) => {
         </div>
     </div>
 </template>
+
+<style lang="scss" scoped>
+/* Mobile responsive styles */
+@media screen and (max-width: 768px) {
+    .hide-on-mobile {
+        display: none !important;
+    }
+    
+    .layout-topbar-actions {
+        gap: 0.5rem;
+    }
+}
+</style>
 
