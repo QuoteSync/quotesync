@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { QuoteService } from '@/service/QuoteService';
 import { TagService } from '@/service/TagService';
@@ -15,11 +15,13 @@ import { useConfirm } from 'primevue/useconfirm';
 import axios from 'axios';
 import { getCookie } from '@/api';
 import GenerateTagsButton from '@/components/GenerateTagsButton.vue';
+import { useUserStore } from '@/stores/user';
 
 const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const confirm = useConfirm();
+const userStore = useUserStore();
 
 const quote = ref(null);
 const loading = ref(true);
@@ -681,10 +683,9 @@ onMounted(() => {
     <Dialog 
       v-model:visible="editDialog" 
       header="Edit Quote" 
-      :style="{width: '80vw', maxWidth: '1000px'}" 
+      :style="{width: '90vw', maxWidth: '768px'}" 
       :modal="true"
-      :blockScroll="true"
-      class="edit-quote-dialog"
+      class="p-fluid"
     >
       <div class="p-fluid p-4">
         <div class="field mb-5">

@@ -30,6 +30,17 @@ class User(AbstractUser):
     website = models.URLField(blank=True, null=True, help_text="Sitio web del usuario")
     twitter = models.CharField(max_length=50, blank=True, null=True, help_text="Usuario de Twitter")
     github = models.CharField(max_length=50, blank=True, null=True, help_text="Usuario de GitHub")
+    SUBSCRIPTION_CHOICES = [
+        ('free', 'Free'),
+        ('reader', 'Reader'),
+        ('scholar', 'Scholar'),
+    ]
+    
+    subscription_type = models.CharField(
+        max_length=10,
+        choices=SUBSCRIPTION_CHOICES,
+        default='free'
+    )
 
     def __str__(self):
         return f"{self.username}"

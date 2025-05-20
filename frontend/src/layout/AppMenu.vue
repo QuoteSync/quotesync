@@ -1,55 +1,52 @@
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { useLayout } from "@/layout/composables/layout";
 import AppConfigurator from "./AppConfigurator.vue";
 import AppMenuItem from "./AppMenuItem.vue";
+import { useUserStore } from '@/stores/user';
 
 const { toggleDarkMode, isDarkTheme } = useLayout();
+const userStore = useUserStore();
 
-const socialItems = [
-  {
-    label: 'Groups',
-    icon: 'pi pi-users',
-    to: '/groups'
-  },
-  {
-    label: 'Shared with Me',
-    icon: 'pi pi-share-alt',
-    to: '/shared'
-  }
-];
+const model = computed(() => {
+  const menuItems = [
+    {
+      label: "Home",
+      items: [
+        { label: "Dashboard", icon: "pi pi-fw pi-home", to: "/" },
+      ],
+    },
+    {
+      label: "Library",
+      items: [
+        { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
+        { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
+        { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
+        { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
+        { label: "Export Quotes", icon: "pi pi-fw pi-upload", to: "/export-quotes" },
+        { label: "Import Quotes", icon: "pi pi-fw pi-download", to: "/import-quotes" },
+        { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
+      ],
+    },
+    {
+      label: "AI Tools",
+      items: [
+        { label: "Advanced Search", icon: "pi pi-fw pi-search", to: "/advanced-search" },
+        { label: "Auto Tag Quotes", icon: "pi pi-fw pi-tags", to: "/auto-tag-quotes" },
+        { label: "AI Chat Assistant", icon: "pi pi-fw pi-comments", to: "/ai-chat" }
+      ]
+    },
+    {
+      label: "Social",
+      items: [
+        { label: 'Groups', icon: 'pi pi-users', to: '/groups' },
+        { label: 'Shared with Me', icon: 'pi pi-share-alt', to: '/shared' }
+      ]
+    }
+  ];
 
-const model = ref([
-  {
-    label: "Home",
-    items: [
-      { label: "Dashboard", icon: "pi pi-fw pi-home", to: "/" },
-    ],
-  },
-  {
-    label: "Library",
-    items: [
-      { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
-      { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
-      { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
-      { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
-      { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
-      { label: "Import Quotes", icon: "pi pi-fw pi-download", to: "/import-quotes" },
-    ],
-  },
-  {
-    label: "AI Tools",
-    items: [
-      { label: "AI Chat Assistant", icon: "pi pi-fw pi-comments", to: "/ai-chat" },
-      { label: "Advanced Search", icon: "pi pi-fw pi-search", to: "/advanced-search" },
-      { label: "Auto Tag Quotes", icon: "pi pi-fw pi-tags", to: "/auto-tag-quotes" },
-    ],
-  },
-  {
-    label: "Social",
-    items: socialItems
-  }
-]);
+  return menuItems;
+});
 </script>
 
 <template>

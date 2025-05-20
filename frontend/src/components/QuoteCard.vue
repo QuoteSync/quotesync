@@ -164,6 +164,7 @@ import { useRouter } from "vue-router";
 import { TagService } from "@/service/TagService";
 import { QuoteListService } from '@/service/QuoteListService';
 import { QuoteService } from '@/service/QuoteService';
+import { useUserStore } from '@/stores/user';
 import QuoteListMenu from './QuoteListMenu.vue';
 import QuoteModal from './QuoteModal.vue';
 import TagReviewPanel from './TagReviewPanel.vue';
@@ -171,8 +172,12 @@ import GenerateTagsButton from './GenerateTagsButton.vue';
 import Menu from 'primevue/menu';
 import Sidebar from 'primevue/sidebar';
 import { useToast } from "primevue/usetoast";
+import Dialog from 'primevue/dialog';
 
 const router = useRouter();
+const userStore = useUserStore();
+const toast = useToast();
+
 const props = defineProps({
   quote: {
     type: Object,
@@ -216,7 +221,6 @@ const editedTagsArray = ref(props.quote.tags.map((tag) => tag.title) || []);
 const newTag = ref("");
 const showModal = ref(false);
 const isAnyModalOpen = ref(false);
-const toast = useToast();
 
 // Make a reactive copy of the quote for local modifications
 const localQuote = ref({ ...props.quote });
@@ -730,4 +734,6 @@ watch(() => showModal.value, (newValue) => {
     box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
   }
 }
+
+
 </style>

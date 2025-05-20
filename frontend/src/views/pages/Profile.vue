@@ -431,6 +431,33 @@ const openGoalsDialog = () => {
   };
   showGoalsDialog.value = true;
 };
+
+// Add these functions in the script setup section, after the formatDate function:
+const getSubscriptionLabel = (type) => {
+  switch (type) {
+    case 'free':
+      return 'Free Plan';
+    case 'reader':
+      return 'Reader Plan';
+    case 'scholar':
+      return 'Scholar Plan';
+    default:
+      return 'Free Plan';
+  }
+};
+
+const getSubscriptionSeverity = (type) => {
+  switch (type) {
+    case 'free':
+      return 'info';
+    case 'reader':
+      return 'success';
+    case 'scholar':
+      return 'warning';
+    default:
+      return 'info';
+  }
+};
 </script>
 
 <template>
@@ -751,6 +778,13 @@ const openGoalsDialog = () => {
               <div class="details-value">
                 <Badge :value="user.is_staff ? 'Administrator' : 'Standard User'" 
                        :severity="user.is_staff ? 'danger' : 'info'" />
+              </div>
+            </div>
+            <div class="details-item">
+              <div class="details-label">Subscription Plan</div>
+              <div class="details-value">
+                <Badge :value="getSubscriptionLabel(user.subscription_type)" 
+                       :severity="getSubscriptionSeverity(user.subscription_type)" />
               </div>
             </div>
             <div class="details-item">

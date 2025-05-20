@@ -241,6 +241,9 @@ HEADLESS_FRONTEND_URLS = {
 }
 HEADLESS_SERVE_SPECIFICATION = True
 
+# Add custom adapter configuration
+HEADLESS_ADAPTER = 'accounts.adapters.CustomHeadlessAdapter'
+
 MFA_SUPPORTED_TYPES = ["totp", "recovery_codes", "webauthn"]
 # MFA_PASSKEY_LOGIN_ENABLED = True
 # MFA_PASSKEY_SIGNUP_ENABLED = True
@@ -249,6 +252,15 @@ AUTH_USER_MODEL = 'api.User'
 
 # Change email backend to console for development
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# Ollama API URL
+OLLAMA_API_URL = os.environ.get('OLLAMA_API_URL', 'http://localhost:11434')
+
+# Anthropic (Claude) API key 
+# Definición directa para evitar problemas con saltos de línea en .env
+ANTHROPIC_API_KEY = "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"
+# Comentar la línea de abajo para usar la definición directa de arriba
+# ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 
 # Importing local settings if available
 try:

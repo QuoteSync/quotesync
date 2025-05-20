@@ -70,8 +70,21 @@
       <!-- Main Chat Area -->
       <div class="chat-main">
         <div class="chat-header">
-          <h1 class="text-2xl font-bold">Chat with QuoteSyncAI</h1>
-          <p class="text-gray-500">Ask me anything about your literary collection</p>
+          <div class="flex justify-between items-center">
+            <div>
+              <h1 class="text-2xl font-bold">Chat with QuoteSyncAI</h1>
+              <p class="text-gray-500">Ask me anything about your literary collection</p>
+            </div>
+            <div class="service-selector">
+              <Button 
+                :label="aiService === 'quotesync' ? 'Using: QuoteSyncAI' : 'Using: Claude'" 
+                :icon="aiService === 'quotesync' ? 'pi pi-cloud' : 'pi pi-star'" 
+                class="p-button-sm p-button-outlined"
+                @click="toggleAIService"
+                v-tooltip.bottom="'Click to switch AI service'"
+              />
+            </div>
+          </div>
         </div>
         
         <!-- Chat Messages -->
@@ -106,14 +119,14 @@
                   color: isDarkTheme ? '#ffffff' : '#ffffff' 
                 }">
                   <div class="avatar ai-avatar" :style="{
-                    backgroundColor: isDarkTheme ? '#4f46e5' : '#4f46e5',
+                    backgroundColor: message.service === 'claude' ? '#10a37f' : '#4f46e5',
                     border: isDarkTheme ? '2px solid #1e293b' : '2px solid white'
                   }">
-                    <i class="pi pi-book" style="font-size: 1.2rem; color: white;"></i>
+                    <i :class="message.service === 'claude' ? 'pi pi-star' : 'pi pi-book'" style="font-size: 1.2rem; color: white;"></i>
                   </div>
                   <div class="message-meta">
                     <div class="message-role" :style="{ color: isDarkTheme ? 'white' : 'white' }">
-                      QuoteSyncAI
+                      {{ message.service === 'claude' ? 'Claude by Anthropic' : 'QuoteSyncAI' }}
                     </div>
                   </div>
                 </div>
@@ -168,14 +181,14 @@
                 color: isDarkTheme ? '#ffffff' : '#111827' 
               }">
                 <div class="avatar ai-avatar" :style="{
-                  backgroundColor: isDarkTheme ? '#4f46e5' : '#4f46e5',
+                  backgroundColor: aiService === 'claude' ? '#10a37f' : '#4f46e5',
                   border: isDarkTheme ? '2px solid #1e293b' : '2px solid white'
                 }">
-                  <i class="pi pi-book" style="font-size: 1.2rem; color: white;"></i>
+                  <i :class="aiService === 'claude' ? 'pi pi-star' : 'pi pi-book'" style="font-size: 1.2rem; color: white;"></i>
                 </div>
                 <div class="message-meta">
                   <div class="message-role" :style="{ color: isDarkTheme ? 'white' : '#111827' }">
-                    QuoteSyncAI
+                    {{ aiService === 'claude' ? 'Claude by Anthropic' : 'QuoteSyncAI' }}
                   </div>
                 </div>
               </div>
@@ -228,6 +241,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { QuoteSyncChatService } from '@/service/QuoteSyncChatService';
+import { AnthropicService } from '@/service/AnthropicService';
 import { useLayout } from '@/layout/composables/layout';
 import Button from 'primevue/button';
 import { marked } from 'marked';
@@ -250,11 +264,13 @@ const props = defineProps({
 
 // State
 const question = ref('');
+const aiService = ref('claude'); // Default to using Claude
 const chatHistory = ref([
   {
     role: 'assistant',
-    content: 'Hello! I\'m QuoteSyncAI, your personal literary assistant. How can I help you explore your quotes today?',
-    context: []
+    content: 'Hello! I\'m Claude, your personal literary assistant. How can I help you explore your quotes today?',
+    context: [],
+    service: 'claude'
   }
 ]);
 const isTyping = ref(false);
@@ -307,7 +323,8 @@ watch(() => props.quote, (newQuote) => {
       {
         role: 'assistant',
         content: `I'm here to help with your literary queries. You're currently viewing this quote:\n\n> "${newQuote.body}"\n\n${newQuote.book ? `From: ${newQuote.book.title}` : ''} ${newQuote.book?.author ? `by ${newQuote.book.author.name}` : ''}\n\nWhat would you like to know about it?`,
-        context: []
+        context: [],
+        service: 'claude'
       }
     ];
   }
@@ -385,6 +402,20 @@ const stopResponse = () => {
   }
 };
 
+const toggleAIService = () => {
+  aiService.value = aiService.value === 'quotesync' ? 'claude' : 'quotesync';
+  
+  // Add a system message about the switch
+  chatHistory.value.push({
+    role: 'assistant',
+    content: `I'm now using ${aiService.value === 'quotesync' ? 'QuoteSyncAI' : 'Claude by Anthropic'} to answer your questions. How can I help you?`,
+    context: [],
+    service: aiService.value
+  });
+  
+  scrollToBottom();
+};
+
 const submitQuestion = async () => {
   if (!question.value.trim() || isTyping.value) return;
   
@@ -417,58 +448,100 @@ const submitQuestion = async () => {
     // Create a new AbortController for this request
     streamController.value = new AbortController();
     
-    // Call the service with the controller
-    QuoteSyncChatService.streamChat(
-      messages,
-      (chunk) => {
-        if (chunk && chunk.message) {
-          // If we have context data
-          if (chunk.context) {
-            contextData = chunk.context;
-          }
-          
-          // Append to the current response
-          if (chunk.message.content) {
-            responseContent = chunk.message.content;
-            
-            // Update UI with current response text
-            if (chatHistory.value[chatHistory.value.length - 1].role === 'assistant') {
-              // Update existing assistant message
-              chatHistory.value[chatHistory.value.length - 1].content = responseContent;
-              chatHistory.value[chatHistory.value.length - 1].context = contextData;
-            } else {
-              // Add new assistant message
-              chatHistory.value.push({
-                role: 'assistant',
-                content: responseContent,
-                context: contextData
-              });
-            }
-            scrollToBottom();
-          }
-        }
-      },
-      // On done
-      () => {
-        isTyping.value = false;
-        scrollToBottom();
-      },
-      // On error
-      (error) => {
-        console.error('Error streaming chat response:', error);
-        isTyping.value = false;
+    if (aiService.value === 'claude') {
+      // Use Anthropic Claude service
+      try {
+        console.log('Calling Claude API...');
+        const result = await AnthropicService.generateResponse(currentQuestion);
+        console.log('Claude API response:', result);
         
-        // Add error message
+        // Add assistant response
         chatHistory.value.push({
           role: 'assistant',
-          content: 'Sorry, I encountered an error while processing your request. Please try again.',
-          context: []
+          content: result.response || "I'm sorry, I couldn't generate a response.",
+          context: [],
+          service: 'claude'
+        });
+      } catch (error) {
+        console.error('Error with Claude:', error);
+        chatHistory.value.push({
+          role: 'assistant',
+          content: 'Sorry, I encountered an error while processing your request with Claude. Please try again or switch to QuoteSyncAI.',
+          context: [],
+          service: 'claude'
+        });
+      } finally {
+        isTyping.value = false;
+        scrollToBottom();
+      }
+    } else {
+      // Use QuoteSyncChat service
+      try {
+        QuoteSyncChatService.streamChat(
+          messages,
+          (chunk) => {
+            if (chunk && chunk.message) {
+              // If we have context data
+              if (chunk.context) {
+                contextData = chunk.context;
+              }
+              
+              // Append to the current response
+              if (chunk.message.content) {
+                responseContent = chunk.message.content;
+                
+                // Update UI with current response text
+                if (chatHistory.value[chatHistory.value.length - 1].role === 'assistant') {
+                  // Update existing assistant message
+                  chatHistory.value[chatHistory.value.length - 1].content = responseContent;
+                  chatHistory.value[chatHistory.value.length - 1].context = contextData;
+                } else {
+                  // Add new assistant message
+                  chatHistory.value.push({
+                    role: 'assistant',
+                    content: responseContent,
+                    context: contextData,
+                    service: 'quotesync'
+                  });
+                }
+                scrollToBottom();
+              }
+            }
+          },
+          // On done
+          () => {
+            isTyping.value = false;
+            scrollToBottom();
+          },
+          // On error
+          (error) => {
+            console.error('Error streaming chat response:', error);
+            isTyping.value = false;
+            
+            // Add error message
+            chatHistory.value.push({
+              role: 'assistant',
+              content: 'Sorry, I encountered an error while processing your request. Please try again.',
+              context: [],
+              service: 'quotesync'
+            });
+            scrollToBottom();
+          },
+          // Pass the abort signal to the service
+          streamController.value.signal
+        );
+      } catch (error) {
+        console.error('Error initializing chat stream:', error);
+        isTyping.value = false;
+        chatHistory.value.push({
+          role: 'assistant',
+          content: 'Sorry, I encountered an error setting up the chat stream. Please try again.',
+          context: [],
+          service: 'quotesync'
         });
         scrollToBottom();
-      },
-      // Pass the abort signal to the service
-      streamController.value.signal
-    );
+      }
+    }
   } catch (error) {
     console.error('Error in chat:', error);
     isTyping.value = false;
@@ -477,7 +550,8 @@ const submitQuestion = async () => {
     chatHistory.value.push({
       role: 'assistant',
       content: 'Sorry, I encountered an error while processing your request. Please try again.',
-      context: []
+      context: [],
+      service: aiService.value
     });
     scrollToBottom();
   }

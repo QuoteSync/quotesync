@@ -17,9 +17,9 @@ const router = useRouter();
 onMounted(async () => {
   try {
     const sessionData = await getSession();
-    if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
+    if (sessionData?.data?.user) {
       // If already authenticated, redirect to dashboard
-      router.push({ name: "dashboard" });
+      router.push('/');
     }
   } catch (error) {
     console.error("Error checking session:", error);

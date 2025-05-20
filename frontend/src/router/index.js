@@ -6,6 +6,7 @@ import QuoteListDetail from '@/views/pages/QuoteListDetail.vue';
 import QuoteGroups from '@/views/pages/QuoteGroups.vue';
 import QuoteGroupDetails from '@/views/pages/QuoteGroupDetails.vue';
 import Profile from '@/views/pages/Profile.vue';
+import { useUserStore } from '@/stores/user';
 
 const router = createRouter({
   history: createWebHistory(),
@@ -19,6 +20,10 @@ const router = createRouter({
           name: 'dashboard',
           meta: { requiresAuth: true },
           component: () => import('@/views/Dashboard.vue')
+        },
+        {
+          path: '/dashboard',
+          redirect: '/'
         },
         {
           path: '/quotes',
@@ -37,6 +42,12 @@ const router = createRouter({
           name: 'importQuotes',
           meta: { requiresAuth: true },
           component: () => import('@/views/pages/ImportQuotes.vue')
+        },
+        {
+          path: '/export-quotes',
+          name: 'exportQuotes',
+          meta: { requiresAuth: true },
+          component: () => import('@/views/pages/ExportQuotes.vue')
         },
         {
           path: '/authors',
@@ -176,12 +187,12 @@ const router = createRouter({
           meta: { requiresAuth: true },
           component: () => import('@/views/pages/Crud.vue')
         },
-        {
-          path: '/documentation',
-          name: 'documentation',
-          meta: { requiresAuth: true },
-          component: () => import('@/views/pages/Documentation.vue')
-        },
+        // {
+        //   path: '/documentation',
+        //   name: 'documentation',
+        //   meta: { requiresAuth: true },
+        //   component: () => import('@/views/pages/Documentation.vue')
+        // },
         {
           path: '/lists',
           name: 'quoteLists',
@@ -291,33 +302,19 @@ const router = createRouter({
   ]
 });
 
-router.beforeEach(async (to, _from, next) => {
-  // List of public routes
-  const publicRoutes = ['login', 'register', 'accessDenied', 'error', 'resetPassword', 'forgotPassword', 'verifyEmail'];
-
-  // If the route is public, allow navigation without calling getSession
-  if (publicRoutes.includes(to.name)) {
-    return next();
-  }
-
-  // If the route requires authentication, verify the session
-  if (to.matched.some(record => record.meta.requiresAuth)) {
-    try {
-      const sessionData = await getSession();
-      if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
-        return next();
-      } else {
-        console.log("No active session, redirecting to login");
-        return next({ name: 'login' });
-      }
-    } catch (error) {
-      console.error("Session check error:", error);
-      return next({ name: 'login' });
+router.beforeEach(async (to, from, next) => {
+  const userStore = useUserStore();
+  
+  // Check if route requires authentication
+  if (to.meta.requiresAuth) {
+    const session = await getSession();
+    if (!session?.data?.user) {
+      next('/landing');
+      return;
     }
   }
-
+  
   next();
 });
-
 
 export default router;

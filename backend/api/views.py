@@ -1678,3 +1678,142 @@ def import_history(request):
     serializer = ImportLogSerializer(import_logs, many=True)
     
     return Response(serializer.data, status=status.HTTP_200_OK)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_subscription_plan(request, user_id):
+    try:
+        user = User.objects.get(id=user_id)
+        
+        # Define subscription plans with their features and pricing
+        subscription_plans = {
+            'free': {
+                'name': 'Free',
+                'price': 0,
+                'billing_period': 'forever',
+                'features': [
+                    'Up to 100 quotes',
+                    'Basic search',
+                    'Manual tagging',
+                    'Personal lists'
+                ]
+            },
+            'reader': {
+                'name': 'Reader',
+                'price': 4.99,
+                'billing_period': 'per month',
+                'features': [
+                    'Unlimited quotes',
+                    'Advanced search',
+                    'AI-powered tagging',
+                    'Social sharing',
+                    'Quote import tools'
+                ]
+            },
+            'scholar': {
+                'name': 'Scholar',
+                'price': 9.99,
+                'billing_period': 'per month',
+                'features': [
+                    'Everything in Reader',
+                    'AI Chat Assistant',
+                    'Semantic search',
+                    'Group collaboration',
+                    'API access'
+                ]
+            }
+        }
+        
+        # Get the user's current subscription type
+        current_plan = user.subscription_type or 'free'
+        
+        # Prepare the response
+        response_data = {
+            'current_plan': current_plan,
+            'plan_details': subscription_plans[current_plan],
+            'all_plans': subscription_plans
+        }
+        
+        return Response(response_data, status=status.HTTP_200_OK)
+        
+    except User.DoesNotExist:
+        return Response(
+            {'error': 'User not found'}, 
+            status=status.HTTP_404_NOT_FOUND
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+import anthropic
+from django.conf import settings
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+class AnthropicTagView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, format=None):
+        """
+        Generate tags for a quote using Anthropic Claude API
+        """
+        try:
+            prompt = request.data.get('prompt')
+            quote_text = request.data.get('quoteText', '')
+            
+            if not prompt or not quote_text:
+                return Response({'error': 'Prompt and quote text are required'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verificar si la API key está configurada
+            api_key = settings.ANTHROPIC_API_KEY
+            if not api_key:
+                logger.error("ANTHROPIC_API_KEY no está configurada en las settings")
+                return Response(
+                    {'error': 'Anthropic API key is not configured. Please add ANTHROPIC_API_KEY to your .env file.'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE
+                )
+            
+            logger.info(f"Usando Anthropic API para generar etiquetas. Longitud del texto: {len(quote_text)}")
+            
+            # Inicializar el cliente de Anthropic
+            client = anthropic.Anthropic(
+                api_key=api_key,
+            )
+            
+            # Realizar la solicitud a Claude
+            message = client.messages.create(
+                model="claude-3-7-sonnet-20250219",
+                max_tokens=100,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            # Procesar la respuesta
+            tag_content = message.content[0].text
+            
+            # Limpieza básica de la respuesta
+            tag_content = tag_content.strip()
+            tag_content = tag_content.replace('Tags:', '').replace('Etiquetas:', '').strip()
+            
+            # Convertir a lista de etiquetas
+            tags = [tag.strip() for tag in tag_content.split(',') if tag.strip()]
+            
+            # Limitar a 5 etiquetas máximo
+            tags = tags[:5]
+            
+            logger.info(f"Etiquetas generadas con Claude: {tags}")
+            return Response({'tags': tags})
+            
+        except anthropic.APIError as e:
+            logger.error(f"Error de la API de Anthropic: {str(e)}")
+            return Response({
+                'error': f"Error de la API de Anthropic: {str(e)}",
+                'detail': 'Verifica que la API key de Anthropic sea válida y esté correctamente configurada'
+            }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as e:
+            logger.error(f"Error al generar etiquetas con Claude: {str(e)}")
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

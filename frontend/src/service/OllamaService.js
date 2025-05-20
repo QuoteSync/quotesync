@@ -3,6 +3,7 @@ import axios from 'axios';
 export const OllamaService = {
   // Modelos disponibles, ordenados por preferencia
   models: [
+    { name: "deepseek-r1:14b", timeout: 20000 },
     { name: "phi3.5:latest", timeout: 20000 },
     { name: "llama2:13b-chat", timeout: 30000 },
     { name: "zephyr:latest", timeout: 15000 },

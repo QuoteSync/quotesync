@@ -1,22 +1,47 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { loginApi, getSession } from "@/api"; // Import getSession as well
+import { loginApi, getSession, getSubscriptionPlan } from "@/api"; // Import getSession and getSubscriptionPlan
 import FloatingConfigurator from "@/components/FloatingConfigurator.vue";
+import { useUserStore } from '@/stores/user';
 
 const username = ref("");
 const password = ref("");
 const checked = ref(false);
 const errorMessage = ref("");
 const router = useRouter();
+const userStore = useUserStore();
 
 // Check if user is already logged in when the component mounts
 onMounted(async () => {
     try {
         const sessionData = await getSession();
-        if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
+        console.log('Initial Session Data:', sessionData); // Debug log
+        
+        if (sessionData?.data?.user) {
+            const userData = sessionData.data.user;
+            console.log('Initial User Data:', userData); // Debug log
+            console.log('Initial Subscription Type:', userData.subscription_type); // Debug log
+            
+            // Set user data in store
+            userStore.setUser(userData);
+            
+            // If user has subscription type, ensure it's set
+            if (userData.subscription_type) {
+                console.log('Setting initial subscription type to:', userData.subscription_type); // Debug log
+                userStore.setSubscription(userData.subscription_type);
+            }
+            
+            // Log store state after setting
+            console.log('Initial Store State:', {
+                user: userStore.user,
+                subscription_type: userStore.subscription_type,
+                isReader: userStore.isReader,
+                isScholar: userStore.isScholar
+            });
+            
             // If already authenticated, redirect to dashboard
-            router.push({ name: "dashboard" });
+            router.push('/');
         }
     } catch (error) {
         console.error("Error checking session:", error);
@@ -24,23 +49,37 @@ onMounted(async () => {
 });
 
 const login = async () => {
-    errorMessage.value = ""; // Reset the error message
+    errorMessage.value = "";
     try {
-        // Wait for the login API call to complete
-        await loginApi(username.value, password.value);
-
-        // After login, check the session status
+        const response = await loginApi(username.value, password.value);
+        console.log('Login response:', response);
+        
+        // Get session data to check authentication
         const sessionData = await getSession();
-        if (sessionData && sessionData.meta && sessionData.meta.is_authenticated) {
-            // If authenticated, redirect to dashboard
-            router.push({ name: "dashboard" });
-        } else {
-            // Otherwise, show an error message
-            errorMessage.value = "Authentication failed. Please verify your credentials.";
+        console.log('Session Data:', sessionData);
+        
+        if (sessionData?.data?.user) {
+            const userData = sessionData.data.user;
+            console.log('User Data:', userData);
+            
+            // Set user data in store
+            userStore.setUser(userData);
+            
+            // Set subscription type directly from user data
+            if (userData.subscription_type) {
+                userStore.setSubscription(userData.subscription_type);
+            }
+            
+            // Redirect to dashboard
+            router.push('/');
         }
     } catch (error) {
-        console.error("Error during login:", error);
-        errorMessage.value = "Error during login. Please verify your credentials.";
+        console.error('Login error:', error);
+        if (error.response && error.response.status === 409) {
+            errorMessage.value = 'This account is already logged in on another device.';
+        } else {
+            errorMessage.value = 'Invalid username or password';
+        }
     }
 };
 </script>

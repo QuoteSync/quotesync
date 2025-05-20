@@ -38,4 +38,18 @@
 gestión del conocimiento; segundo cerebro; citas literarias; importación de Kindle; organización bibliográfica; investigación académica; base de datos centralizada; metadatos bibliográficos; productividad académica; etiquetado automático; inteligencia artificial; inserción contextual; Django; Vue.js
 
 ## Palabras clave (en)
-knowledge management; second brain; literary quotes; Kindle import; bibliographic organization; academic research; centralized database; bibliographic metadata; academic productivity; automatic tagging; artificial intelligence; contextual insertion; Django; Vue.js 
+knowledge management; second brain; literary quotes; Kindle import; bibliographic organization; academic research; centralized database; bibliographic metadata; academic productivity; automatic tagging; artificial intelligence; contextual insertion; Django; Vue.js
+
+## Integración con Claude (Anthropic)
+
+QuoteSync ahora incluye integración con Claude, el modelo de IA avanzado de Anthropic, para mejorar la generación de etiquetas. Para utilizar esta funcionalidad:
+
+1. Obtén una API key de Anthropic desde https://console.anthropic.com/
+2. Añade la API key a tu archivo `.env` en el directorio `backend`:
+   ```
+   ANTHROPIC_API_KEY=your_api_key_here
+   ```
+3. Reinicia el servidor backend
+4. En la interfaz de usuario, al generar etiquetas para una cita, selecciona "Claude" como servicio de IA
+
+Esta integración proporciona etiquetas más precisas y relevantes para tus citas, especialmente para textos complejos o especializados. 

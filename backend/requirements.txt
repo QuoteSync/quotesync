@@ -19,4 +19,7 @@ pillow>=10.0.0
 # Ollama integration
 numpy>=1.24.3
 httpx>=0.24.1
-requests>=2.31.0 
+requests>=2.31.0
+
+# Anthropic (Claude) API
+anthropic>=0.8.0 

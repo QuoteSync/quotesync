@@ -15,6 +15,8 @@ from .views import (
     user_goals,
     search,
     import_history,
+    get_subscription_plan,
+    AnthropicTagView,
 )
 from .views_deepseek import DeepSeekTagView, DeepSeekRelatedView, DeepSeekChatView, DeepSeekRelatedByTextView, DeepSeekContextView
 
@@ -48,13 +50,15 @@ urlpatterns = [
     path('api/profile-update-direct/', profile_update_direct, name='profile-update-direct'),
     path('api/users/goals/', user_goals, name='user-goals'),
     path('api/search/', search, name='search'),
-    
+    path('api/subscription-plan/<int:user_id>/', get_subscription_plan, name='subscription-plan'),
     # DeepSeek AI endpoints
     path('api/deepseek/tag', DeepSeekTagView.as_view(), name='deepseek-tag'),
     path('api/deepseek/related', DeepSeekRelatedView.as_view(), name='deepseek-related'),
     path('api/deepseek/related-by-text', DeepSeekRelatedByTextView.as_view(), name='deepseek-related-by-text'),
     path('api/deepseek/chat', DeepSeekChatView.as_view(), name='deepseek-chat'),
     path('api/deepseek/context', DeepSeekContextView.as_view(), name='deepseek-context'),
+    # Anthropic (Claude) API endpoint
+    path('api/anthropic/generate-tags', AnthropicTagView.as_view(), name='anthropic-generate-tags'),
 ]
 
 # Map the UserViewSet action URLs in a more friendly way

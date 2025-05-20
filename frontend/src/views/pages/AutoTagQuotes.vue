@@ -44,10 +44,41 @@
     <!-- AI Settings Panel -->
     <Panel header="AI Settings" :toggleable="true" class="mb-4">
       <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div class="flex items-center">
-          <label for="useOllama" class="mr-2 font-bold">Use Ollama</label>
-          <ToggleSwitch v-model="useOllama" inputId="useOllama" />
-          <span v-if="useOllama" class="ml-2">
+        <div class="flex items-center gap-4">
+          <div class="flex flex-col">
+            <label class="text-sm font-bold mb-2">Select AI Service:</label>
+            <div class="flex gap-2">
+              <Button 
+                :class="['p-button-sm', aiService === 'claude' ? 'p-button-primary' : 'p-button-outlined']"
+                label="Claude" 
+                icon="pi pi-star"
+                @click="aiService = 'claude'"
+              />
+              <Button 
+                :class="['p-button-sm', aiService === 'ollama' ? 'p-button-primary' : 'p-button-outlined']"
+                label="Ollama" 
+                icon="pi pi-desktop"
+                @click="aiService = 'ollama'"
+              />
+              <Button 
+                :class="['p-button-sm', aiService === 'quotesync' ? 'p-button-primary' : 'p-button-outlined']"
+                label="QuoteSync" 
+                icon="pi pi-cloud"
+                @click="aiService = 'quotesync'"
+              />
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex items-center" v-if="aiService === 'ollama'">
+          <Button 
+            icon="pi pi-refresh" 
+            @click="checkOllamaStatus" 
+            class="p-button-text p-button-rounded"
+            v-tooltip.top="'Check Ollama status'"
+            :disabled="checkingOllamaStatus"
+          />
+          <span class="ml-2">
             <i 
               v-if="ollamaAvailable" 
               class="pi pi-check-circle text-green-500"
@@ -65,16 +96,6 @@
               style="cursor: pointer;"
             ></i>
           </span>
-        </div>
-        
-        <div class="flex items-center">
-          <Button 
-            icon="pi pi-refresh" 
-            @click="checkOllamaStatus" 
-            class="p-button-text p-button-rounded"
-            v-tooltip.top="'Check Ollama status'"
-            :disabled="checkingOllamaStatus"
-          />
         </div>
       </div>
     </Panel>
@@ -98,16 +119,24 @@
       @page="onPage"
       @sort="onSort"
       @filter="onFilter"
+      :rowClass="rowClass"
+      @row-click="onRowClick"
+      @row-select-checkbox="onRowSelectCheckbox"
       responsiveLayout="stack"
       breakpoint="960px"
     >
       <template #header>
         <div class="flex flex-col sm:flex-row justify-between gap-2">
-          <Button 
-            icon="pi pi-refresh" 
-            @click="loadQuotes" 
-            class="p-button-text p-button-rounded w-full sm:w-auto" 
-          />
+          <div class="flex items-center">
+            <Button 
+              icon="pi pi-refresh" 
+              @click="loadQuotes" 
+              class="p-button-text p-button-rounded" 
+            />
+            <span class="text-xs text-gray-500 ml-2" v-tooltip.right="'Hold Shift and click checkboxes to select multiple quotes in a range'">
+              <i class="pi pi-info-circle mr-1"></i>Tip: Use Shift+Click on checkboxes for range selection
+            </span>
+          </div>
           <span class="p-input-icon-left w-full sm:w-auto">
             <i class="pi pi-search" />
             <InputText v-model="filters['global'].value" placeholder="Search quotes..." class="w-full" />
@@ -334,6 +363,7 @@ import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { QuoteService } from '@/service/QuoteService';
 import { QuoteSyncChatService } from '@/service/QuoteSyncChatService';
 import { OllamaService } from '@/service/OllamaService';
+import { AnthropicService } from '@/service/AnthropicService';
 import { TagService } from '@/service/TagService';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -360,13 +390,15 @@ const processedQuoteIds = ref(new Set());
 const generatedTags = ref({});
 const tagSelections = ref({});
 const applyingTagsForQuote = ref({});
-const useOllama = ref(true); // Default to using Ollama
+const aiService = ref('claude'); // Default to using Claude
 const ollamaAvailable = ref(false);
 const checkingOllamaStatus = ref(false);
 const customTags = ref({});
 const customTagDialogVisible = ref(false);
 const newCustomTag = ref('');
 const currentQuote = ref(null);
+const lastSelectedIndex = ref(-1); // Store the last selected row index for shift+click
+const lastCheckedIndex = ref(-1); // Store the last checkbox index for shift+click
 
 // Window size tracking for responsive design
 const windowWidth = ref(window.innerWidth);
@@ -508,7 +540,11 @@ const generateTagsForQuote = async (quote) => {
   try {
     let result;
     
-    if (useOllama.value) {
+    // Select AI service based on user choice
+    if (aiService.value === 'claude') {
+      // Use Anthropic Claude service
+      result = await AnthropicService.generateTags(quote.body);
+    } else if (aiService.value === 'ollama') {
       // Check Ollama status if we haven't already
       if (!ollamaAvailable.value && !checkingOllamaStatus.value) {
         await checkOllamaStatus();
@@ -518,11 +554,17 @@ const generateTagsForQuote = async (quote) => {
         throw new Error('Ollama is not available. Make sure it is running.');
       }
       
-      // Use Ollama service with the quote text directly
+      // Use Ollama service
       result = await OllamaService.generateTags(quote.body);
     } else {
-      // Use existing QuoteSyncChat service
+      // Use QuoteSyncChat service
       result = await QuoteSyncChatService.generateTags(quote.id);
+      
+      // Need different handling for QuoteSyncChat response format
+      if (result.tags && Array.isArray(result.tags) && result.tags.length > 0 && typeof result.tags[0] === 'object') {
+        // Extract titles from tag objects for QuoteSyncChat
+        result.tags = result.tags.map(tag => tag.title);
+      }
     }
     
     generatedTags.value[quote.id] = result.tags || [];
@@ -660,6 +702,8 @@ const applyAllTags = async () => {
 
 const clearSelection = () => {
   selectedQuotes.value = [];
+  lastSelectedIndex.value = -1; // Reset last selected index
+  lastCheckedIndex.value = -1; // Reset last checked index
 };
 
 // Load filter options
@@ -964,6 +1008,77 @@ onMounted(() => {
   loadQuotes();
   checkOllamaStatus();
 });
+
+// Add rowClass and onRowClick methods
+const rowClass = (data) => {
+  return {
+    'bg-primary-100': processedQuoteIds.value.has(data.id),
+    'bg-secondary-100': !processedQuoteIds.value.has(data.id) && processingQuotes.value.has(data.id)
+  };
+};
+
+const onRowClick = (event) => {
+  const { originalEvent, data, index } = event;
+  
+  // If shift key is pressed and we have a previous selection
+  if (originalEvent.shiftKey && lastSelectedIndex.value >= 0) {
+    // Prevent default behavior
+    originalEvent.preventDefault();
+    
+    // Determine start and end indices for range selection
+    const start = Math.min(lastSelectedIndex.value, index);
+    const end = Math.max(lastSelectedIndex.value, index);
+    
+    // Select all quotes in the range
+    for (let i = start; i <= end; i++) {
+      if (i >= 0 && i < quotes.value.length) {
+        const quote = quotes.value[i];
+        
+        // If the quote is not already selected, add it to selection
+        if (!selectedQuotes.value.some(q => q.id === quote.id)) {
+          selectedQuotes.value.push(quote);
+        }
+      }
+    }
+  }
+  
+  // Update last selected index
+  lastSelectedIndex.value = index;
+};
+
+const onRowSelectCheckbox = (event) => {
+  const { originalEvent, data, index, checked } = event;
+  
+  // If shift key is pressed and we have a previous checkbox selection
+  if (originalEvent.shiftKey && lastCheckedIndex.value >= 0) {
+    // Prevent default behavior to handle our custom logic
+    originalEvent.preventDefault();
+    
+    // Determine start and end indices for range selection
+    const start = Math.min(lastCheckedIndex.value, index);
+    const end = Math.max(lastCheckedIndex.value, index);
+    
+    // Apply the same state to all checkboxes in the range
+    for (let i = start; i <= end; i++) {
+      if (i >= 0 && i < quotes.value.length) {
+        const quote = quotes.value[i];
+        const quoteId = quote.id;
+        const alreadySelected = selectedQuotes.value.some(q => q.id === quoteId);
+        
+        if (checked && !alreadySelected) {
+          // Add to selection if not already there
+          selectedQuotes.value.push(quote);
+        } else if (!checked && alreadySelected) {
+          // Remove from selection
+          selectedQuotes.value = selectedQuotes.value.filter(q => q.id !== quoteId);
+        }
+      }
+    }
+  }
+  
+  // Update last checked index
+  lastCheckedIndex.value = index;
+};
 </script>
 
 <style scoped>

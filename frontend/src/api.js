@@ -39,13 +39,14 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Login function: simply call the login endpoint without checking getSession first.
+// Login function: call the login endpoint and return the response
 const loginApi = async (username, password) => {
   try {
-    await apiClient.post("/_allauth/browser/v1/auth/login", { username, password });
-    // Let your Login component handle redirection after a successful login.
+    const response = await apiClient.post("/_allauth/browser/v1/auth/login", { username, password });
+    return response.data;
   } catch (error) {
     console.error("Login error:", error);
+    throw error; // Re-throw the error to be handled by the caller
   }
 };
 
@@ -92,6 +93,16 @@ const signup = async (userData) => {
     return response.data;
   } catch (error) {
     console.error("Signup error:", error);
+    throw error;
+  }
+};
+
+export const getSubscriptionPlan = async (userId) => {
+  try {
+    const response = await apiClient.get(`/api/subscription-plan/${userId}/`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching subscription plan:', error);
     throw error;
   }
 };

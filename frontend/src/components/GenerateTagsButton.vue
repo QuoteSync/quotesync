@@ -30,7 +30,7 @@
         
         <div v-else>
           <!-- Status Info for Ollama -->
-          <div v-if="!ollamaStatus.available && useOllama" class="mb-4 p-3 border border-yellow-200 bg-yellow-50 dark:bg-yellow-900 dark:border-yellow-800 rounded-lg">
+          <div v-if="!ollamaStatus.available && aiService === 'ollama'" class="mb-4 p-3 border border-yellow-200 bg-yellow-50 dark:bg-yellow-900 dark:border-yellow-800 rounded-lg">
             <div class="flex items-center">
               <i class="pi pi-exclamation-triangle text-yellow-500 mr-2"></i>
               <span class="text-sm">Ollama is not available. Check if the service is running.</span>
@@ -45,11 +45,30 @@
             </div>
           </div>
           
-          <!-- Toggle between Ollama and QuoteSyncChat -->
-          <div class="mb-4 flex items-center">
-            <label class="mr-2 text-sm">Use Ollama</label>
-            <InputSwitch v-model="useOllama" />
-            <span v-if="useOllama" class="ml-2">
+          <!-- AI Service Selector -->
+          <div class="mb-4">
+            <label class="block text-sm mb-2">Select AI Service:</label>
+            <div class="flex flex-wrap gap-2">
+              <Button 
+                :class="['p-button-sm', aiService === 'claude' ? 'p-button-primary' : 'p-button-outlined']"
+                label="Claude" 
+                icon="pi pi-star"
+                @click="aiService = 'claude'"
+              />
+              <Button 
+                :class="['p-button-sm', aiService === 'ollama' ? 'p-button-primary' : 'p-button-outlined']"
+                label="Ollama" 
+                icon="pi pi-desktop"
+                @click="aiService = 'ollama'"
+              />
+              <Button 
+                :class="['p-button-sm', aiService === 'quotesync' ? 'p-button-primary' : 'p-button-outlined']"
+                label="QuoteSync" 
+                icon="pi pi-cloud"
+                @click="aiService = 'quotesync'"
+              />
+            </div>
+            <span v-if="aiService === 'ollama'" class="ml-2">
               <i 
                 v-if="ollamaStatus.available" 
                 class="pi pi-check-circle text-green-500"
@@ -132,6 +151,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { OllamaService } from '@/service/OllamaService';
+import { AnthropicService } from '@/service/AnthropicService';
 import { QuoteSyncChatService } from '@/service/QuoteSyncChatService';
 import Button from 'primevue/button';
 import Sidebar from 'primevue/sidebar';
@@ -162,7 +182,7 @@ const error = ref(null);
 const showTagPanel = ref(false);
 const suggestedTags = ref([]);
 const acceptedTags = ref([]);
-const useOllama = ref(true);
+const aiService = ref('claude'); // Default to Claude
 const ollamaStatus = ref({
   available: false,
   checking: false
@@ -186,7 +206,7 @@ const capitalizeWords = (str) => {
   return str.replace(/\b\w/g, char => char.toUpperCase());
 };
 
-// Generate tags using Ollama or QuoteSyncChat
+// Generate tags using selected AI service
 const generateTags = async () => {
   if (loading.value) return;
   
@@ -198,8 +218,14 @@ const generateTags = async () => {
     // Show the tag panel
     showTagPanel.value = true;
     
-    // If using Ollama, check status first
-    if (useOllama.value) {
+    let result;
+    
+    // Select AI service based on user choice
+    if (aiService.value === 'claude') {
+      // Generate tags using Claude
+      result = await AnthropicService.generateTags(props.quote.body);
+    } else if (aiService.value === 'ollama') {
+      // Check Ollama status first
       if (!ollamaStatus.value.available && !ollamaStatus.value.checking) {
         await checkOllamaStatus();
       }
@@ -209,27 +235,27 @@ const generateTags = async () => {
       }
       
       // Generate tags using Ollama
-      const result = await OllamaService.generateTags(props.quote.body);
-      
-      // Filter out tags that already exist on the quote
-      const existingTags = props.quote.tags ? props.quote.tags.map(tag => tag.title.toLowerCase()) : [];
-      
-      // Capitalize first letter of each word in tags before adding to suggested tags
-      suggestedTags.value = result.tags
-        .filter(tag => !existingTags.includes(tag.toLowerCase()))
-        .map(tag => capitalizeWords(tag));
+      result = await OllamaService.generateTags(props.quote.body);
     } else {
       // Generate tags using QuoteSyncChat
-      const result = await QuoteSyncChatService.generateTags(props.quote.id);
+      result = await QuoteSyncChatService.generateTags(props.quote.id);
       
-      // Filter out tags that already exist on the quote
-      const existingTagIds = props.quote.tags ? props.quote.tags.map(tag => tag.id) : [];
-      
-      // Capitalize first letter of each word in tags
-      suggestedTags.value = result.tags
-        .filter(tag => !existingTagIds.includes(tag.id))
-        .map(tag => capitalizeWords(tag.title));
+      // Need different handling for QuoteSyncChat response format
+      if (result.tags && Array.isArray(result.tags) && result.tags.length > 0 && typeof result.tags[0] === 'object') {
+        // Extract titles from tag objects for QuoteSyncChat
+        result.tags = result.tags.map(tag => tag.title);
+      }
     }
+    
+    // Filter out tags that already exist on the quote
+    const existingTags = props.quote.tags ? props.quote.tags.map(tag => 
+      typeof tag === 'object' ? tag.title.toLowerCase() : tag.toLowerCase()
+    ) : [];
+    
+    // Capitalize first letter of each word in tags before adding to suggested tags
+    suggestedTags.value = result.tags
+      .filter(tag => !existingTags.includes(tag.toLowerCase()))
+      .map(tag => capitalizeWords(tag));
     
     // Notify parent component
     emit('tags-generated', suggestedTags.value);
@@ -325,12 +351,13 @@ onMounted(() => {
 
 <style scoped>
 :deep(.p-button-sm) {
-  width: 2rem;
-  height: 2rem;
+  padding: 0.4rem 0.8rem;
+  font-size: 0.875rem;
 }
 
 :deep(.p-button-sm .p-button-icon) {
   font-size: 0.75rem;
+  margin-right: 0.3rem;
 }
 
 .tag-panel {

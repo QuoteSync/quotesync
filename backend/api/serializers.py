@@ -15,7 +15,7 @@ from django.db.models import Q
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'avatar', 'date_joined', 'last_login', 'is_staff', 'bio', 'location', 'website', 'twitter', 'github']
+        fields = ['id', 'email', 'username', 'first_name', 'last_name', 'avatar', 'date_joined', 'last_login', 'is_staff', 'bio', 'location', 'website', 'twitter', 'github', 'subscription_type']
 
 
 class AuthorSerializer(serializers.ModelSerializer):
