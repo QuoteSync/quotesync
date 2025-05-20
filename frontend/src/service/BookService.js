@@ -88,6 +88,16 @@ const fetchAndCacheCover = async (url) => {
                              !url.includes('librarything.com') &&
                              url.startsWith('http');
     
+    // Handle OpenLibrary URLs specially
+    if (url.includes('openlibrary.org')) {
+      console.log('OpenLibrary URL detected:', url);
+      // Check for OpenLibrary URLs with ID 0, which causes errors
+      if (url.includes('/id/0-') || url.includes('/id/0.') || url.match(/\/id\/0($|\?)/)) {
+        console.warn('Invalid OpenLibrary ID (0) detected:', url);
+        return '/assets/images/book-placeholder.png';
+      }
+    }
+    
     // For OpenLibrary or other known CORS-friendly APIs
     const fetchOptions = {
       mode: isLikelyCORSIssue ? 'no-cors' : 'cors',
@@ -102,10 +112,21 @@ const fetchAndCacheCover = async (url) => {
     // We can't check if it's ok, but we can still use it for the cache
     if ((fetchOptions.mode === 'cors' && !response.ok) || 
         (response.type === 'opaque' && response.status === 0)) {
+      // If it's OpenLibrary and not OK, don't throw - just return placeholder
+      if (url.includes('openlibrary.org')) {
+        console.warn(`OpenLibrary cover not available: ${response.status}`);
+        return '/assets/images/book-placeholder.png';
+      }
       throw new Error(`Failed to fetch cover: ${response.status}`);
     }
     
     const blob = await response.blob();
+    
+    // Check if the blob is too small (likely a transparent or empty image)
+    if (blob.size < 100) {
+      console.warn('Cover image too small (may be empty):', url);
+      return '/assets/images/book-placeholder.png';
+    }
     
     // Skip caching if response is opaque (no-cors mode)
     if (response.type !== 'opaque') {
@@ -167,6 +188,12 @@ const preloadBookCover = async (book) => {
         coverUrl = book.cover;
       } else if (!isNaN(parseInt(book.cover))) { 
         // If it's a numeric ID, use OpenLibrary format
+        // Check for ID "0" which is known to cause errors
+        const coverId = parseInt(book.cover);
+        if (coverId === 0 || coverId < 0) {
+          console.warn('Invalid cover ID (0 or negative) for book:', book.title);
+          return;
+        }
         coverUrl = `https://covers.openlibrary.org/b/id/${book.cover}-L.jpg`;
       } else {
         // Might be another format, try to handle gracefully
@@ -181,6 +208,14 @@ const preloadBookCover = async (book) => {
     // Skip chrome-extension:// and other non-HTTP URLs
     if (!coverUrl.startsWith('http')) {
       console.warn('Skipping non-HTTP cover URL:', coverUrl);
+      return;
+    }
+    
+    // Validate URL format before fetch
+    try {
+      new URL(coverUrl);
+    } catch (urlError) {
+      console.warn('Invalid URL format for cover:', coverUrl);
       return;
     }
     
@@ -244,6 +279,78 @@ const enhanceWithCoverCache = (bookService) => {
     }
   };
   
+  // Update the updateBook method
+  enhancedService.updateBook = async function(bookId, bookData) {
+    try {
+      // Create a minimal book object with only the fields the backend needs
+      const minimalBookData = {};
+      
+      // Copy only the essential fields that the backend model accepts
+      const allowedFields = [
+        'title', 'description', 'isbn', 'publication_year', 
+        'language', 'cover', 'gradient_primary_color', 
+        'gradient_secondary_color'
+      ];
+      
+      allowedFields.forEach(field => {
+        if (bookData[field] !== undefined) {
+          minimalBookData[field] = bookData[field];
+        }
+      });
+      
+      // Special handling for cover
+      if (minimalBookData.cover) {
+        // If it's an OpenLibrary URL, extract just the ID
+        if (typeof minimalBookData.cover === 'string' && 
+            minimalBookData.cover.includes('openlibrary.org/b/id/')) {
+          const match = minimalBookData.cover.match(/\/b\/id\/(\d+)/);
+          if (match && match[1]) {
+            // For OpenLibrary covers, use the full URL format
+            minimalBookData.cover = `https://covers.openlibrary.org/b/id/${match[1]}-L.jpg`;
+            console.log('Using full OpenLibrary URL:', minimalBookData.cover);
+          }
+        } else if (typeof minimalBookData.cover === 'string' && /^\d+$/.test(minimalBookData.cover)) {
+          // If it's just a numeric ID, convert to full URL
+          minimalBookData.cover = `https://covers.openlibrary.org/b/id/${minimalBookData.cover}-L.jpg`;
+          console.log('Converted numeric ID to full URL:', minimalBookData.cover);
+        }
+      }
+      
+      // Log the exact data being sent
+      console.log('Sending book update data:', JSON.stringify(minimalBookData, null, 2));
+      
+      // If we're only updating the cover, use PATCH with just the cover field
+      if (Object.keys(minimalBookData).length === 1 && minimalBookData.cover) {
+        const response = await apiClient.patch(`/books/${bookId}/`, { cover: minimalBookData.cover });
+        return response.data;
+      }
+      
+      // For other updates, get the current book data
+      const currentBook = await this.getBook(bookId);
+      
+      // Merge current book data with updates, but exclude author field
+      const updateData = {
+        ...currentBook,
+        ...minimalBookData
+      };
+      
+      // Remove author field to prevent validation errors
+      delete updateData.author;
+      
+      // Make the API request using PATCH for partial update
+      const response = await apiClient.patch(`/books/${bookId}/`, updateData);
+      return response.data;
+    } catch (error) {
+      console.error('Error in updateBook:', error);
+      if (error.response) {
+        console.error('API error response status:', error.response.status);
+        console.error('API error response data:', JSON.stringify(error.response.data, null, 2));
+        console.error('Request data that caused error:', JSON.stringify(error.config.data, null, 2));
+      }
+      throw error;
+    }
+  };
+  
   return enhancedService;
 };
 
@@ -258,24 +365,48 @@ export const getCoverUrl = async (coverId) => {
     // If it's a full URL, use it directly
     if (coverId.startsWith('http')) {
       coverUrl = coverId;
-    } else if (!isNaN(parseInt(coverId))) {
-      // If it's a numeric ID, use OpenLibrary format
+    } else if (coverId.match(/^\d+$/)) {
+      // If it's a numeric ID as string (like "12345"), use OpenLibrary format
+      // Check for invalid IDs
+      const numericId = parseInt(coverId, 10);
+      if (numericId === 0 || isNaN(numericId) || numericId < 0) {
+        console.warn('Invalid OpenLibrary ID format:', coverId);
+        return '/assets/images/book-placeholder.png';
+      }
       coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
     } else {
-      // Might be another format, use as is
+      // If it has non-numeric characters, use as-is (might be data URL or other format)
       coverUrl = coverId;
     }
+  } else if (typeof coverId === 'number') {
+    // If it's a numeric ID, use OpenLibrary format
+    // Check for invalid IDs
+    if (coverId === 0 || coverId < 0) {
+      console.warn('Invalid OpenLibrary ID value:', coverId);
+      return '/assets/images/book-placeholder.png';
+    }
+    coverUrl = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
   } else {
-    // If coverId is not a string, return placeholder
+    // If coverId is not a string or number, return placeholder
     console.warn('Invalid cover ID format:', coverId);
     return '/assets/images/book-placeholder.png';
   }
   
-  // Skip chrome-extension:// and other non-HTTP URLs
+  // Skip chrome-extension:// and other non-HTTP URLs for data URLs
   if (coverUrl.startsWith('chrome-extension:') || 
-      (!coverUrl.startsWith('http') && !coverUrl.startsWith('data:'))) {
+      (!coverUrl.startsWith('http') && !coverUrl.startsWith('data:') && !coverUrl.startsWith('blob:'))) {
     console.warn('Skipping unsupported URL scheme:', coverUrl);
     return '/assets/images/book-placeholder.png';
+  }
+  
+  // Validate the URL format for HTTP URLs
+  if (coverUrl.startsWith('http')) {
+    try {
+      new URL(coverUrl);
+    } catch (error) {
+      console.warn('Invalid URL format:', coverUrl);
+      return '/assets/images/book-placeholder.png';
+    }
   }
   
   return await fetchAndCacheCover(coverUrl);
@@ -299,8 +430,74 @@ const baseBookService = {
     },
     
     async updateBook(bookId, bookData) {
-            const response = await apiClient.put(`/books/${bookId}/`, bookData);
+        try {
+            // Create a minimal book object with only the fields the backend needs
+            const minimalBookData = {};
+            
+            // Copy only the essential fields that the backend model accepts
+            const allowedFields = [
+                'title', 'description', 'isbn', 'publication_year', 
+                'language', 'cover', 'gradient_primary_color', 
+                'gradient_secondary_color'
+            ];
+            
+            allowedFields.forEach(field => {
+                if (bookData[field] !== undefined) {
+                    minimalBookData[field] = bookData[field];
+                }
+            });
+            
+            // Special handling for cover
+            if (minimalBookData.cover) {
+                // If it's an OpenLibrary URL, extract just the ID
+                if (typeof minimalBookData.cover === 'string' && 
+                    minimalBookData.cover.includes('openlibrary.org/b/id/')) {
+                    const match = minimalBookData.cover.match(/\/b\/id\/(\d+)/);
+                    if (match && match[1]) {
+                        // For OpenLibrary covers, use the full URL format
+                        minimalBookData.cover = `https://covers.openlibrary.org/b/id/${match[1]}-L.jpg`;
+                        console.log('Using full OpenLibrary URL:', minimalBookData.cover);
+                    }
+                } else if (typeof minimalBookData.cover === 'string' && /^\d+$/.test(minimalBookData.cover)) {
+                    // If it's just a numeric ID, convert to full URL
+                    minimalBookData.cover = `https://covers.openlibrary.org/b/id/${minimalBookData.cover}-L.jpg`;
+                    console.log('Converted numeric ID to full URL:', minimalBookData.cover);
+                }
+            }
+            
+            // Log the exact data being sent
+            console.log('Sending book update data:', JSON.stringify(minimalBookData, null, 2));
+            
+            // If we're only updating the cover, use PATCH with just the cover field
+            if (Object.keys(minimalBookData).length === 1 && minimalBookData.cover) {
+                const response = await apiClient.patch(`/books/${bookId}/`, { cover: minimalBookData.cover });
+                return response.data;
+            }
+            
+            // For other updates, get the current book data
+            const currentBook = await this.getBook(bookId);
+            
+            // Merge current book data with updates, but exclude author field
+            const updateData = {
+                ...currentBook,
+                ...minimalBookData
+            };
+            
+            // Remove author field to prevent validation errors
+            delete updateData.author;
+            
+            // Make the API request using PATCH for partial update
+            const response = await apiClient.patch(`/books/${bookId}/`, updateData);
             return response.data;
+        } catch (error) {
+            console.error('Error in updateBook:', error);
+            if (error.response) {
+                console.error('API error response status:', error.response.status);
+                console.error('API error response data:', JSON.stringify(error.response.data, null, 2));
+                console.error('Request data that caused error:', JSON.stringify(error.config.data, null, 2));
+            }
+            throw error;
+        }
     },
     
     async deleteBook(bookId) {
@@ -315,7 +512,7 @@ const baseBookService = {
     
     async searchBooks(searchTerm) {
         const response = await apiClient.get(`/books/search/?q=${searchTerm}`);
-            return response.data;
+        return response.data;
     },
     
     async getBooksByAuthor(authorId) {

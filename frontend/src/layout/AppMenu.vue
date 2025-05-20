@@ -21,11 +21,11 @@ const model = computed(() => {
       items: [
         { label: "Books", icon: "pi pi-fw pi-book", to: "/books" },
         { label: "Authors", icon: "pi pi-fw pi-users", to: "/authors" },
-        { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
-        { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
-        { label: "Export Quotes", icon: "pi pi-fw pi-upload", to: "/export-quotes" },
-        { label: "Import Quotes", icon: "pi pi-fw pi-download", to: "/import-quotes" },
         { label: "Tags", icon: "pi pi-fw pi-tag", to: "/tags" },
+        // { label: "Quotes", icon: "pi pi-fw pi-comment", to: "/quotes" },
+        { label: "Quote Lists", icon: "pi pi-fw pi-list", to: "/lists" },
+        { label: "Import Quotes", icon: "pi pi-fw pi-download", to: "/import-quotes" },
+        { label: "Export Quotes", icon: "pi pi-fw pi-upload", to: "/export-quotes" },
       ],
     },
     {
@@ -40,7 +40,7 @@ const model = computed(() => {
       label: "Social",
       items: [
         { label: 'Groups', icon: 'pi pi-users', to: '/groups' },
-        { label: 'Shared with Me', icon: 'pi pi-share-alt', to: '/shared' }
+        // { label: 'Shared with Me', icon: 'pi pi-share-alt', to: '/shared' }
       ]
     }
   ];

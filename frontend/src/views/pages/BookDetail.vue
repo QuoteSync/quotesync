@@ -368,20 +368,220 @@ const handleEditFromModal = (quote) => {
   showQuoteModal.value = false;
   // Any additional logic for editing would go here
 };
+
+// Function to open the cover change dialog
+const openCoverDialog = async () => {
+  coverDialogVisible.value = true;
+  previewCoverUrl.value = null;
+  coverOptions.value = [];
+  customSearchTitle.value = '';
+  customCoverUrl.value = '';
+  previewError.value = false;
+  showCustomPreview.value = false;
+  
+  // Search for covers using the current book title
+  await searchCoverForBook();
+};
+
+// Function to search for book covers
+const searchCoverForBook = async (customTitle) => {
+  try {
+    changingCover.value = true;
+    
+    // Use the provided custom title or the book's title
+    const searchTitle = customTitle || book.value.title;
+    
+    // Reset cover errors
+    previewError.value = false;
+    
+    // Fetch cover options from OpenLibrary
+    const result = await BookService.fetchBookCovers(
+      searchTitle, 
+      book.value.author.name
+    );
+    
+    // Filter out problematic covers
+    coverOptions.value = result.covers.filter(cover => {
+      // Skip covers with ID 0 from OpenLibrary (known to cause errors)
+      if (cover.url && cover.url.includes('openlibrary.org')) {
+        if (cover.url.includes('/id/0-') || 
+            cover.url.includes('/id/0.') || 
+            cover.url.match(/\/id\/0($|\?)/)) {
+          console.warn('Filtered out invalid OpenLibrary cover with ID 0');
+          return false;
+        }
+      }
+      
+      // Validate URL format
+      try {
+        new URL(cover.url);
+      } catch (urlError) {
+        console.warn('Filtered out cover with invalid URL format:', cover.url);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    if (coverOptions.value.length > 0) {
+      // Set the first cover as the preview by default
+      previewCoverUrl.value = coverOptions.value[0].url;
+      
+      toast.add({
+        severity: 'success',
+        summary: 'Covers Found',
+        detail: `Found ${coverOptions.value.length} covers for "${book.value.title}"`,
+        life: 2000
+      });
+    } else {
+      previewCoverUrl.value = null;
+      toast.add({
+        severity: 'info',
+        summary: 'No Covers Found',
+        detail: `Could not find covers for "${book.value.title}"`,
+        life: 2000
+      });
+    }
+  } catch (error) {
+    console.error('Error searching for covers:', error);
+    coverOptions.value = [];
+    previewCoverUrl.value = null;
+    toast.add({
+      severity: 'error',
+      summary: 'Search Failed',
+      detail: `Error searching for covers: ${error.message || 'Unknown error'}`,
+      life: 3000
+    });
+  } finally {
+    changingCover.value = false;
+  }
+};
+
+// Function to select a cover from the options
+const selectCover = (coverUrl) => {
+  previewCoverUrl.value = coverUrl;
+};
+
+// Function to preview a custom cover URL
+const previewCustomCoverUrl = () => {
+  if (!customCoverUrl.value) return;
+  
+  // Validate the URL format
+  try {
+    new URL(customCoverUrl.value);
+    previewError.value = false;
+    showCustomPreview.value = true;
+  } catch (urlError) {
+    previewError.value = true;
+    showCustomPreview.value = false;
+    toast.add({
+      severity: 'error',
+      summary: 'Invalid URL',
+      detail: 'The URL format is invalid. Make sure it starts with http:// or https://',
+      life: 3000
+    });
+  }
+};
+
+// Function to handle custom URL preview error
+const handleCustomUrlError = () => {
+  previewError.value = true;
+};
+
+// Function to handle custom URL preview success
+const handleCustomUrlSuccess = () => {
+  previewError.value = false;
+};
+
+// Function to use a custom cover URL
+const useCustomCoverUrl = () => {
+  if (!customCoverUrl.value || previewError.value) return;
+  
+  previewCoverUrl.value = customCoverUrl.value;
+  showCustomPreview.value = false;
+};
+
+// Function to save the cover change
+const saveCoverChange = async () => {
+  if (!previewCoverUrl.value || !book.value) return;
+  
+  try {
+    changingCover.value = true;
+    
+    // Validate URL format
+    try {
+      new URL(previewCoverUrl.value);
+    } catch (urlError) {
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid URL',
+        detail: 'The cover URL format is invalid',
+        life: 3000
+      });
+      return;
+    }
+    
+    // Get cover value to save - for OpenLibrary, extract just the ID
+    let coverValue = previewCoverUrl.value;
+    
+    // If it's an OpenLibrary URL, extract just the ID to store
+    if (previewCoverUrl.value.includes('openlibrary.org/b/id/')) {
+      const match = previewCoverUrl.value.match(/\/b\/id\/(\d+)/);
+      if (match && match[1]) {
+        coverValue = match[1]; // Just store the numeric ID
+        console.log('Extracted OpenLibrary ID:', coverValue);
+      }
+    }
+    
+    // Create a minimal update object with ONLY the cover field
+    const updateData = {
+      cover: coverValue
+    };
+    
+    // Update the book with minimal data
+    await BookService.updateBook(book.value.id, updateData);
+    
+    // Update local state
+    book.value.cover = coverValue;
+    book.value.imageFailed = false;
+    
+    // Close the dialog
+    coverDialogVisible.value = false;
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Cover Updated',
+      detail: `Cover for "${book.value.title}" has been updated`,
+      life: 2000
+    });
+  } catch (error) {
+    console.error('Error saving cover:', error);
+    
+    if (error.response) {
+      console.error('Error response:', error.response.status, error.response.data);
+    }
+    
+    toast.add({
+      severity: 'error',
+      summary: 'Update Failed',
+      detail: 'Failed to update book cover. Please try again.',
+      life: 3000
+    });
+  } finally {
+    changingCover.value = false;
+  }
+};
 </script>
 
 <template>
-  <div v-if="book" class="max-w-6xl mx-auto p-8">
-    <!-- Detalles del Libro -->
-    <div
-      class="p-8 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg hover:shadow-xl transition-shadow duration-300"
-    >
-      <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
+  <div v-if="book" class="flex h-screen overflow-hidden">
+    <!-- Book Cover Panel (1/4) -->
+    <div class="w-1/4 h-screen p-6 flex flex-col items-center sticky top-0">
+      <div class="w-full h-full bg-surface-0 dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-700 p-6 flex flex-col items-center">
         <!-- Portada del Libro -->
-        <div class="flex flex-col justify-center">
-          <div class="cover-container relative" style="width: 300px; height: 500px; margin: 0 auto;">
+        <div class="cover-container relative group w-full" style="aspect-ratio: 3/4;">
             <!-- Fixed size container to prevent layout shifts -->
-            <div class="absolute inset-0 w-full h-full bg-gray-100 rounded-md shadow-md">
+          <div class="absolute inset-0 w-full h-full bg-gray-100 rounded-2xl shadow-lg transform transition-transform duration-300 group-hover:scale-105">
               <!-- Skeleton loader that shows during loading -->
               <div 
                 v-if="book.cover && coverIsLoading" 
@@ -492,14 +692,175 @@ const handleEditFromModal = (quote) => {
             </div>
           </div>
           
-          <!-- Button for cover management positioned below the cover -->
-          <div class="mt-4 text-center">
+        <!-- Book Title -->
+        <h1 class="text-3xl font-bold fancy-font mt-6 mb-4 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">{{ book.title }}</h1>
+        
+        <!-- Author Link -->
+        <div
+          class="flex items-center justify-center mt-4 cursor-pointer hover:underline"
+          @click="$router.push({ name: 'authorDetail', params: { id: book.author.id } })"
+        >
+          <!-- Author image with gradient fallback -->
+          <div class="w-10 h-10 rounded-full overflow-hidden transition-transform duration-300 hover:scale-105">
+            <img
+              v-if="book.author.cover"
+              class="w-full h-full object-cover"
+              :src="book.author.cover"
+              alt="Author Avatar"
+              @error="handleAuthorImageError(book.author)"
+            />
+            <!-- Gradient fallback with initial -->
+            <div 
+              v-else
+              class="w-full h-full flex items-center justify-center"
+              :style="{ 
+                background: book.author.gradient || 
+                  (book.author.gradient_primary_color && book.author.gradient_secondary_color ? 
+                    `linear-gradient(135deg, ${book.author.gradient_primary_color}, ${book.author.gradient_secondary_color})` : 
+                    getRandomGradient().background) 
+              }"
+            >
+              <span class="text-white font-bold text-sm">{{ book.author.name.charAt(0) }}</span>
+            </div>
+          </div>
+          <span class="ml-3 text-xl font-semibold">{{ book.author.name }}</span>
+        </div>
+        
+        <!-- Button for cover management -->
             <Button 
               icon="pi pi-image" 
               label="Change Cover" 
               @click="openCoverDialog"
-              class="p-button-sm"
+          class="p-button-sm p-button-rounded p-button-outlined mt-4"
             />
+      </div>
+    </div>
+
+    <!-- Content Panel (3/4) -->
+    <div class="w-3/4 h-screen overflow-y-auto pl-8">
+      <div class="max-w-6xl mx-auto p-8 space-y-12">
+        <!-- Quotes Section -->
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-surface-50 to-surface-100 dark:from-surface-800 dark:to-surface-900 rounded-3xl transform -rotate-0.25"></div>
+          <div class="p-8 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-3xl hover:shadow-xl transition-all duration-300 relative">
+            <h2 class="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">Quotes</h2>
+
+            <!-- Filtros de Citas -->
+            <div class="mb-8 flex flex-col md:flex-row items-center justify-center gap-6 bg-surface-50 dark:bg-surface-800 p-6 rounded-2xl shadow-sm">
+              <!-- Chapter filter -->
+              <div v-if="availableChapters.length > 0" class="filter-item">
+                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Chapter:</label>
+                <select v-model="selectedChapter" class="border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                  <option value="">All Chapters</option>
+                  <option v-for="chapter in availableChapters" :key="chapter" :value="chapter">
+                    {{ chapter }}
+                  </option>
+                </select>
+              </div>
+              
+              <!-- Tag filter -->
+              <div v-if="allTags.length > 0" class="filter-item">
+                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Tag:</label>
+                <select v-model="selectedTag" class="border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                  <option value="">All Tags</option>
+                  <option v-for="tag in allTags" :key="tag" :value="tag">{{ tag }}</option>
+                </select>
+              </div>
+              
+              <!-- Favorites filter -->
+              <div class="filter-item flex items-center">
+                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Favorites:</label>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    v-model="showFavorites" 
+                    class="sr-only peer"
+                  />
+                  <div class="w-11 h-6 bg-surface-200 dark:bg-surface-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-surface-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-surface-600 peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+
+              <!-- Add New Quote Button -->
+              <div class="filter-item">
+                <Button
+                  icon="pi pi-plus-circle"
+                  label="Add Quote"
+                  @click="isCreatingNewQuote = true"
+                  class="p-button-sm p-button-rounded p-button-outlined"
+                />
+              </div>
+            </div>
+
+            <!-- Formulario para crear nueva cita -->
+            <div v-if="isCreatingNewQuote" class="mt-8">
+              <div class="relative group">
+                <div class="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-primary-600/20 rounded-2xl transform rotate-2 group-hover:rotate-3 transition-transform duration-300"></div>
+                <div class="bg-surface-50 dark:bg-surface-800 rounded-2xl shadow-lg p-6 transform transition-all duration-300 animate-fade-in relative">
+                  <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xl font-semibold text-surface-900 dark:text-surface-100">
+                      <i class="pi pi-pencil mr-2"></i>
+                      New Quote
+                    </h3>
+                    <button 
+                      @click="isCreatingNewQuote = false"
+                      class="text-surface-500 hover:text-surface-700 dark:text-surface-400 dark:hover:text-surface-200 transition-colors"
+                    >
+                      <i class="pi pi-times text-xl"></i>
+                    </button>
+                  </div>
+
+                  <QuoteCard
+                    :quote="{ body: '', tags: [] }"
+                    :isNew="true"
+                    @save-new="handleSaveNewQuote"
+                    @cancel-edit="isCreatingNewQuote = false"
+                    class="transform transition-all duration-300 hover:shadow-md"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Sección de Citas usando el componente QuoteCard -->
+            <div class="mt-10">
+              <div v-if="filteredQuotes && filteredQuotes.length" class="flex flex-col gap-6">
+                <div v-for="(quote, index) in filteredQuotes" :key="quote.id" class="relative group">
+                  <div class="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-primary-600/20 rounded-2xl transform rotate-2 group-hover:rotate-3 transition-transform duration-300"></div>
+                  <QuoteCard
+                    :quote="quote"
+                    :liked="likedQuotes[quote.id]"
+                    :has-previous="index > 0"
+                    :has-next="index < filteredQuotes.length - 1"
+                    @toggle-like="toggleLikeQuote"
+                    @save-edit="saveEditedQuote"
+                    @cancel-edit="cancelEditingQuote"
+                    @previous-quote="navigateToPreviousQuote"
+                    @next-quote="navigateToNextQuote"
+                    @click="openQuoteModal(quote)"
+                    class="transform transition-all duration-300 hover:-translate-y-1 relative"
+                  />
+                  
+                  <!-- Display chapter information if present -->
+                  <div v-if="quote.chapter" class="text-sm text-gray-600 mt-2 ml-4">
+                    <span class="font-medium">Chapter:</span> {{ quote.chapter }}
+                  </div>
+                  
+                  <!-- Display link to Google Books if present -->
+                  <div v-if="quote.book_url" class="text-sm text-blue-600 mt-1 ml-4">
+                    <a :href="quote.book_url" target="_blank" class="flex items-center">
+                      <i class="pi pi-external-link mr-1"></i>
+                      <span>View in Google Books</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center text-surface-500 p-8">
+                <i class="pi pi-quote-right text-4xl mb-4"></i>
+                <p class="text-lg">No quotes available with these filters.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
           </div>
           
           <!-- Cover Change Dialog -->
@@ -750,145 +1111,6 @@ const handleEditFromModal = (quote) => {
               </div>
             </div>
           </Dialog>
-        </div>
-        
-        <!-- Información del Libro -->
-        <div class="text-center md:text-left">
-          <h1 class="text-4xl font-bold fancy-font">{{ book.title }}</h1>
-          <div
-            class="flex items-center justify-center md:justify-start mt-4 cursor-pointer hover:underline"
-            @click="
-              $router.push({
-                name: 'authorDetail',
-                params: { id: book.author.id },
-              })
-            "
-          >
-            <!-- Author image with gradient fallback -->
-            <div class="w-10 h-10 rounded-full overflow-hidden transition-transform duration-300 hover:scale-105">
-              <img
-                v-if="book.author.cover"
-                class="w-full h-full object-cover"
-                :src="book.author.cover"
-                alt="Author Avatar"
-                @error="handleAuthorImageError(book.author)"
-              />
-              <!-- Gradient fallback with initial -->
-              <div 
-                v-else
-                class="w-full h-full flex items-center justify-center"
-                :style="{ 
-                  background: book.author.gradient || 
-                    (book.author.gradient_primary_color && book.author.gradient_secondary_color ? 
-                      `linear-gradient(135deg, ${book.author.gradient_primary_color}, ${book.author.gradient_secondary_color})` : 
-                      getRandomGradient().background) 
-                }"
-              >
-                <span class="text-white font-bold text-sm">{{ book.author.name.charAt(0) }}</span>
-              </div>
-            </div>
-            <span class="ml-3 text-xl font-semibold">{{ book.author.name }}</span>
-          </div>
-          <p class="mt-4 text-lg">{{ book.description }}</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filtros y listado de citas -->
-    <div
-      class="mt-10 p-8 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg hover:shadow-xl transition-shadow duration-300"
-    >
-      <h2 class="text-3xl font-bold mb-6 text-center">Quotes</h2>
-
-      <!-- Filtros de Citas -->
-      <div class="mb-6 flex flex-col md:flex-row items-center justify-center gap-4">
-        <!-- Chapter filter -->
-        <div v-if="availableChapters.length > 0" class="filter-item">
-          <label class="mr-2 font-semibold">Filter by Chapter:</label>
-          <select v-model="selectedChapter" class="border p-1 rounded">
-            <option value="">All Chapters</option>
-            <option v-for="chapter in availableChapters" :key="chapter" :value="chapter">
-              {{ chapter }}
-            </option>
-          </select>
-        </div>
-        
-        <!-- Tag filter -->
-        <div v-if="allTags.length > 0" class="filter-item">
-          <label class="mr-2 font-semibold">Filter by Tag:</label>
-          <select v-model="selectedTag" class="border p-1 rounded">
-            <option value="">All Tags</option>
-            <option v-for="tag in allTags" :key="tag" :value="tag">{{ tag }}</option>
-          </select>
-        </div>
-        
-        <!-- Favorites filter -->
-        <div class="filter-item flex items-center">
-          <label class="mr-2 font-semibold">Favorites:</label>
-          <input type="checkbox" v-model="showFavorites" />
-        </div>
-      </div>
-
-      <!-- Sección para agregar nueva cita -->
-      <div class="mt-10 text-center">
-        <button
-          class="px-4 py-2 rounded bg-green-500 text-white hover:bg-green-600 transition-colors"
-          @click="isCreatingNewQuote = true"
-        >
-          Add New Quote
-        </button>
-      </div>
-
-      <!-- Formulario para crear nueva cita -->
-      <div v-if="isCreatingNewQuote" class="mt-6">
-        <QuoteCard
-          :quote="{ body: '', tags: [] }"
-          :isNew="true"
-          @save-new="handleSaveNewQuote"
-          @cancel-edit="isCreatingNewQuote = false"
-        />
-      </div>
-
-      <!-- Sección de Citas usando el componente QuoteCard -->
-      <div class="mt-10">
-        <div v-if="filteredQuotes && filteredQuotes.length" class="flex flex-col gap-6">
-          <div v-for="(quote, index) in filteredQuotes" :key="quote.id" class="quote-container">
-            <QuoteCard
-              :quote="quote"
-              :liked="likedQuotes[quote.id]"
-              :has-previous="index > 0"
-              :has-next="index < filteredQuotes.length - 1"
-              @toggle-like="toggleLikeQuote"
-              @save-edit="saveEditedQuote"
-              @cancel-edit="cancelEditingQuote"
-              @previous-quote="navigateToPreviousQuote"
-              @next-quote="navigateToNextQuote"
-              @click="openQuoteModal(quote)"
-            />
-            
-            <!-- Display chapter information if present -->
-            <div v-if="quote.chapter" class="text-sm text-gray-600 mt-2 ml-4">
-              <span class="font-medium">Chapter:</span> {{ quote.chapter }}
-            </div>
-            
-            <!-- Display link to Google Books if present -->
-            <div v-if="quote.book_url" class="text-sm text-blue-600 mt-1 ml-4">
-              <a :href="quote.book_url" target="_blank" class="flex items-center">
-                <i class="pi pi-external-link mr-1"></i>
-                <span>View in Google Books</span>
-              </a>
-            </div>
-          </div>
-        </div>
-        <div v-else class="text-center text-gray-500">
-          <p>No quotes available with these filters.</p>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div v-else class="flex justify-center items-center h-full">
-    <p>Loading...</p>
-  </div>
 
   <!-- Add the QuoteModal component -->
   <QuoteModal
@@ -903,6 +1125,10 @@ const handleEditFromModal = (quote) => {
     @previous-quote="navigateToPreviousQuote"
     @next-quote="navigateToNextQuote"
   />
+  </div>
+  <div v-else class="flex justify-center items-center h-full">
+    <p>Loading...</p>
+  </div>
 </template>
 
 <style scoped>
@@ -914,8 +1140,87 @@ const handleEditFromModal = (quote) => {
   @apply border-b pb-4 mb-4 border-gray-200 dark:border-gray-700 last:border-0;
 }
 
+/* Add these new styles */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Your existing styles */
 .rotate-30 {
   transform: rotate(30deg);
+}
+
+/* Add new styles for the layout */
+.h-screen {
+  height: 100vh;
+  max-height: 100vh;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for the content panel */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* Add new styles for the floating book panel */
+.shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.dark .shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Add a subtle hover effect to the book panel */
+.w-1\/4 > div {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.w-1\/4 > div:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.3);
+}
+
+.dark .w-1\/4 > div:hover {
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
 }
 </style>

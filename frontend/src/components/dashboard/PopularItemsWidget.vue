@@ -142,6 +142,9 @@ onMounted(() => {
 
 <style scoped>
 .item-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   transform: translateY(0);
   will-change: transform, box-shadow;
   transition: all 0.3s;
@@ -166,6 +169,11 @@ onMounted(() => {
 /* Estilos específicos para libros y autores */
 .cover-container {
   height: 300px;
+  width: 100%;
+  position: relative;
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  overflow: hidden;
 }
 
 /* Responsive heights for different screen sizes */
@@ -181,7 +189,7 @@ onMounted(() => {
   }
 }
 
-/* Estilos para las tarjetas de autores */
+/* Estilos específicos para autores */
 .author-card {
   height: 100%;
   display: flex;
@@ -192,10 +200,42 @@ onMounted(() => {
   height: 230px;
 }
 
+/* Card styles */
+.item-card {
+  transform: translateY(0);
+  will-change: transform, box-shadow;
+  transition: all 0.3s;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+/* Author-specific card styles */
+.item-card[data-type="author"] {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.item-details {
+  padding: 0.75rem;
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
+}
+
+/* Author-specific details styles */
+.item-details[data-type="author"] {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 120px;
+}
+
 /* Responsive styles for title and details */
 @media screen and (max-width: 639px) {
-  .item-details {
+  .item-details[data-type="author"] {
     padding: 0.5rem !important;
+    min-height: 100px;
   }
   
   .item-count {
@@ -244,10 +284,13 @@ onMounted(() => {
           <!-- Card (libro o autor) -->
           <router-link 
             :to="`${linkPrefix}${item.id}`"
-            class="block cursor-pointer"
-            style="text-decoration: none; color: inherit; height: 100%;"
+            class="block cursor-pointer h-full"
+            style="text-decoration: none; color: inherit;"
           >
-            <div class="shadow-md item-card group relative h-full" style="border-radius: 1rem; transform-origin: center center;">
+            <div class="shadow-md item-card group relative" 
+              :data-type="itemType"
+              style="transform-origin: center center;"
+            >
               <!-- Overlay on hover -->
               <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-300 z-10 flex items-center justify-center opacity-0 group-hover:opacity-100" style="border-radius: 1rem;">
                 <div class="bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg">
@@ -256,14 +299,13 @@ onMounted(() => {
               </div>
 
               <!-- Cover image with loading gradient -->
-              <div class="cover-container" style="width: 100%; position: relative; border-top-left-radius: 1rem; border-top-right-radius: 1rem; overflow: hidden;">
+              <div class="cover-container">
                 <!-- Actual cover image that only shows when loaded -->
                 <img 
                   v-if="item.cover" 
                   :src="item.cover" 
                   :alt="itemType === 'book' ? (item.title || '') : (item.name || '')" 
                   class="w-full h-full object-cover item-image absolute top-0 left-0"
-                  style="border-top-left-radius: 1rem; border-top-right-radius: 1rem;"
                   :style="{ opacity: imageLoaded[item.id] ? 1 : 0, zIndex: 2, transition: 'opacity 0.3s ease' }"
                   @load="handleImageLoad(item.id)"
                   @error="handleImageError(item.id)"
@@ -314,7 +356,7 @@ onMounted(() => {
                       <span style="color: rgba(255,255,255,0.8); font-size: 0.75rem; font-style: italic; display: block;">
                         {{ itemType === 'book' 
                           ? `by ${item.author && item.author.name ? item.author.name : 'Unknown Author'}` 
-                          : 'Author' }}
+                          : '' }}
                       </span>
                     </div>
                   </div>
@@ -322,13 +364,35 @@ onMounted(() => {
               </div>
               
               <!-- Details (below the cover) -->
-              <div class="item-details bg-white dark:bg-gray-800" style="padding: 0.75rem; border-bottom-left-radius: 1rem; border-bottom-right-radius: 1rem;">
+              <div class="item-details bg-white dark:bg-gray-800" :data-type="itemType">
+                <!-- Author name for author cards -->
+                <div v-if="itemType === 'author'" class="text-center mb-2">
+                  <span class="font-medium text-lg">{{ item.name || 'Unknown Author' }}</span>
+                </div>
                 <!-- Count (quotes or books) -->
                 <div class="item-count bg-gray-50 dark:bg-gray-900/20 transition-colors duration-200 group-hover:bg-orange-50 dark:group-hover:bg-orange-900/10" style="display: flex; align-items: center; justify-content: center; padding: 0.5rem; border-radius: 0.75rem;">
-                  <i :class="`pi ${countIcon} transition-colors duration-200 group-hover:text-orange-500`" :style="`color: ${countIconColor}; margin-right: 0.5rem;`"></i>
-                  <span style="font-weight: 500;" class="transition-colors duration-200 group-hover:text-orange-600 dark:group-hover:text-orange-300">
-                    {{ getItemCount(item) }} {{ getItemCount(item) === 1 && itemType === 'author' ? countLabel.slice(0, -1) : countLabel }}
-                  </span>
+                  <template v-if="itemType === 'author'">
+                    <div class="flex items-center gap-4">
+                      <div class="flex items-center">
+                        <i class="pi pi-book transition-colors duration-200 group-hover:text-orange-500" style="color: #3b82f6; margin-right: 0.5rem;"></i>
+                        <span style="font-weight: 500;" class="transition-colors duration-200 group-hover:text-orange-600 dark:group-hover:text-orange-300">
+                          {{ getItemCount(item) }}
+                        </span>
+                      </div>
+                      <div class="flex items-center">
+                        <i class="pi pi-bookmark-fill transition-colors duration-200 group-hover:text-orange-500" style="color: #f59e0b; margin-right: 0.5rem;"></i>
+                        <span style="font-weight: 500;" class="transition-colors duration-200 group-hover:text-orange-600 dark:group-hover:text-orange-300">
+                          {{ item.quotes_count || 0 }}
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <i :class="`pi ${countIcon} transition-colors duration-200 group-hover:text-orange-500`" :style="`color: ${countIconColor}; margin-right: 0.5rem;`"></i>
+                    <span style="font-weight: 500;" class="transition-colors duration-200 group-hover:text-orange-600 dark:group-hover:text-orange-300">
+                      {{ getItemCount(item) }}
+                    </span>
+                  </template>
                 </div>
               </div>
             </div>

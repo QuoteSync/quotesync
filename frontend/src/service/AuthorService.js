@@ -81,141 +81,54 @@ export const AuthorService = {
     },
     
     /**
-     * Fetch author covers from OpenLibrary or Wikipedia
+     * Fetch author covers from Wikipedia
      * @param {string} authorName - Author name to search for
-     * @param {boolean} prioritizeWikipedia - Whether to prioritize Wikipedia search
+     * @param {boolean} prioritizeWikipedia - This parameter is kept for backward compatibility but is ignored
      * @returns {Promise<Array>} - Array of cover image URLs
      */
     async fetchAuthorCoverFromOpenLibrary(authorName, prioritizeWikipedia = false) {
-        console.log(`Searching for author covers for "${authorName}", prioritizeWikipedia: ${prioritizeWikipedia}`);
+        console.log(`Searching for author covers for "${authorName}"`);
         
         // Store all found cover options
         let coverOptions = [];
         
         try {
-            // If prioritizeWikipedia is true, first try Wikipedia
-            if (prioritizeWikipedia) {
-                console.log(`Searching Wikipedia for "${authorName}"`);
-                try {
-                    // Search Wikipedia for the author
-                    const wikipediaResponse = await axios.get(
-                        `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&utf8=1&srsearch=${encodeURIComponent(authorName)}&srlimit=5&origin=*`
-                    );
-                    
-                    const searchResults = wikipediaResponse.data.query.search;
-                    console.log(`Wikipedia search returned ${searchResults.length} results`);
-                    
-                    // For each search result, get the page info and extract images if available
-                    for (const result of searchResults) {
-                        try {
-                            // Get page images
-                            const pageImagesResponse = await axios.get(
-                                `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&pithumbsize=500&pageids=${result.pageid}&origin=*`
-                            );
-                            
-                            const pages = pageImagesResponse.data.query.pages;
-                            const page = pages[result.pageid];
-                            
-                            if (page.thumbnail && page.thumbnail.source) {
-                                // Add to cover options with source information
-                                coverOptions.push({
-                                    url: page.thumbnail.source,
-                                    source: 'wikipedia',
-                                    title: page.title || result.title
-                                });
-                                console.log(`Found Wikipedia image for "${result.title}": ${page.thumbnail.source}`);
-                            }
-                        } catch (error) {
-                            console.error(`Error fetching Wikipedia page images for ${result.title}:`, error);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error searching Wikipedia:", error);
-                }
+            console.log(`Searching Wikipedia for "${authorName}"`);
+            try {
+                // Search Wikipedia for the author
+                const wikipediaResponse = await axios.get(
+                    `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&utf8=1&srsearch=${encodeURIComponent(authorName)}&srlimit=5&origin=*`
+                );
                 
-                // If we found Wikipedia images, return them
-                if (coverOptions.length > 0) {
-                    console.log(`Returning ${coverOptions.length} Wikipedia images`);
-                    return coverOptions;
-                }
-            }
-            
-            // Search OpenLibrary (either as primary source or as fallback if Wikipedia search failed)
-            console.log(`Searching OpenLibrary for "${authorName}"`);
-            
-            // Clean and prepare the search term
-            const cleanAuthorName = authorName.trim().replace(/[^\w\s]/gi, '');
-            
-            // First try author search endpoint
-            const authorSearchResponse = await axios.get(`https://openlibrary.org/search/authors.json?q=${encodeURIComponent(cleanAuthorName)}`);
-            
-            if (authorSearchResponse.data.docs && authorSearchResponse.data.docs.length > 0) {
-                // Get author keys for the top 5 results
-                const authorKeys = authorSearchResponse.data.docs.slice(0, 5).map(doc => doc.key);
+                const searchResults = wikipediaResponse.data.query.search;
+                console.log(`Wikipedia search returned ${searchResults.length} results`);
                 
-                // For each author key, get their details
-                for (const authorKey of authorKeys) {
+                // For each search result, get the page info and extract images if available
+                for (const result of searchResults) {
                     try {
-                        const authorResponse = await axios.get(`https://openlibrary.org${authorKey}.json`);
-                        const authorData = authorResponse.data;
+                        // Get page images
+                        const pageImagesResponse = await axios.get(
+                            `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&pithumbsize=500&pageids=${result.pageid}&origin=*`
+                        );
                         
-                        // Check if author has a photo
-                        if (authorData.photos && authorData.photos.length > 0) {
-                            // Add each photo to the cover options with source information
-                            authorData.photos.forEach(photoId => {
-                                const photoUrl = `https://covers.openlibrary.org/a/id/${photoId}-L.jpg`;
-                                coverOptions.push({
-                                    url: photoUrl,
-                                    source: 'openlibrary',
-                                    id: photoId
-                                });
+                        const pages = pageImagesResponse.data.query.pages;
+                        const page = pages[result.pageid];
+                        
+                        if (page.thumbnail && page.thumbnail.source) {
+                            // Add to cover options with source information
+                            coverOptions.push({
+                                url: page.thumbnail.source,
+                                source: 'wikipedia',
+                                title: page.title || result.title
                             });
+                            console.log(`Found Wikipedia image for "${result.title}": ${page.thumbnail.source}`);
                         }
                     } catch (error) {
-                        console.error(`Error fetching OpenLibrary author details for ${authorKey}:`, error);
+                        console.error(`Error fetching Wikipedia page images for ${result.title}:`, error);
                     }
                 }
-            }
-            
-            // If we didn't find any OpenLibrary images and we didn't already try Wikipedia, try it as a fallback
-            if (coverOptions.length === 0 && !prioritizeWikipedia) {
-                console.log(`No OpenLibrary images found, trying Wikipedia as fallback for "${authorName}"`);
-                try {
-                    // Search Wikipedia for the author
-                    const wikipediaResponse = await axios.get(
-                        `https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&utf8=1&srsearch=${encodeURIComponent(authorName)}&srlimit=5&origin=*`
-                    );
-                    
-                    const searchResults = wikipediaResponse.data.query.search;
-                    console.log(`Wikipedia fallback search returned ${searchResults.length} results`);
-                    
-                    // For each search result, get the page info and extract images if available
-                    for (const result of searchResults) {
-                        try {
-                            // Get page images
-                            const pageImagesResponse = await axios.get(
-                                `https://en.wikipedia.org/w/api.php?action=query&format=json&prop=pageimages&pithumbsize=500&pageids=${result.pageid}&origin=*`
-                            );
-                            
-                            const pages = pageImagesResponse.data.query.pages;
-                            const page = pages[result.pageid];
-                            
-                            if (page.thumbnail && page.thumbnail.source) {
-                                // Add to cover options with source information
-                                coverOptions.push({
-                                    url: page.thumbnail.source,
-                                    source: 'wikipedia',
-                                    title: page.title || result.title
-                                });
-                                console.log(`Found Wikipedia fallback image for "${result.title}": ${page.thumbnail.source}`);
-                            }
-                        } catch (error) {
-                            console.error(`Error fetching Wikipedia fallback page images for ${result.title}:`, error);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Error searching Wikipedia as fallback:", error);
-                }
+            } catch (error) {
+                console.error("Error searching Wikipedia:", error);
             }
             
             // Remove any duplicate URLs

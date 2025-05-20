@@ -2,9 +2,16 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { AuthorService } from "@/service/AuthorService";
 import { useRouter } from "vue-router";
+import { useToast } from "primevue/usetoast";
+import Button from "primevue/button";
+import Dialog from "primevue/dialog";
+import InputText from "primevue/inputtext";
+import TabView from "primevue/tabview";
+import TabPanel from "primevue/tabpanel";
 
-// Initialize the router
+// Initialize the router and toast
 const router = useRouter();
+const toast = useToast();
 
 // Opciones para el layout de DataView
 const layout = ref("grid");
@@ -21,6 +28,23 @@ const likedAuthors = ref({});
 
 // Estado para rastrear si se están cargando imágenes
 const loadingCovers = ref({});
+
+// Add state variables for cover update functionality
+const updatingCovers = ref(false);
+const coverDialogVisible = ref(false);
+const currentAuthor = ref(null);
+const previewCoverUrl = ref(null);
+const authorsToProcess = ref([]);
+const currentAuthorIndex = ref(0);
+const customSearchTitle = ref('');
+const coverOptions = ref([]);
+const customCoverUrl = ref('');
+const coverLoadErrors = ref({});
+const previewImageError = ref(false);
+const changingCover = ref(false);
+const wikipediaSearchTerm = ref("");
+const showCustomPreview = ref(false);
+const previewError = ref(false);
 
 // Función para actualizar el estado según el tamaño de la ventana
 const handleResize = () => {
@@ -188,12 +212,376 @@ const navigateToAuthor = (authorId) => {
     params: { id: authorId } 
   });
 };
+
+// Function to fetch author covers
+const fetchAuthorCovers = async () => {
+  try {
+    updatingCovers.value = true;
+    
+    // Filter authors without covers
+    const authorsWithoutCovers = authors.value.filter(author => !author.cover);
+    
+    if (authorsWithoutCovers.length === 0) {
+      toast.add({
+        severity: 'info',
+        summary: 'No Authors to Update',
+        detail: 'All authors already have covers',
+        life: 3000
+      });
+      updatingCovers.value = false;
+      return;
+    }
+
+    // Initialize authorsToProcess with all authors without covers
+    authorsToProcess.value = [...authorsWithoutCovers];
+    currentAuthorIndex.value = 0;
+    
+    // Start with the first author immediately
+    await processCurrentAuthor();
+    
+  } catch (error) {
+    console.error('Error fetching author covers:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Update Failed',
+      detail: 'There was an error updating author covers',
+      life: 3000
+    });
+    updatingCovers.value = false;
+  }
+};
+
+// Process the current author and fetch its cover for preview
+const processCurrentAuthor = async () => {
+  if (currentAuthorIndex.value >= authorsToProcess.value.length) {
+    finishCoverUpdate();
+    return;
+  }
+  
+  currentAuthor.value = authorsToProcess.value[currentAuthorIndex.value];
+  previewCoverUrl.value = null;
+  coverDialogVisible.value = true;
+  
+  try {
+    await searchCoverForCurrentAuthor();
+  } catch (error) {
+    console.error('Error fetching cover:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Cover Fetch Error',
+      detail: `Error fetching cover for "${currentAuthor.value.name}"`,
+      life: 2000
+    });
+  }
+};
+
+// Search for a cover for the current author
+const searchCoverForCurrentAuthor = async () => {
+  // Use the author's name as the search term
+  const searchTitle = currentAuthor.value.name;
+  
+  try {
+    // Reset cover errors on new search
+    coverLoadErrors.value = {};
+    changingCover.value = true;
+    
+    toast.add({
+      severity: 'info',
+      summary: 'Searching Wikipedia',
+      detail: `Looking for images for ${searchTitle}...`,
+      life: 3000
+    });
+    
+    // Search Wikipedia for author images
+    const options = await AuthorService.fetchAuthorCoverFromOpenLibrary(searchTitle, true);
+    
+    if (options && options.length > 0) {
+      coverOptions.value = options;
+      // Select first option automatically
+      if (options.length > 0 && !previewCoverUrl.value) {
+        previewCoverUrl.value = options[0].url;
+      }
+      
+      toast.add({
+        severity: 'success',
+        summary: 'Wikipedia Search Complete',
+        detail: `Found ${options.length} images from Wikipedia`,
+        life: 3000
+      });
+    } else {
+      toast.add({
+        severity: 'warn',
+        summary: 'No Images Found',
+        detail: 'No images found in Wikipedia. Try adding terms like "author" or "writer" to your search.',
+        life: 5000
+      });
+    }
+  } catch (error) {
+    console.error('Error searching for covers:', error);
+    coverOptions.value = [];
+    previewCoverUrl.value = null;
+    toast.add({
+      severity: 'error',
+      summary: 'Search Failed',
+      detail: `Error searching for covers: ${error.message || 'Unknown error'}`,
+      life: 3000
+    });
+  } finally {
+    changingCover.value = false;
+  }
+};
+
+// Search for images in Wikipedia
+const searchWithWikipedia = async () => {
+  if (!wikipediaSearchTerm.value) {
+    toast.add({
+      severity: 'error',
+      summary: 'Empty Search',
+      detail: 'Please enter a search term for Wikipedia',
+      life: 3000
+    });
+    return;
+  }
+  
+  changingCover.value = true;
+  
+  try {
+    toast.add({
+      severity: 'info',
+      summary: 'Searching Wikipedia',
+      detail: `Looking for "${wikipediaSearchTerm.value}" in Wikipedia...`,
+      life: 3000
+    });
+    
+    const options = await AuthorService.fetchAuthorCoverFromOpenLibrary(
+      wikipediaSearchTerm.value,
+      true
+    );
+    
+    if (options && options.length > 0) {
+      // Add new results to the existing options rather than replacing them
+      const newOptions = options.filter(
+        option => !coverOptions.value.some(existing => existing.url === option.url)
+      );
+      
+      if (newOptions.length > 0) {
+        coverOptions.value = [...coverOptions.value, ...newOptions];
+        // Select first new option if no image is currently selected
+        if (!previewCoverUrl.value && newOptions.length > 0) {
+          previewCoverUrl.value = newOptions[0].url;
+        }
+        
+        toast.add({
+          severity: 'success',
+          summary: 'Wikipedia Search Complete',
+          detail: `Found ${newOptions.length} new images from Wikipedia`,
+          life: 3000
+        });
+      } else {
+        toast.add({
+          severity: 'info',
+          summary: 'No New Images',
+          detail: 'No new images found from Wikipedia',
+          life: 3000
+        });
+      }
+    } else {
+      toast.add({
+        severity: 'warn',
+        summary: 'No Wikipedia Results',
+        detail: 'No images found in Wikipedia. Try adding terms like "author" or "writer" to your search.',
+        life: 5000
+      });
+    }
+  } catch (error) {
+    console.error("Error searching for author images in Wikipedia:", error);
+    toast.add({
+      severity: 'error',
+      summary: 'Search Error',
+      detail: 'There was an error searching for images in Wikipedia',
+      life: 3000
+    });
+  } finally {
+    changingCover.value = false;
+  }
+};
+
+// Handle custom URL preview
+const previewCustomCoverUrl = () => {
+  if (!customCoverUrl.value) return;
+  
+  showCustomPreview.value = true;
+  previewError.value = false;
+  
+  // Validate URL format
+  try {
+    new URL(customCoverUrl.value);
+  } catch (urlError) {
+    previewError.value = true;
+    return;
+  }
+};
+
+// Handle custom URL error
+const handleCustomUrlError = () => {
+  previewError.value = true;
+};
+
+// Handle custom URL success
+const handleCustomUrlSuccess = () => {
+  previewError.value = false;
+};
+
+// Use custom cover URL
+const useCustomCoverUrl = () => {
+  if (!customCoverUrl.value || previewError.value) return;
+  
+  previewCoverUrl.value = customCoverUrl.value;
+  showCustomPreview.value = false;
+  customCoverUrl.value = '';
+};
+
+// Add the removeAuthorImage method
+const removeAuthorImage = () => {
+  // Set previewCoverUrl to null to indicate we want no image
+  previewCoverUrl.value = null;
+  
+  toast.add({
+    severity: 'info',
+    summary: 'Image Removed',
+    detail: 'The author will be displayed with gradient background only',
+    life: 3000
+  });
+};
+
+// Handle preview image error
+const handlePreviewImageError = () => {
+  previewImageError.value = true;
+};
+
+// Handle preview image load
+const handlePreviewImageLoad = () => {
+  previewImageError.value = false;
+};
+
+// Finish the cover update process
+const finishCoverUpdate = () => {
+  coverDialogVisible.value = false;
+  updatingCovers.value = false;
+  
+  toast.add({
+    severity: 'success',
+    summary: 'Process Completed',
+    detail: 'Author cover update process is complete',
+    life: 3000
+  });
+};
+
+// Exit the cover process
+const exitCoverProcess = () => {
+  coverDialogVisible.value = false;
+  updatingCovers.value = false;
+  
+  toast.add({
+    severity: 'info',
+    summary: 'Process Exited',
+    detail: 'Cover update process has been canceled. No changes were made.',
+    life: 3000
+  });
+};
+
+// Select a cover from the options
+const selectCover = (coverUrl) => {
+  previewCoverUrl.value = coverUrl;
+};
+
+// Accept the current cover and save it to the database
+const acceptCover = async () => {
+  if (!previewCoverUrl.value || !currentAuthor.value) return;
+  
+  try {
+    // Validate URL format
+    try {
+      new URL(previewCoverUrl.value);
+    } catch (urlError) {
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid URL',
+        detail: 'The cover URL format is invalid',
+        life: 3000
+      });
+      return;
+    }
+    
+    // Update the author with the new cover
+    await AuthorService.updateAuthorCover(currentAuthor.value.id, previewCoverUrl.value);
+    
+    // Update local state
+    const authorIndex = authors.value.findIndex(a => a.id === currentAuthor.value.id);
+    if (authorIndex !== -1) {
+      authors.value[authorIndex].cover = previewCoverUrl.value;
+    }
+    
+    toast.add({
+      severity: 'success',
+      summary: 'Cover Accepted',
+      detail: `Cover for "${currentAuthor.value.name}" has been saved`,
+      life: 2000
+    });
+    
+    // Process next author
+    processNextAuthor();
+    
+  } catch (error) {
+    console.error('Error saving cover:', error);
+    
+    if (error.response) {
+      console.error('Error response:', error.response.status, error.response.data);
+    }
+    
+    toast.add({
+      severity: 'error',
+      summary: 'Save Failed',
+      detail: 'Failed to save author cover. Please try again.',
+      life: 3000
+    });
+  }
+};
+
+// Reject the current cover and move to next author
+const rejectCover = () => {
+  toast.add({
+    severity: 'info',
+    summary: 'Cover Rejected',
+    detail: `Cover for "${currentAuthor.value.name}" was rejected`,
+    life: 2000
+  });
+  
+  processNextAuthor();
+};
+
+// Move to the next author in the queue
+const processNextAuthor = () => {
+  currentAuthorIndex.value++;
+  processCurrentAuthor();
+};
 </script>
 
 <template>
   <div class="flex flex-col">
     <div class="card">
-      <div class="font-semibold text-xl mb-4">Authors</div>
+      <div class="flex justify-between items-center mb-4">
+        <div class="font-semibold text-xl">Authors</div>
+        <div class="flex gap-2">
+          <Button 
+            label="Update Author Covers" 
+            icon="pi pi-refresh" 
+            severity="info" 
+            @click="fetchAuthorCovers"
+            :loading="updatingCovers"
+          />
+        </div>
+      </div>
       <DataView :value="authors" :layout="layout">
         <template #header>
           <div class="flex justify-end">
@@ -392,6 +780,203 @@ const navigateToAuthor = (authorId) => {
           </div>
         </template>
       </DataView>
+
+      <!-- Cover Preview Dialog -->
+      <Dialog 
+        v-model:visible="coverDialogVisible" 
+        :style="{width: '800px'}" 
+        header="Author Cover Preview" 
+        :modal="true"
+        :closable="true"
+        @hide="exitCoverProcess"
+      >
+        <div class="flex flex-col items-center p-4">
+          <h3 class="text-xl font-semibold mb-2">{{ currentAuthor?.name }}</h3>
+          
+          <div class="grid grid-cols-2">
+            <!-- Selected cover preview (large) -->
+            <div class="col-span-1 flex flex-col items-center">
+              <h4 class="font-medium mb-2">Selected Cover:</h4>
+              <div class="relative mb-4 w-64 h-64 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
+                <img 
+                  v-if="previewCoverUrl" 
+                  :src="previewCoverUrl" 
+                  :alt="currentAuthor?.name"
+                  class="max-w-full max-h-full object-contain"
+                  @error="handlePreviewImageError"
+                  @load="handlePreviewImageLoad"
+                />
+                <!-- No cover selected or error loading -->
+                <div 
+                  v-if="!previewCoverUrl || previewImageError" 
+                  class="flex flex-col items-center justify-center text-gray-400 p-4 text-center"
+                >
+                  <i class="pi pi-image text-4xl mb-2"></i>
+                  <div v-if="previewImageError" class="text-sm text-red-400">
+                    Error loading selected cover
+                  </div>
+                  <div v-else class="text-sm">
+                    No cover selected
+                  </div>
+                  <div class="mt-2 text-xs">
+                    Select a cover from the options or upload a custom one
+                  </div>
+                </div>
+              </div>
+              <div v-if="previewCoverUrl" class="text-xs text-center mt-1 p-1 w-full overflow-hidden">
+                <div class="truncate max-w-[250px]">{{ previewCoverUrl }}</div>
+              </div>
+              <!-- Add a "Remove Image" button -->
+              <Button 
+                v-if="previewCoverUrl || currentAuthor?.cover" 
+                icon="pi pi-trash" 
+                label="Remove Image" 
+                severity="danger" 
+                class="p-button-sm mt-2" 
+                @click="removeAuthorImage"
+                text
+              />
+              <small v-if="!previewCoverUrl" class="text-gray-500 mt-1 block text-center">
+                Showing gradient background only
+              </small>
+            </div>
+            
+            <!-- Cover options grid -->
+            <div class="col-span-1 flex flex-col">
+              <h4 class="font-medium mb-2">Available Covers ({{ coverOptions.length }}):</h4>
+              <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-96 p-2">
+                <div 
+                  v-for="(cover, index) in coverOptions" 
+                  :key="index" 
+                  class="cursor-pointer border rounded hover:shadow-md transition-shadow p-1"
+                  :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
+                  @click="selectCover(cover.url)"
+                >
+                  <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+                    <img 
+                      :src="cover.url" 
+                      :alt="`Cover option ${index+1}`"
+                      class="max-w-full max-h-full object-contain"
+                      @error="(e) => e.target.src = 'https://via.placeholder.com/200x200?text=Image+Error'"
+                    />
+                  </div>
+                  <div v-if="previewCoverUrl === cover.url" class="bg-blue-100 text-blue-800 text-xs text-center mt-1 p-1 rounded">
+                    Selected
+                  </div>
+                  <div class="bg-gray-100 text-gray-800 text-xs text-center mt-1 p-1">
+                    <span class="font-semibold">Source: </span>{{ cover.source === 'wikipedia' ? 'Wikipedia' : 'OpenLibrary' }}
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-gray-500 p-4 text-center border rounded bg-gray-50">
+                No cover options found
+              </div>
+            </div>
+          </div>
+          
+          <!-- Search sections with separate tabs for each method -->
+          <div class="w-full my-4 border-t pt-4">
+            <h3 class="text-lg font-semibold mb-3">Search for Author Images</h3>
+            
+            <!-- Wikipedia search section -->
+            <div class="p-3">
+              <p class="mb-2 text-sm text-gray-600">
+                Search Wikipedia for author images. Adding terms like "writer", "novelist", 
+                or "author" may improve results.
+              </p>
+              <div class="flex gap-2 mt-3">
+                <InputText 
+                  v-model="wikipediaSearchTerm" 
+                  placeholder="e.g. J.K. Rowling writer" 
+                  class="flex-1"
+                  @keydown.enter="searchWithWikipedia"
+                />
+                <Button 
+                  icon="pi pi-search" 
+                  label="Search Wikipedia"
+                  @click="searchWithWikipedia"
+                  :loading="changingCover"
+                  :disabled="!wikipediaSearchTerm"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <!-- Custom URL input -->
+          <div class="w-full my-4 border-t pt-4">
+            <h4 class="font-medium mb-2">Or enter a custom image URL:</h4>
+            <div class="flex gap-2">
+              <InputText 
+                v-model="customCoverUrl" 
+                placeholder="https://example.com/author-image.jpg" 
+                class="flex-1"
+                @keydown.enter="previewCustomCoverUrl"
+              />
+              <Button 
+                icon="pi pi-image" 
+                @click="previewCustomCoverUrl"
+                :disabled="!customCoverUrl"
+              />
+            </div>
+            <small class="text-gray-500 mt-1 block">
+              Enter the full URL to an image you want to use
+            </small>
+            
+            <!-- Preview for custom URL -->
+            <div v-if="customCoverUrl && showCustomPreview" class="mt-3 border rounded p-2 flex flex-col items-center">
+              <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+                <img 
+                  :src="customCoverUrl" 
+                  :alt="currentAuthor?.name" 
+                  class="max-w-full max-h-full object-contain"
+                  @error="handleCustomUrlError"
+                  @load="handleCustomUrlSuccess"
+                />
+                <div v-if="previewError" class="text-red-500">
+                  Invalid image URL
+                </div>
+              </div>
+              <Button 
+                v-if="!previewError" 
+                class="mt-2" 
+                label="Use This URL" 
+                icon="pi pi-check" 
+                @click="useCustomCoverUrl"
+              />
+            </div>
+          </div>
+          
+          <div class="flex justify-center gap-3 mt-4 w-full">
+            <Button 
+              icon="pi pi-times" 
+              label="Reject" 
+              severity="secondary" 
+              @click="rejectCover"
+            />
+            <Button 
+              icon="pi pi-check" 
+              label="Accept" 
+              :disabled="!previewCoverUrl"
+              @click="acceptCover"
+            />
+            <Button 
+              icon="pi pi-step-forward" 
+              label="Skip" 
+              class="p-button-outlined" 
+              @click="processNextAuthor"
+            />
+          </div>
+          
+          <div class="w-full pt-4 mt-4 border-t border-gray-200 text-center">
+            <Button 
+              icon="pi pi-times-circle" 
+              label="Exit Without Changes" 
+              class="p-button-text p-button-danger"
+              @click="exitCoverProcess"
+            />
+          </div>
+        </div>
+      </Dialog>
     </div>
   </div>
 </template>

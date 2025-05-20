@@ -1,10 +1,10 @@
 <template>
   <div class="quote-graph-search p-4 bg-white dark:bg-gray-800 border border-surface-200 dark:border-surface-700 rounded-lg">
-    <h2 class="text-xl font-medium mb-4">Advanced Quote Search</h2>
+    <h2 class="text-xl font-medium mb-4">Build your search query</h2>
     
     <!-- Search Builder UI -->
     <div class="search-builder mb-4">
-      <Panel header="Build your search query" toggleable>
+      
         <div class="mb-4">
           <div class="text-sm text-gray-500 mb-2">Use the options below to build a search query across quotes, authors, books, and tags.</div>
           
@@ -164,18 +164,17 @@
         </div>
         
         <!-- Search Button -->
-        <div class="search-button mt-4">
-          <Button 
-            label="Search Quotes" 
-            icon="pi pi-search" 
-            class="w-full md:w-auto p-button-primary shadow-md" 
-            style="min-width: 150px; padding: 0.75rem 1.25rem;"
-            @click="searchQuotes"
-            :loading="loading"
-            :disabled="filters.length === 0"
-          />
+        <div class="search-button-adv mt-4">
+          <div class="flex items-center gap-2 bg-primary-50 dark:bg-primary-900/20 p-3 rounded-xl cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
+               @click="searchQuotes"
+               :class="{ 'opacity-50 cursor-not-allowed': filters.length === 0 }">
+            <i class="pi pi-search text-primary-500 text-xl"></i>
+            <span class="text-primary-700 dark:text-primary-300 font-medium">
+              {{ loading ? 'Searching...' : 'Search Quotes' }}
+            </span>
+          </div>
         </div>
-      </Panel>
+
     </div>
     
     <!-- Search Results -->
@@ -204,13 +203,17 @@
           
           <template #grid="slotProps">
             <div class="grid">
-              <div v-for="item in slotProps.items" :key="item.id" class="col-12 sm:col-6 lg:col-4 xl:col-3 p-2">
-                <QuoteCard 
-                  :quote="item" 
-                  :liked="item.is_favorite"
-                  @toggle-like="toggleFavorite(item.id)"
-                  @click="viewQuote(item)"
-                />
+              <div v-for="(item, index) in slotProps.items" :key="item.id" class="col-12 sm:col-6 lg:col-4 xl:col-3 p-2">
+                <div class="quote-card-wrapper h-full">
+                  <QuoteCard 
+                    :quote="item" 
+                    :liked="item.is_favorite"
+                    :has-previous="index > 0"
+                    :has-next="index < slotProps.items.length - 1"
+                    @toggle-like="toggleFavorite(item.id)"
+                    @click="openQuoteModal(item, index)"
+                  />
+                </div>
               </div>
             </div>
           </template>
@@ -218,18 +221,34 @@
           <template #list="slotProps">
             <div class="grid">
               <div v-for="(item, index) in slotProps.items" :key="item.id" class="col-12 mb-3">
-                <QuoteCard 
-                  :quote="item" 
-                  :liked="item.is_favorite"
-                  @toggle-like="toggleFavorite(item.id)"
-                  @click="viewQuote(item)"
-                />
+                <div class="quote-card-wrapper">
+                  <QuoteCard 
+                    :quote="item" 
+                    :liked="item.is_favorite"
+                    :has-previous="index > 0"
+                    :has-next="index < slotProps.items.length - 1"
+                    @toggle-like="toggleFavorite(item.id)"
+                    @click="openQuoteModal(item, index)"
+                  />
+                </div>
               </div>
             </div>
           </template>
         </DataView>
       </div>
     </div>
+
+    <QuoteModal
+      v-if="selectedQuote"
+      v-model:visible="showQuoteModal"
+      :quote="selectedQuote"
+      :liked="selectedQuote ? selectedQuote.is_favorite : false"
+      :has-previous="selectedQuoteIndex > 0"
+      :has-next="selectedQuoteIndex < (results?.length || 0) - 1"
+      @toggle-like="toggleFavorite(selectedQuote.id)"
+      @previous-quote="() => openQuoteModal(results[selectedQuoteIndex - 1], selectedQuoteIndex - 1)"
+      @next-quote="() => openQuoteModal(results[selectedQuoteIndex + 1], selectedQuoteIndex + 1)"
+    />
   </div>
 </template>
 
@@ -243,6 +262,7 @@ import { AuthorService } from '@/service/AuthorService';
 import { BookService } from '@/service/BookService';
 import { QuoteSyncChatService } from '@/service/QuoteSyncChatService';
 import QuoteCard from '@/components/QuoteCard.vue';
+import QuoteModal from '@/components/QuoteModal.vue';
 
 import Panel from 'primevue/panel';
 import Button from 'primevue/button';
@@ -275,6 +295,11 @@ const layout = ref('grid');
 const availableTags = ref([]);
 const availableAuthors = ref([]);
 const availableBooks = ref([]);
+
+// Add after other state variables
+const showQuoteModal = ref(false);
+const selectedQuote = ref(null);
+const selectedQuoteIndex = ref(-1);
 
 // Filter options
 const filterTypes = [
@@ -461,9 +486,10 @@ const enrichWithSimilarityScores = async (queryText, threshold) => {
   }
 };
 
-const viewQuote = (quote) => {
-  // Navigate to quote detail view
-  router.push({ path: `/quotes/${quote.id}` });
+const openQuoteModal = (quote, index) => {
+  selectedQuote.value = quote;
+  selectedQuoteIndex.value = index;
+  showQuoteModal.value = true;
 };
 
 const toggleFavorite = async (quoteId) => {
@@ -527,73 +553,306 @@ onMounted(() => {
 <style scoped>
 .quote-graph-search {
   max-width: 100%;
+  background: var(--surface-card);
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.quote-graph-search:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Panel styling */
+:deep(.p-panel) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+:deep(.p-panel .p-panel-header) {
+  background: transparent;
+  border: none;
+  padding: 1.5rem;
+}
+
+:deep(.p-panel .p-panel-content) {
+  padding: 0 1.5rem 1.5rem;
+  background: transparent;
+}
+
+/* Filter row styling */
+.filter-row {
+  background: var(--surface-ground);
+  border-radius: 16px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  border: 1px solid var(--surface-border);
 }
 
 .filter-row:hover {
-  background-color: var(--surface-hover);
-}
-
-:deep(.p-button-sm) {
-  width: 2rem;
-  height: 2rem;
-  font-size: 0.75rem;
-}
-
-:deep(.p-button-sm .p-button-icon) {
-  font-size: 0.875rem;
-}
-
-.search-button :deep(.p-button) {
-  transition: all 0.2s ease;
-  font-weight: 500;
-  border-radius: 0.5rem;
-  border: 1px solid var(--primary-color);
-}
-
-.search-button :deep(.p-button:hover) {
+  background: var(--surface-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-  border-color: var(--primary-600);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
 }
 
-.search-button :deep(.p-button:active) {
+/* Dropdown styling */
+:deep(.p-dropdown) {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+:deep(.p-dropdown:hover) {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 1px var(--primary-color);
+}
+
+:deep(.p-dropdown.p-focus) {
+  box-shadow: 0 0 0 2px var(--primary-color-lighter);
+}
+
+/* Input styling */
+:deep(.p-inputtext) {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+:deep(.p-inputtext:hover) {
+  border-color: var(--primary-color);
+}
+
+:deep(.p-inputtext.p-focus) {
+  box-shadow: 0 0 0 2px var(--primary-color-lighter);
+}
+
+/* Button styling */
+:deep(.p-button) {
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:deep(.p-button:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.p-button:active) {
   transform: translateY(0);
-  border-color: var(--primary-700);
 }
 
-:deep(.p-dataview .p-dataview-header) {
+/* Search button styling */
+.search-button-adv {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.search-button-adv .flex {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.search-button-adv .flex:hover:not(.opacity-50) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.1);
+}
+
+.search-button-adv .flex:active:not(.opacity-50) {
+  transform: translateY(0);
+}
+
+.search-button-adv .flex i {
+  transition: transform 0.3s ease;
+}
+
+.search-button-adv .flex:hover:not(.opacity-50) i {
+  transform: scale(1.1);
+}
+
+/* Dark mode adjustments */
+:root.dark .search-button-adv .flex {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:root.dark .search-button-adv .flex:hover:not(.opacity-50) {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .search-button-adv .flex {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Results grid styling */
+.results-grid {
+  margin-top: 2rem;
+}
+
+.results-grid :deep(.p-dataview-header) {
   background: transparent;
   border: none;
-  padding: 0.5rem 0;
+  padding: 1rem 0;
 }
 
-:deep(.p-dataview-grid .p-dataview-content) {
-  background-color: transparent;
+.results-grid :deep(.p-dataview-content) {
+  background: transparent;
 }
 
-/* Quote card styles */
+/* Quote card wrapper styling */
+.quote-card-wrapper {
+  background: var(--surface-card);
+  border-radius: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.quote-card-wrapper:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Quote card hover effects */
 .results-grid .grid .cursor-pointer {
-  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.results-grid .grid .cursor-pointer:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Tag styling */
 .results-grid .tag-pill {
+  background: var(--primary-50);
+  color: var(--primary-700);
+  border-radius: 12px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
   transition: all 0.3s ease;
 }
 
-.results-grid :deep(.p-button:hover) {
-  background: #F3F4F6;
+.results-grid .tag-pill:hover {
+  background: var(--primary-100);
+  transform: translateY(-1px);
 }
 
-.results-grid :deep(.dark .p-button:hover) {
-  background: #374151;
+/* Dark mode adjustments */
+:root.dark {
+  .quote-graph-search {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .filter-row {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+  }
+  
+  .filter-row:hover {
+    background: var(--surface-hover);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+  
+  .results-grid .tag-pill {
+    background: var(--primary-900);
+    color: var(--primary-300);
+  }
+  
+  .results-grid .tag-pill:hover {
+    background: var(--primary-800);
+  }
+  
+  .quote-card-wrapper {
+    background: var(--surface-ground);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+  
+  .quote-card-wrapper:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
 }
 
-.results-grid .p-4 {
+/* Loading spinner styling */
+:deep(.p-progress-spinner) {
+  width: 3rem;
+  height: 3rem;
+}
+
+:deep(.p-progress-spinner-circle) {
+  stroke: var(--primary-color);
+  stroke-width: 3;
+}
+
+/* Radio button styling */
+:deep(.p-radiobutton) {
+  margin-right: 0.5rem;
+}
+
+:deep(.p-radiobutton .p-radiobutton-box) {
+  border-radius: 50%;
   transition: all 0.3s ease;
 }
 
-.results-grid .p-4:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+:deep(.p-radiobutton .p-radiobutton-box.p-highlight) {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Calendar styling */
+:deep(.p-calendar) {
+  width: 100%;
+}
+
+:deep(.p-calendar .p-inputtext) {
+  width: 100%;
+}
+
+/* MultiSelect styling */
+:deep(.p-multiselect) {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+:deep(.p-multiselect:hover) {
+  border-color: var(--primary-color);
+}
+
+:deep(.p-multiselect.p-focus) {
+  box-shadow: 0 0 0 2px var(--primary-color-lighter);
+}
+
+/* Toggle button styling */
+:deep(.p-togglebutton) {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+:deep(.p-togglebutton.p-highlight) {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .filter-row {
+    padding: 0.75rem;
+  }
+  
+  :deep(.p-button) {
+    padding: 0.5rem 1rem;
+  }
+  
+  .search-button-adv .flex {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .quote-card-wrapper {
+    margin: 0.5rem 0;
+  }
 }
 </style> 

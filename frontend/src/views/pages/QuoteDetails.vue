@@ -37,6 +37,8 @@ const submittingNote = ref(false);
 const editingNoteId = ref(null);
 const editedNoteContent = ref('');
 
+const showDetails = ref(false);
+
 // Fetch quote details
 const fetchQuote = async () => {
   const quoteId = route.params.id;
@@ -436,13 +438,13 @@ onMounted(() => {
   <div class="surface-ground px-4 py-5 md:px-6 lg:px-8">
     <div class="flex justify-content-between align-items-center mb-4">
       <Button icon="pi pi-arrow-left" label="Back" class="p-button-text" @click="goBack" />
-      <div v-if="!loading && quote">
+      <div v-if="!loading && quote" class="flex gap-2">
         <GenerateTagsButton
           :quote="quote"
-          class="p-button-text mr-2"
+          class="p-button-text"
           @tag-accepted="handleAddTag"
         />
-        <Button icon="pi pi-pencil" class="p-button-text mr-2" @click="openEditDialog" />
+        <Button icon="pi pi-pencil" class="p-button-text" @click="openEditDialog" />
         <Button 
           :icon="quote.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'" 
           :class="{'p-button-danger': quote.is_favorite, 'p-button-text': !quote.is_favorite}"
@@ -457,92 +459,118 @@ onMounted(() => {
     
     <div v-else-if="quote" class="grid">
       <div class="col-12">
-        <Card>
-          <template #title>
-            <div class="flex align-items-center">
-              <h2 class="m-0 text-xl">{{ quote.title }}</h2>
-            </div>
-          </template>
-          
-          <template #subtitle>
-            <div class="text-color-secondary">
-              From 
-              <router-link 
-                :to="`/books/${quote.book?.id}`" 
-                class="font-medium text-primary hover:underline"
-              >
-                {{ quote.book?.title || 'Unknown book' }}
-              </router-link>
-              <template v-if="quote.book?.author">
-                by 
-                <router-link 
-                  :to="`/authors/${quote.book.author.id}`" 
-                  class="hover:underline"
-                >
-                  {{ quote.book.author.name }}
-                </router-link>
-              </template>
-            </div>
-          </template>
-          
+        <Card class="quote-card">
           <template #content>
-            <div class="quote-content mb-5">
-              <p class="text-2xl line-height-3 my-4 font-italic">
-                "{{ quote.body }}"
-              </p>
-            </div>
-            
-            <Divider />
-            
-            <div class="grid">
-              <div class="col-12 md:col-6 mb-3 md:mb-0">
-                <h3 class="text-sm font-medium text-color-secondary mb-2">Details</h3>
-                <ul class="list-none p-0 m-0">
-                  <li class="mb-2">
-                    <span class="font-medium">Chapter:</span> {{ quote.chapter || 'Not specified' }}
-                  </li>
-                  <li class="mb-2">
-                    <span class="font-medium">Location:</span> {{ quote.location || 'Not specified' }}
-                  </li>
-                  <li class="mb-2">
-                    <span class="font-medium">Source:</span> {{ quote.source_platform || 'Not specified' }}
-                  </li>
-                  <li v-if="quote.book_url" class="mb-2">
-                    <span class="font-medium">Book URL:</span> 
-                    <a :href="quote.book_url" target="_blank" class="text-primary hover:underline">
-                      {{ quote.book_url }}
-                    </a>
-                  </li>
-                </ul>
+            <!-- Main Quote Section -->
+            <div class="quote-hero-section p-6 mb-6">
+              <div class="quote-content-wrapper">
+                <div class="quote-marks left">"</div>
+                <p class="text-4xl line-height-3 my-4 font-italic quote-text">
+                  {{ quote.body }}
+                </p>
+                <div class="quote-marks right">"</div>
               </div>
               
-              <div class="col-12 md:col-6">
-                <h3 class="text-sm font-medium text-color-secondary mb-2">Metadata</h3>
-                <ul class="list-none p-0 m-0">
-                  <li class="mb-2">
-                    <span class="font-medium">Added:</span> {{ new Date(quote.created).toLocaleDateString() }}
-                  </li>
-                  <li class="mb-2">
-                    <span class="font-medium">Last Updated:</span> {{ new Date(quote.updated).toLocaleDateString() }}
-                  </li>
-                  <li class="mb-2">
-                    <span class="font-medium">Status:</span>
-                    <span :class="{'text-green-500': !quote.archive, 'text-orange-500': quote.archive}">
-                      {{ quote.archive ? 'Archived' : 'Active' }}
-                    </span>
-                  </li>
-                </ul>
+              <div class="quote-source mt-6">
+                <p class="text-xl text-color-secondary">
+                  <span 
+                    class="cursor-pointer hover:text-primary-500 hover:underline transition-colors duration-200"
+                    @click="() => router.push(`/authors/${quote.book?.author?.id}`)"
+                  >
+                    {{ quote.book?.author?.name || "Unknown Author" }}
+                  </span>
+                  <span class="mx-2 text-color-secondary">•</span>
+                  <span 
+                    class="cursor-pointer hover:text-primary-500 hover:underline transition-colors duration-200"
+                    @click="() => router.push(`/books/${quote.book?.id}`)"
+                  >
+                    {{ quote.book?.title || "Unknown Book" }}
+                  </span>
+                </p>
+              </div>
+
+              <!-- Details Toggle Button -->
+              <div class="flex justify-content-center mt-4">
+                <Button
+                  :icon="showDetails ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+                  :label="showDetails ? 'Hide Details' : 'Show Details'"
+                  class="p-button-text p-button-rounded details-toggle"
+                  @click="showDetails = !showDetails"
+                />
               </div>
             </div>
+
+            <!-- Collapsible Details Section -->
+            <transition name="slide-fade">
+              <div v-if="showDetails" class="details-section p-6 mb-6">
+                <div class="grid">
+                  <div class="col-12 md:col-6 mb-3 md:mb-0">
+                    <h3 class="text-lg font-medium text-color-secondary mb-3 flex items-center">
+                      <i class="pi pi-info-circle mr-2"></i>
+                      Details
+                    </h3>
+                    <ul class="list-none p-0 m-0 details-list">
+                      <li class="mb-3">
+                        <span class="font-medium text-color-secondary">Chapter:</span>
+                        <span class="ml-2">{{ quote.chapter || 'Not specified' }}</span>
+                      </li>
+                      <li class="mb-3">
+                        <span class="font-medium text-color-secondary">Location:</span>
+                        <span class="ml-2">{{ quote.location || 'Not specified' }}</span>
+                      </li>
+                      <li class="mb-3">
+                        <span class="font-medium text-color-secondary">Source:</span>
+                        <span class="ml-2">{{ quote.source_platform || 'Not specified' }}</span>
+                      </li>
+                      <li v-if="quote.book_url" class="mb-3">
+                        <span class="font-medium text-color-secondary">Book URL:</span>
+                        <a :href="quote.book_url" target="_blank" class="ml-2 text-primary hover:underline">
+                          {{ quote.book_url }}
+                        </a>
+                      </li>
+                    </ul>
+                  </div>
+                  
+                  <div class="col-12 md:col-6">
+                    <h3 class="text-lg font-medium text-color-secondary mb-3 flex items-center">
+                      <i class="pi pi-calendar mr-2"></i>
+                      Metadata
+                    </h3>
+                    <ul class="list-none p-0 m-0 details-list">
+                      <li class="mb-3">
+                        <span class="font-medium text-color-secondary">Added:</span>
+                        <span class="ml-2">{{ new Date(quote.created).toLocaleDateString() }}</span>
+                      </li>
+                      <li class="mb-3">
+                        <span class="font-medium text-color-secondary">Last Updated:</span>
+                        <span class="ml-2">{{ new Date(quote.updated).toLocaleDateString() }}</span>
+                      </li>
+                      <li class="mb-3">
+                        <span class="font-medium text-color-secondary">Status:</span>
+                        <span :class="{'text-green-500': !quote.archive, 'text-orange-500': quote.archive}" class="ml-2">
+                          {{ quote.archive ? 'Archived' : 'Active' }}
+                        </span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </transition>
             
             <!-- Tags Section -->
-            <div class="mt-4">
-              <h3 class="text-sm font-medium text-color-secondary mb-2">Tags</h3>
+            <div class="tags-section p-6 mb-6">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-medium text-color-secondary flex items-center">
+                  <i class="pi pi-tags mr-2"></i>
+                  Tags
+                </h3>
+              </div>
+              
               <div v-if="quote.tags_data && quote.tags_data.length > 0" class="flex flex-wrap gap-2">
                 <div
                   v-for="(tag, idx) in quote.tags_data"
                   :key="tag.id || idx"
-                  class="px-3 py-1 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90 tag-pill"
+                  class="px-4 py-2 rounded-full text-white text-sm shadow-md cursor-pointer hover:scale-105 transition-all duration-200 tag-pill"
                   :class="{ 'newly-added-tag': tag.isNew }"
                   :style="{ background: tag.gradient_primary_color && tag.gradient_secondary_color ? 
                     `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
@@ -556,13 +584,14 @@ onMounted(() => {
             </div>
             
             <!-- Notes Section -->
-            <Divider />
-            <div class="notes-section mt-4">
-              <h3 class="text-xl font-medium mb-3">Notes & Comments</h3>
+            <div class="notes-section p-6">
+              <h3 class="text-xl font-medium mb-4 flex items-center">
+                <i class="pi pi-comments mr-2"></i>
+                Notes & Comments
+              </h3>
               
               <!-- Add Note Form -->
               <div class="add-note-form p-4 bg-surface-50 dark:bg-surface-800 border-round-xl mb-4 shadow-1">
-                <h4 class="text-base font-medium mb-3">Add a Note</h4>
                 <Textarea 
                   v-model="newNote"
                   rows="3"
@@ -570,11 +599,11 @@ onMounted(() => {
                   class="w-full mb-3 rounded-textarea"
                   :disabled="submittingNote"
                 />
-                <div class="field-checkbox mb-3">
-                  <input type="checkbox" id="private-note" v-model="isPrivateNote" class="mr-2" />
-                  <label for="private-note" class="cursor-pointer">Make note private</label>
-                </div>
-                <div class="flex justify-content-end">
+                <div class="flex justify-content-between align-items-center">
+                  <div class="field-checkbox">
+                    <input type="checkbox" id="private-note" v-model="isPrivateNote" class="mr-2" />
+                    <label for="private-note" class="cursor-pointer">Make note private</label>
+                  </div>
                   <Button 
                     label="Add Note" 
                     icon="pi pi-plus" 
@@ -815,32 +844,99 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.quote-content {
+.quote-card {
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.quote-card:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+.quote-hero-section {
+  background: linear-gradient(135deg, var(--surface-0), var(--surface-50));
+  border-radius: 16px;
   position: relative;
-  padding: 1.5rem 2rem;
-  background-color: var(--surface-50);
-  border-radius: 0.5rem;
+  overflow: hidden;
 }
 
-.quote-content::before {
-  content: '"';
+.quote-content-wrapper {
+  position: relative;
+  padding: 2rem 0;
+}
+
+.quote-marks {
   position: absolute;
-  top: -1.5rem;
-  left: 0;
-  font-size: 5rem;
+  font-size: 6rem;
   color: var(--primary-color);
-  opacity: 0.2;
+  opacity: 0.15;
   font-family: serif;
+  line-height: 1;
 }
 
-.quote-content p {
+.quote-marks.left {
+  left: -1rem;
+  top: -2rem;
+}
+
+.quote-marks.right {
+  right: -1rem;
+  bottom: -2rem;
+  transform: rotate(180deg);
+}
+
+.quote-text {
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.quote-source {
   position: relative;
   z-index: 1;
 }
 
-/* Notes styling */
+.tags-section {
+  background: linear-gradient(135deg, var(--surface-50), var(--surface-100));
+  border-radius: 16px;
+}
+
 .notes-section {
-  margin-top: 2rem;
+  background: linear-gradient(135deg, var(--surface-100), var(--surface-200));
+  border-radius: 16px;
+}
+
+.tag-pill {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tag-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.newly-added-tag {
+  animation: pulsate 2s ease-out;
+  animation-iteration-count: 3;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+}
+
+@keyframes pulsate {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 0 24px rgba(59, 130, 246, 1);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+  }
 }
 
 .add-note-form {
@@ -855,7 +951,7 @@ onMounted(() => {
 
 .note-item {
   position: relative;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid var(--surface-200);
   border-radius: 24px !important;
   overflow: hidden;
@@ -892,28 +988,100 @@ onMounted(() => {
   border-radius: 18px !important;
 }
 
-.tag-pill {
-  transition: all 0.3s ease;
+/* Dark mode adjustments */
+.dark .quote-hero-section {
+  background: linear-gradient(135deg, var(--surface-800), var(--surface-900));
 }
 
-.newly-added-tag {
-  animation: pulsate 2s ease-out;
-  animation-iteration-count: 3;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+.dark .tags-section {
+  background: linear-gradient(135deg, var(--surface-900), var(--surface-800));
 }
 
-@keyframes pulsate {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
-  }
-  50% {
-    transform: scale(1.1);
-    box-shadow: 0 0 24px rgba(59, 130, 246, 1);
-  }
-  100% {
-    transform: scale(1);
-    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
-  }
+.dark .notes-section {
+  background: linear-gradient(135deg, var(--surface-800), var(--surface-700));
+}
+
+.dark .quote-marks {
+  opacity: 0.1;
+}
+
+.dark .quote-text {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.details-toggle {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--surface-200);
+  background: var(--surface-0);
+  color: var(--text-color);
+}
+
+.details-toggle:hover {
+  background: var(--surface-100);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.details-section {
+  background: linear-gradient(135deg, var(--surface-50), var(--surface-100));
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.details-list li {
+  padding: 0.75rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background: var(--surface-0);
+  border: 1px solid var(--surface-200);
+}
+
+.details-list li:hover {
+  background: var(--surface-50);
+  transform: translateX(4px);
+  border-color: var(--surface-300);
+}
+
+/* Slide fade transition */
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-height: 500px;
+  opacity: 1;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  max-height: 0;
+  opacity: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Dark mode adjustments */
+.dark .details-section {
+  background: linear-gradient(135deg, var(--surface-900), var(--surface-800));
+}
+
+.dark .details-list li {
+  background: var(--surface-800);
+  border-color: var(--surface-700);
+}
+
+.dark .details-list li:hover {
+  background: var(--surface-700);
+  border-color: var(--surface-600);
+}
+
+.dark .details-toggle {
+  background: var(--surface-800);
+  border-color: var(--surface-700);
+  color: var(--surface-0);
+}
+
+.dark .details-toggle:hover {
+  background: var(--surface-700);
 }
 </style> 

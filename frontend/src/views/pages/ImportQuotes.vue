@@ -322,251 +322,268 @@ onMounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="flex flex-col">
     <div class="card">
-      <h2 class="text-3xl font-bold mb-6">Import Quotes</h2>
+      <div class="flex justify-between items-center mb-4">
+        <div class="font-semibold text-xl">Import Quotes</div>
+      </div>
+
+      <div class="grid">
+        <!-- Import Options Section -->
+        <div class="col-12 mb-4">
+          <div class="card">
+            <div class="flex flex-column gap-4">
+              <!-- Kindle Import Option -->
+              <div class="p-4 border-round-xl bg-blue-50 dark:bg-blue-900 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors transition-duration-200"
+                   :class="{ 'drag-active': isDraggingKindle }"
+                   @click="importFromKindle"
+                   @dragover="handleDragOver($event, 'kindle')"
+                   @dragleave="handleDragLeave($event, 'kindle')"
+                   @drop="handleDrop($event, 'kindle')">
+                <div class="flex align-items-center gap-3">
+                  <i class="pi pi-book text-3xl text-blue-500"></i>
+                  <div>
+                    <h4 class="m-0 font-semibold">Import from Kindle</h4>
+                    <p class="text-sm text-500 dark:text-400 m-0 mt-1">
+                      Upload your Kindle highlights export (.txt) to import quotes
+                    </p>
+                    <p v-if="isDraggingKindle" class="text-sm text-blue-500 m-0 mt-1">
+                      <i class="pi pi-upload mr-1"></i> Drop your file here
+                    </p>
+                    <p v-else class="text-sm text-500 dark:text-400 m-0 mt-1">
+                      Click to browse or drag and drop your file here
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Google Books Import Option -->
+              <div class="p-4 border-round-xl bg-green-50 dark:bg-green-900 cursor-pointer hover:bg-green-100 dark:hover:bg-green-800 transition-colors transition-duration-200"
+                   :class="{ 'drag-active': isDraggingDocx }"
+                   @click="importFromGoogleBooks"
+                   @dragover="handleDragOver($event, 'docx')"
+                   @dragleave="handleDragLeave($event, 'docx')"
+                   @drop="handleDrop($event, 'docx')">
+                <div class="flex align-items-center gap-3">
+                  <i class="pi pi-cloud-download text-3xl text-green-500"></i>
+                  <div>
+                    <h4 class="m-0 font-semibold">Import from Google Books</h4>
+                    <p class="text-sm text-500 dark:text-400 m-0 mt-1">
+                      Upload your Google Books highlights export (.docx) to import quotes
+                    </p>
+                    <p v-if="isDraggingDocx" class="text-sm text-green-500 m-0 mt-1">
+                      <i class="pi pi-upload mr-1"></i> Drop your file here
+                    </p>
+                    <p v-else class="text-sm text-500 dark:text-400 m-0 mt-1">
+                      Click to browse or drag and drop your file here
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Batch Import Option -->
+              <div class="p-4 border-round-xl bg-purple-50 dark:bg-purple-900 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors transition-duration-200"
+                   :class="{ 'drag-active': isDraggingZip }"
+                   @click="importFromGoogleBooksZip"
+                   @dragover="handleDragOver($event, 'zip')"
+                   @dragleave="handleDragLeave($event, 'zip')"
+                   @drop="handleDrop($event, 'zip')">
+                <div class="flex align-items-center gap-3">
+                  <i class="pi pi-file-export text-3xl text-purple-500"></i>
+                  <div>
+                    <h4 class="m-0 font-semibold">Batch Import from Google Books</h4>
+                    <p class="text-sm text-500 dark:text-400 m-0 mt-1">
+                      Upload a zip file containing multiple Google Books exports (.docx files)
+                    </p>
+                    <p v-if="isDraggingZip" class="text-sm text-purple-500 m-0 mt-1">
+                      <i class="pi pi-upload mr-1"></i> Drop your file here
+                    </p>
+                    <p v-else class="text-sm text-500 dark:text-400 m-0 mt-1">
+                      Click to browse or drag and drop your file here
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Import History Section -->
+        <div class="col-12 mb-4">
+          <div class="card">
+            <div class="flex align-items-center justify-content-between mb-3">
+              <h3 class="text-xl font-semibold m-0">Import History</h3>
+              <button v-if="importHistory.length > 0" class="p-button p-button-text p-button-secondary" @click="fetchImportHistory()">
+                <i class="pi pi-refresh mr-1"></i> Refresh
+              </button>
+            </div>
+            
+            <div v-if="isLoadingHistory" class="flex align-items-center justify-content-center p-5">
+              <div class="text-center">
+                <i class="pi pi-spin pi-spinner text-primary" style="font-size: 1.5rem;"></i>
+                <div class="mt-2 font-medium">Loading import history...</div>
+              </div>
+            </div>
+            
+            <div v-else-if="importHistory.length === 0" class="p-3 text-center text-500">
+              <i class="pi pi-inbox text-xl mb-2"></i>
+              <p>No previous imports found</p>
+            </div>
+            
+            <div v-else class="overflow-x-auto">
+              <table class="w-full border-collapse">
+                <thead class="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th class="text-left p-3 border-bottom-1 border-300">Date</th>
+                    <th class="text-left p-3 border-bottom-1 border-300">Platform</th>
+                    <th class="text-left p-3 border-bottom-1 border-300">File</th>
+                    <th class="text-left p-3 border-bottom-1 border-300">Quotes Added</th>
+                    <th class="text-left p-3 border-bottom-1 border-300">Duplicates</th>
+                    <th class="text-left p-3 border-bottom-1 border-300">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(log, index) in importHistory" :key="index" 
+                      class="border-bottom-1 border-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors transition-duration-200">
+                    <td class="p-3">{{ formatDate(log.created_at) }}</td>
+                    <td class="p-3">
+                      <span class="p-tag" :class="getPlatformTagClass(log.platform)">
+                        {{ getPlatformName(log.platform) }}
+                      </span>
+                    </td>
+                    <td class="p-3">{{ log.file_name }}</td>
+                    <td class="p-3 font-medium">{{ log.quotes_added }}</td>
+                    <td class="p-3">
+                      <span v-if="log.duplicates_skipped > 0" class="p-tag bg-orange-50 text-orange-700">
+                        {{ log.duplicates_skipped }}
+                      </span>
+                      <span v-else>-</span>
+                    </td>
+                    <td class="p-3">
+                      <span class="p-tag" :class="{
+                        'p-tag-success': log.status === 'completed', 
+                        'p-tag-danger': log.status === 'failed', 
+                        'p-tag-info': log.status === 'pending'
+                      }">
+                        {{ log.status }}
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Instructions Section -->
+        <div class="col-12">
+          <div class="card">
+            <div class="grid">
+              <!-- Kindle Instructions -->
+              <div class="col-12 md:col-6">
+                <div class="p-4">
+                  <h4 class="text-lg font-medium mb-3">How to Export Kindle Highlights</h4>
+                  <ol class="m-0 pl-4">
+                    <li class="mb-2">Connect your Kindle device to your computer via USB cable</li>
+                    <li class="mb-2">Navigate to the Kindle drive on your computer</li>
+                    <li class="mb-2">Find and open the "documents" folder</li>
+                    <li class="mb-2">Locate the "My Clippings.txt" file</li>
+                    <li class="mb-2">Copy this file to your computer</li>
+                    <li>Upload the "My Clippings.txt" file here</li>
+                  </ol>
+                </div>
+              </div>
+
+              <!-- Google Books Instructions -->
+              <div class="col-12 md:col-6">
+                <div class="p-4">
+                  <h4 class="text-lg font-medium mb-3">How to Export Google Books Highlights</h4>
+                  <ol class="m-0 pl-4">
+                    <li class="mb-2">Open Google Play Books in your web browser</li>
+                    <li class="mb-2">Go to the book with your highlights</li>
+                    <li class="mb-2">Click on "Notes" to view all your highlights</li>
+                    <li class="mb-2">Click on the "Export" button</li>
+                    <li class="mb-2">Save the file as a .docx document</li>
+                    <li>Upload the .docx file here (or package multiple .docx files in a .zip file for batch import)</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden file inputs -->
+      <input
+        type="file"
+        accept=".txt"
+        ref="fileInput"
+        style="display: none"
+        @change="handleFileUpload"
+      />
       
-      <div class="p-6 bg-white dark:bg-gray-900 border-round shadow-2">
-        <h3 class="text-xl font-semibold mb-4">Choose an Import Source</h3>
-        
-        <div class="flex flex-column gap-4">
-          <!-- Kindle Import Option -->
-          <div class="p-4 border-round-xl bg-blue-50 dark:bg-blue-900 cursor-pointer hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors transition-duration-200"
-               :class="{ 'drag-active': isDraggingKindle }"
-               @click="importFromKindle"
-               @dragover="handleDragOver($event, 'kindle')"
-               @dragleave="handleDragLeave($event, 'kindle')"
-               @drop="handleDrop($event, 'kindle')">
-            <div class="flex align-items-center gap-3">
-              <i class="pi pi-book text-3xl text-blue-500"></i>
-              <div>
-                <h4 class="m-0 font-semibold">Import from Kindle</h4>
-                <p class="text-sm text-500 dark:text-400 m-0 mt-1">
-                  Upload your Kindle highlights export (.txt) to import quotes
-                </p>
-                <p v-if="isDraggingKindle" class="text-sm text-blue-500 m-0 mt-1">
-                  <i class="pi pi-upload mr-1"></i> Drop your file here
-                </p>
-                <p v-else class="text-sm text-500 dark:text-400 m-0 mt-1">
-                  Click to browse or drag and drop your file here
-                </p>
-              </div>
-            </div>
+      <input
+        type="file"
+        accept=".docx"
+        ref="docxFileInput"
+        style="display: none"
+        @change="handleDocxFileUpload"
+      />
+      
+      <input
+        type="file"
+        accept=".zip"
+        ref="zipFileInput"
+        style="display: none"
+        @change="handleZipFileUpload"
+      />
+      
+      <!-- Upload status -->
+      <div v-if="isUploading" class="import-loader-overlay">
+        <div class="import-loader-container">
+          <div class="import-loader-circle">
+            <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
           </div>
-          
-          <!-- Google Books Import Option -->
-          <div class="p-4 border-round-xl bg-green-50 dark:bg-green-900 cursor-pointer hover:bg-green-100 dark:hover:bg-green-800 transition-colors transition-duration-200"
-               :class="{ 'drag-active': isDraggingDocx }"
-               @click="importFromGoogleBooks"
-               @dragover="handleDragOver($event, 'docx')"
-               @dragleave="handleDragLeave($event, 'docx')"
-               @drop="handleDrop($event, 'docx')">
-            <div class="flex align-items-center gap-3">
-              <i class="pi pi-cloud-download text-3xl text-green-500"></i>
-              <div>
-                <h4 class="m-0 font-semibold">Import from Google Books</h4>
-                <p class="text-sm text-500 dark:text-400 m-0 mt-1">
-                  Upload your Google Books highlights export (.docx) to import quotes
-                </p>
-                <p v-if="isDraggingDocx" class="text-sm text-green-500 m-0 mt-1">
-                  <i class="pi pi-upload mr-1"></i> Drop your file here
-                </p>
-                <p v-else class="text-sm text-500 dark:text-400 m-0 mt-1">
-                  Click to browse or drag and drop your file here
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Batch Import Option -->
-          <div class="p-4 border-round-xl bg-purple-50 dark:bg-purple-900 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800 transition-colors transition-duration-200"
-               :class="{ 'drag-active': isDraggingZip }"
-               @click="importFromGoogleBooksZip"
-               @dragover="handleDragOver($event, 'zip')"
-               @dragleave="handleDragLeave($event, 'zip')"
-               @drop="handleDrop($event, 'zip')">
-            <div class="flex align-items-center gap-3">
-              <i class="pi pi-file-export text-3xl text-purple-500"></i>
-              <div>
-                <h4 class="m-0 font-semibold">Batch Import from Google Books</h4>
-                <p class="text-sm text-500 dark:text-400 m-0 mt-1">
-                  Upload a zip file containing multiple Google Books exports (.docx files)
-                </p>
-                <p v-if="isDraggingZip" class="text-sm text-purple-500 m-0 mt-1">
-                  <i class="pi pi-upload mr-1"></i> Drop your file here
-                </p>
-                <p v-else class="text-sm text-500 dark:text-400 m-0 mt-1">
-                  Click to browse or drag and drop your file here
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Hidden file inputs -->
-          <input
-            type="file"
-            accept=".txt"
-            ref="fileInput"
-            style="display: none"
-            @change="handleFileUpload"
-          />
-          
-          <input
-            type="file"
-            accept=".docx"
-            ref="docxFileInput"
-            style="display: none"
-            @change="handleDocxFileUpload"
-          />
-          
-          <input
-            type="file"
-            accept=".zip"
-            ref="zipFileInput"
-            style="display: none"
-            @change="handleZipFileUpload"
-          />
-          
-          <!-- Upload status -->
-          <div v-if="isUploading" class="import-loader-overlay">
-            <div class="import-loader-container">
-              <div class="import-loader-circle">
-                <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-              </div>
-              <h3 class="mt-3 text-center">Processing Your Import</h3>
-              <p class="text-center text-500">Your quotes are being extracted and saved...</p>
-              <div class="loader-progress mt-2"></div>
-            </div>
-          </div>
-          
-          <!-- Import Results -->
-          <div v-if="importResults" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 border-round">
-            <h4 class="text-lg font-medium mb-3">Import Results</h4>
-            
-            <div class="mb-3">
-              <div><strong>Files Processed:</strong> {{ importResults.processed_files }} of {{ importResults.total_docx_files }}</div>
-              <div><strong>Successfully Imported:</strong> {{ importResults.total_quotes }}</div>
-              <div v-if="importResults.duplicates_skipped" class="text-orange-500">
-                <strong>Duplicates Skipped:</strong> {{ importResults.duplicates_skipped }}
-              </div>
-              <div v-if="importResults.duplicates_skipped" class="text-sm text-500 mt-1">
-                <i class="pi pi-info-circle mr-1"></i> Duplicate quotes were found and not imported to avoid duplication.
-              </div>
-            </div>
-            
-            <div v-if="importResults.books.length > 0" class="mb-3">
-              <h5 class="text-base font-medium mb-2">Imported Books:</h5>
-              <ul class="m-0 pl-4">
-                <li v-for="(book, index) in importResults.books" :key="index" class="mb-1">
-                  <strong>{{ book.title }}</strong> by {{ book.author }} - {{ book.quotes_count }} quotes
-                  <span v-if="book.duplicates_skipped" class="text-orange-500">
-                    ({{ book.duplicates_skipped }} duplicates skipped)
-                  </span>
-                </li>
-              </ul>
-            </div>
-            
-            <div v-if="importResults.errors.length > 0" class="mt-3">
-              <h5 class="text-base font-medium mb-2 text-red-500">Errors:</h5>
-              <ul class="m-0 pl-4">
-                <li v-for="(error, index) in importResults.errors" :key="index" class="mb-1 text-red-600">
-                  {{ error }}
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Instructions -->
-        <div class="mt-6 p-3 bg-gray-50 dark:bg-gray-800 border-round">
-          <h4 class="text-lg font-medium mb-2">How to Export Kindle Highlights from My Clippings</h4>
-          <ol class="m-0 pl-4">
-            <li class="mb-2">Connect your Kindle device to your computer via USB cable</li>
-            <li class="mb-2">Navigate to the Kindle drive on your computer</li>
-            <li class="mb-2">Find and open the "documents" folder</li>
-            <li class="mb-2">Locate the "My Clippings.txt" file</li>
-            <li class="mb-2">Copy this file to your computer</li>
-            <li>Upload the "My Clippings.txt" file here</li>
-          </ol>
-        </div>
-        
-        <div class="mt-4 p-3 bg-gray-50 dark:bg-gray-800 border-round">
-          <h4 class="text-lg font-medium mb-2">How to Export Google Books Highlights</h4>
-          <ol class="m-0 pl-4">
-            <li class="mb-2">Open Google Play Books in your web browser</li>
-            <li class="mb-2">Go to the book with your highlights</li>
-            <li class="mb-2">Click on "Notes" to view all your highlights</li>
-            <li class="mb-2">Click on the "Export" button</li>
-            <li class="mb-2">Save the file as a .docx document</li>
-            <li>Upload the .docx file here (or package multiple .docx files in a .zip file for batch import)</li>
-          </ol>
+          <h3 class="mt-3 text-center">Processing Your Import</h3>
+          <p class="text-center text-500">Your quotes are being extracted and saved...</p>
+          <div class="loader-progress mt-2"></div>
         </div>
       </div>
       
-      <!-- Import History Section (moved out of the flex-column) -->
-      <div class="card mt-6">
-        <div class="p-4 bg-white dark:bg-gray-900 border-round shadow-2">
-          <div class="flex align-items-center justify-content-between mb-3">
-            <h3 class="text-xl font-semibold m-0">Import History</h3>
-            <button v-if="importHistory.length > 0" class="p-button p-button-text p-button-secondary" @click="fetchImportHistory()">
-              <i class="pi pi-refresh mr-1"></i> Refresh
-            </button>
+      <!-- Import Results -->
+      <div v-if="importResults" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 border-round">
+        <h4 class="text-lg font-medium mb-3">Import Results</h4>
+        
+        <div class="mb-3">
+          <div><strong>Files Processed:</strong> {{ importResults.processed_files }} of {{ importResults.total_docx_files }}</div>
+          <div><strong>Successfully Imported:</strong> {{ importResults.total_quotes }}</div>
+          <div v-if="importResults.duplicates_skipped" class="text-orange-500">
+            <strong>Duplicates Skipped:</strong> {{ importResults.duplicates_skipped }}
           </div>
-          
-          <div v-if="isLoadingHistory" class="flex align-items-center justify-content-center p-5">
-            <div class="text-center">
-              <i class="pi pi-spin pi-spinner text-primary" style="font-size: 1.5rem;"></i>
-              <div class="mt-2 font-medium">Loading import history...</div>
-            </div>
+          <div v-if="importResults.duplicates_skipped" class="text-sm text-500 mt-1">
+            <i class="pi pi-info-circle mr-1"></i> Duplicate quotes were found and not imported to avoid duplication.
           </div>
-          
-          <div v-else-if="importHistory.length === 0" class="p-3 text-center text-500">
-            <i class="pi pi-inbox text-xl mb-2"></i>
-            <p>No previous imports found</p>
-          </div>
-          
-          <div v-else class="overflow-x-auto">
-            <table class="w-full border-collapse">
-              <thead class="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th class="text-left p-3 border-bottom-1 border-300">Date</th>
-                  <th class="text-left p-3 border-bottom-1 border-300">Platform</th>
-                  <th class="text-left p-3 border-bottom-1 border-300">File</th>
-                  <th class="text-left p-3 border-bottom-1 border-300">Quotes Added</th>
-                  <th class="text-left p-3 border-bottom-1 border-300">Duplicates</th>
-                  <th class="text-left p-3 border-bottom-1 border-300">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(log, index) in importHistory" :key="index" 
-                    class="border-bottom-1 border-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors transition-duration-200">
-                  <td class="p-3">{{ formatDate(log.created_at) }}</td>
-                  <td class="p-3">
-                    <span class="p-tag" :class="getPlatformTagClass(log.platform)">
-                      {{ getPlatformName(log.platform) }}
-                    </span>
-                  </td>
-                  <td class="p-3">{{ log.file_name }}</td>
-                  <td class="p-3 font-medium">{{ log.quotes_added }}</td>
-                  <td class="p-3">
-                    <span v-if="log.duplicates_skipped > 0" class="p-tag bg-orange-50 text-orange-700">
-                      {{ log.duplicates_skipped }}
-                    </span>
-                    <span v-else>-</span>
-                  </td>
-                  <td class="p-3">
-                    <span class="p-tag" :class="{
-                      'p-tag-success': log.status === 'completed', 
-                      'p-tag-danger': log.status === 'failed', 
-                      'p-tag-info': log.status === 'pending'
-                    }">
-                      {{ log.status }}
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        </div>
+        
+        <div v-if="importResults.books.length > 0" class="mb-3">
+          <h5 class="text-base font-medium mb-2">Imported Books:</h5>
+          <ul class="m-0 pl-4">
+            <li v-for="(book, index) in importResults.books" :key="index" class="mb-1">
+              <strong>{{ book.title }}</strong> by {{ book.author }} - {{ book.quotes_count }} quotes
+              <span v-if="book.duplicates_skipped" class="text-orange-500">
+                ({{ book.duplicates_skipped }} duplicates skipped)
+              </span>
+            </li>
+          </ul>
+        </div>
+        
+        <div v-if="importResults.errors.length > 0" class="mt-3">
+          <h5 class="text-base font-medium mb-2 text-red-500">Errors:</h5>
+          <ul class="m-0 pl-4">
+            <li v-for="(error, index) in importResults.errors" :key="index" class="mb-1 text-red-600">
+              {{ error }}
+            </li>
+          </ul>
         </div>
       </div>
     </div>
@@ -577,9 +594,9 @@ onMounted(() => {
 .drag-active {
   border: 2px dashed var(--primary-color) !important;
   background-color: rgba(var(--primary-color-rgb), 0.1) !important;
-  box-shadow: 0 0 10px rgba(var(--primary-color-rgb), 0.3);
-  transform: scale(1.01);
-  transition: all 0.2s ease-in-out;
+  box-shadow: 0 0 20px rgba(var(--primary-color-rgb), 0.2);
+  transform: scale(1.02);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .import-loader-overlay {
@@ -588,28 +605,28 @@ onMounted(() => {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.6);
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
 }
 
 .import-loader-container {
   background-color: var(--surface-card, white);
-  padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  padding: 2.5rem;
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
   width: 100%;
   max-width: 400px;
   text-align: center;
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .import-loader-circle {
-  width: 64px;
-  height: 64px;
+  width: 72px;
+  height: 72px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -617,14 +634,16 @@ onMounted(() => {
   border-radius: 50%;
   background-color: var(--primary-color-lighter, #f0f7ff);
   color: var(--primary-color, #4f46e5);
+  box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.2);
 }
 
 .loader-progress {
-  height: 4px;
+  height: 6px;
   background: linear-gradient(90deg, var(--primary-color, #4f46e5) 0%, var(--primary-color-lighter, #f0f7ff) 50%, var(--primary-color, #4f46e5) 100%);
   background-size: 200% 100%;
   animation: progress-animation 1.5s infinite;
-  border-radius: 4px;
+  border-radius: 8px;
+  margin-top: 1rem;
 }
 
 @keyframes progress-animation {
@@ -633,18 +652,20 @@ onMounted(() => {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(-20px); }
+  from { opacity: 0; transform: translateY(-30px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 .p-tag {
-  border-radius: 6px;
-  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  padding: 0.35rem 0.75rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .p-tag-success {
@@ -660,5 +681,146 @@ onMounted(() => {
 .p-tag-info {
   background-color: #E6F7FF;
   color: #0095FF;
+}
+
+/* Card styling */
+.card {
+  border-radius: 20px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  margin-bottom: 1.5rem;
+}
+
+.card:last-child {
+  margin-bottom: 0;
+}
+
+.card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+/* Grid spacing */
+.grid {
+  gap: 1.5rem;
+}
+
+/* Import options spacing */
+.flex-column.gap-4 {
+  gap: 1.5rem !important;
+}
+
+/* Table container spacing */
+.overflow-x-auto {
+  margin: 0.5rem 0;
+}
+
+/* Instructions section spacing */
+.grid .col-12 {
+  margin-bottom: 1.5rem;
+}
+
+.grid .col-12:last-child {
+  margin-bottom: 0;
+}
+
+/* Import options styling */
+.border-round-xl {
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.border-round-xl:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* Table styling */
+table {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+thead {
+  background-color: var(--surface-ground);
+}
+
+th {
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+td, th {
+  padding: 1rem 1.5rem;
+}
+
+tr {
+  transition: all 0.2s ease;
+}
+
+tr:hover {
+  background-color: var(--surface-hover);
+}
+
+/* Button styling */
+.p-button {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+.p-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Instructions section styling */
+ol {
+  counter-reset: item;
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ol li {
+  counter-increment: item;
+  margin-bottom: 1rem;
+  padding-left: 2.5rem;
+  position: relative;
+}
+
+ol li:before {
+  content: counter(item);
+  background: var(--primary-color);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Import results styling */
+.border-round {
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+/* Dark mode adjustments */
+:root.dark {
+  .card {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .border-round-xl {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  }
+  
+  .border-round-xl:hover {
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  }
 }
 </style> 

@@ -2,7 +2,7 @@
   <div class="flex flex-col">
     <div class="card">
       <div class="flex justify-between items-center mb-4">
-        <div class="font-semibold text-xl">Libros</div>
+        <div class="font-semibold text-xl">Books</div>
         <div class="flex gap-2">
           <Button 
             label="Update Book Covers" 
@@ -440,8 +440,25 @@
                 :src="previewCoverUrl" 
                 :alt="currentBook?.title"
                 class="max-w-full max-h-full object-contain"
+                @error="handlePreviewImageError"
+                @load="handlePreviewImageLoad"
               />
-              <div v-else class="text-gray-400">No cover selected</div>
+              <!-- No cover selected or error loading -->
+              <div 
+                v-if="!previewCoverUrl || previewImageError" 
+                class="flex flex-col items-center justify-center text-gray-400 p-4 text-center"
+              >
+                <i class="pi pi-image text-4xl mb-2"></i>
+                <div v-if="previewImageError" class="text-sm text-red-400">
+                  Error loading selected cover
+                </div>
+                <div v-else class="text-sm">
+                  No cover selected
+                </div>
+                <div class="mt-2 text-xs">
+                  Select a cover from the options or upload a custom one
+                </div>
+              </div>
             </div>
           </div>
           
@@ -456,12 +473,22 @@
                 :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
                 @click="selectCover(cover.url)"
               >
-                <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+                <div class="w-full h-40 flex items-center justify-center bg-gray-100 relative">
                   <img 
                     :src="cover.url" 
                     :alt="`Cover option ${index+1}`"
                     class="max-w-full max-h-full object-contain"
+                    @error="handleCoverOptionError($event, index)"
+                    @load="handleCoverOptionLoad($event, index)"
                   />
+                  <!-- Fallback si la imagen no se puede cargar -->
+                  <div
+                    v-if="coverLoadErrors[index]"
+                    class="absolute inset-0 bg-gray-200 flex flex-col items-center justify-center text-gray-500"
+                  >
+                    <i class="pi pi-image-slash text-xl mb-1"></i>
+                    <span class="text-xs">Image unavailable</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -593,6 +620,10 @@ const currentBookIndex = ref(0);
 const customSearchTitle = ref('');
 const coverOptions = ref([]);
 const customCoverUrl = ref('');
+const coverLoadErrors = ref({}); // Estado para almacenar errores de carga de portada por índice
+
+// Estado para el error de la imagen de vista previa
+const previewImageError = ref(false);
 
 // Actualiza el layout según el tamaño de la ventana
 const handleResize = () => {
@@ -633,9 +664,9 @@ const fetchBookCovers = async () => {
     updatingCovers.value = true;
     
     // Filter books without covers
-    booksToProcess.value = books.value.filter(book => !book.cover);
+    const booksWithoutCovers = books.value.filter(book => !book.cover);
     
-    if (booksToProcess.value.length === 0) {
+    if (booksWithoutCovers.length === 0) {
       toast.add({
         severity: 'info',
         summary: 'No Books to Update',
@@ -645,9 +676,83 @@ const fetchBookCovers = async () => {
       updatingCovers.value = false;
       return;
     }
-    
-    // Start the cover approval process
+
+    // Initialize booksToProcess with all books without covers
+    booksToProcess.value = [...booksWithoutCovers];
     currentBookIndex.value = 0;
+    
+    // Start searching for covers in the background
+    const searchCoversInBackground = async () => {
+      const booksWithCoverOptions = [];
+      
+      // Search for covers for all books
+      for (const book of booksWithoutCovers) {
+        try {
+          const result = await BookService.fetchBookCovers(
+            book.title, 
+            book.author.name
+          );
+          
+          // Filter out problematic covers
+          const validCovers = result.covers.filter(cover => {
+            // Skip covers with ID 0 from OpenLibrary (known to cause errors)
+            if (cover.url && cover.url.includes('openlibrary.org')) {
+              if (cover.url.includes('/id/0-') || 
+                  cover.url.includes('/id/0.') || 
+                  cover.url.match(/\/id\/0($|\?)/)) {
+                console.warn('Filtered out invalid OpenLibrary cover with ID 0');
+                return false;
+              }
+            }
+            
+            // Validate URL format
+            try {
+              new URL(cover.url);
+            } catch (urlError) {
+              console.warn('Filtered out cover with invalid URL format:', cover.url);
+              return false;
+            }
+            
+            return true;
+          });
+          
+          booksWithCoverOptions.push({
+            book,
+            coverOptions: validCovers
+          });
+        } catch (error) {
+          console.error(`Error fetching covers for book "${book.title}":`, error);
+          booksWithCoverOptions.push({
+            book,
+            coverOptions: []
+          });
+        }
+      }
+      
+      // Sort books: those with cover options first
+      booksWithCoverOptions.sort((a, b) => {
+        // If both have covers or both don't have covers, maintain original order
+        if ((a.coverOptions.length > 0) === (b.coverOptions.length > 0)) {
+          return 0;
+        }
+        // Put books with covers first
+        return a.coverOptions.length > 0 ? -1 : 1;
+      });
+      
+      // Update booksToProcess with the sorted books
+      booksToProcess.value = booksWithCoverOptions.map(item => item.book);
+      
+      // If we're not currently showing a book, start the process
+      if (!coverPreviewDialog.value) {
+        currentBookIndex.value = 0;
+        await processCurrentBook();
+      }
+    };
+    
+    // Start the background search
+    searchCoversInBackground();
+    
+    // Start with the first book immediately
     await processCurrentBook();
     
   } catch (error) {
@@ -691,30 +796,76 @@ const searchCoverForCurrentBook = async (customTitle) => {
   // Use the provided custom title or the book's title
   const searchTitle = customTitle || currentBook.value.title;
   
-  // Fetch cover options from OpenLibrary
-  const result = await BookService.fetchBookCovers(
-    searchTitle, 
-    currentBook.value.author.name
-  );
-  
-  coverOptions.value = result.covers;
-  
-  if (coverOptions.value.length > 0) {
-    // Set the first cover as the preview by default
-    previewCoverUrl.value = coverOptions.value[0].url;
-    toast.add({
-      severity: 'success',
-      summary: 'Covers Found',
-      detail: `Found ${coverOptions.value.length} covers for "${currentBook.value.title}"`,
-      life: 2000
+  try {
+    // Reset cover errors on new search
+    coverLoadErrors.value = {};
+    
+    // Fetch cover options from OpenLibrary
+    const result = await BookService.fetchBookCovers(
+      searchTitle, 
+      currentBook.value.author.name
+    );
+    
+    // Filter out problematic covers
+    coverOptions.value = result.covers.filter(cover => {
+      // Skip covers with ID 0 from OpenLibrary (known to cause errors)
+      if (cover.url && cover.url.includes('openlibrary.org')) {
+        if (cover.url.includes('/id/0-') || 
+            cover.url.includes('/id/0.') || 
+            cover.url.match(/\/id\/0($|\?)/)) {
+          console.warn('Filtered out invalid OpenLibrary cover with ID 0');
+          return false;
+        }
+      }
+      
+      // Validate URL format
+      try {
+        new URL(cover.url);
+      } catch (urlError) {
+        console.warn('Filtered out cover with invalid URL format:', cover.url);
+        return false;
+      }
+      
+      return true;
     });
-  } else {
+    
+    if (coverOptions.value.length > 0) {
+      // Set the first cover as the preview by default
+      previewCoverUrl.value = coverOptions.value[0].url;
+      previewImageError.value = false;
+      
+      // Pre-load cover images to check availability
+      coverOptions.value.forEach((cover, index) => {
+        const img = new Image();
+        img.onload = () => { coverLoadErrors.value[index] = false; };
+        img.onerror = () => { coverLoadErrors.value[index] = true; };
+        img.src = cover.url;
+      });
+      
+      toast.add({
+        severity: 'success',
+        summary: 'Covers Found',
+        detail: `Found ${coverOptions.value.length} covers for "${currentBook.value.title}"`,
+        life: 2000
+      });
+    } else {
+      previewCoverUrl.value = null;
+      toast.add({
+        severity: 'info',
+        summary: 'No Covers Found',
+        detail: `Could not find covers for "${currentBook.value.title}"`,
+        life: 2000
+      });
+    }
+  } catch (error) {
+    console.error('Error searching for covers:', error);
+    coverOptions.value = [];
     previewCoverUrl.value = null;
     toast.add({
-      severity: 'info',
-      summary: 'No Covers Found',
-      detail: `Could not find covers for "${currentBook.value.title}"`,
-      life: 2000
+      severity: 'error',
+      summary: 'Search Failed',
+      detail: `Error searching for covers: ${error.message || 'Unknown error'}`,
+      life: 3000
     });
   }
 };
@@ -729,16 +880,64 @@ const acceptCover = async () => {
   if (!previewCoverUrl.value || !currentBook.value) return;
   
   try {
-    // Update the book with the cover URL
-    await BookService.updateBook(currentBook.value.id, {
-      ...currentBook.value,
-      cover: previewCoverUrl.value
-    });
+    // Validate URL format
+    try {
+      new URL(previewCoverUrl.value);
+    } catch (urlError) {
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid URL',
+        detail: 'The cover URL format is invalid',
+        life: 3000
+      });
+      return;
+    }
+    
+    // Check if the URL is from OpenLibrary and contains ID 0
+    if (previewCoverUrl.value.includes('openlibrary.org') && 
+        (previewCoverUrl.value.includes('/id/0-') || 
+         previewCoverUrl.value.includes('/id/0.') || 
+         previewCoverUrl.value.match(/\/id\/0($|\?)/))) {
+      toast.add({
+        severity: 'error',
+        summary: 'Invalid Cover',
+        detail: 'This OpenLibrary cover ID is invalid (ID: 0)',
+        life: 3000
+      });
+      return;
+    }
+    
+    // Get cover value to save - for OpenLibrary, extract just the ID
+    let coverValue = previewCoverUrl.value;
+    
+    // If it's an OpenLibrary URL, extract just the ID to store
+    if (previewCoverUrl.value.includes('openlibrary.org/b/id/')) {
+      // Extract the ID from OpenLibrary URL format like: 
+      // https://covers.openlibrary.org/b/id/12345-L.jpg
+      const match = previewCoverUrl.value.match(/\/b\/id\/(\d+)/);
+      if (match && match[1]) {
+        coverValue = match[1]; // Just store the numeric ID
+        console.log('Extracted OpenLibrary ID:', coverValue);
+      }
+    }
+    
+    console.log('Saving cover value:', coverValue);
+    
+    // Create a minimal update object with ONLY the cover field
+    const updateData = {
+      cover: coverValue
+    };
+    
+    // Log the exact data being sent
+    console.log('Sending update data:', JSON.stringify(updateData, null, 2));
+    
+    // Update the book with minimal data
+    await BookService.updateBook(currentBook.value.id, updateData);
     
     // Update local state
     const bookIndex = books.value.findIndex(b => b.id === currentBook.value.id);
     if (bookIndex !== -1) {
-      books.value[bookIndex].cover = previewCoverUrl.value;
+      books.value[bookIndex].cover = coverValue;
     }
     
     toast.add({
@@ -753,10 +952,36 @@ const acceptCover = async () => {
     
   } catch (error) {
     console.error('Error saving cover:', error);
+    console.log('Failed cover value:', previewCoverUrl.value);
+    
+    if (error.response) {
+      console.error('Error response:', error.response.status, error.response.data);
+      console.error('Request data:', error.config.data);
+    }
+    
+    // More specific error message based on error type
+    let errorMessage = `Error saving cover for "${currentBook.value.title}"`;
+    if (error.response) {
+      if (error.response.status === 400) {
+        errorMessage = `The server rejected the cover URL (400 Bad Request). Try a different URL format.`;
+        if (error.response.data && typeof error.response.data === 'object') {
+          // Try to extract specific validation errors
+          const errors = Object.entries(error.response.data)
+            .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(', ') : msgs}`)
+            .join('; ');
+          if (errors) {
+            errorMessage += ` Validation errors: ${errors}`;
+          }
+        }
+      } else if (error.response.status === 413) {
+        errorMessage = `The cover URL is too long. Try a shorter URL.`;
+      }
+    }
+    
     toast.add({
       severity: 'error',
       summary: 'Save Failed',
-      detail: `Error saving cover for "${currentBook.value.title}"`,
+      detail: errorMessage,
       life: 3000
     });
   }
@@ -948,36 +1173,60 @@ const previewCustomUrl = () => {
   if (!customCoverUrl.value) return;
   
   // Validate the URL format
+  let validUrl;
   try {
-    new URL(customCoverUrl.value);
-    // Set the preview to the custom URL
-    previewCoverUrl.value = customCoverUrl.value;
-    
-    // Add to cover options if not already there
-    const exists = coverOptions.value.some(option => option.url === customCoverUrl.value);
-    if (!exists) {
-      coverOptions.value.push({
-        url: customCoverUrl.value,
-        source: 'custom',
-        title: currentBook.value?.title || '',
-        author: currentBook.value?.author?.name || ''
-      });
-    }
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Custom URL Added',
-      detail: 'Custom cover URL has been added to options',
-      life: 2000
-    });
-  } catch (error) {
+    validUrl = new URL(customCoverUrl.value).toString();
+  } catch (urlError) {
     toast.add({
       severity: 'error',
       summary: 'Invalid URL',
-      detail: 'The URL format is invalid',
+      detail: 'The URL format is invalid. Make sure it starts with http:// or https://',
       life: 3000
     });
+    return;
   }
+  
+  // Check if this is an OpenLibrary URL with a potential ID that could be extracted
+  let coverValue = validUrl;
+  
+  if (validUrl.includes('openlibrary.org/b/id/')) {
+    // Extract just the ID for OpenLibrary URLs
+    const match = validUrl.match(/\/b\/id\/(\d+)/);
+    if (match && match[1]) {
+      // Just show the user we're normalizing the URL
+      toast.add({
+        severity: 'info',
+        summary: 'OpenLibrary URL Detected',
+        detail: 'The URL will be stored as just the cover ID for compatibility',
+        life: 3000
+      });
+      
+      // For preview purposes, keep showing the full URL
+      coverValue = validUrl;
+    }
+  }
+  
+  // Set the preview to the custom URL
+  previewCoverUrl.value = coverValue;
+  previewImageError.value = false;
+  
+  // Add to cover options if not already there
+  const exists = coverOptions.value.some(option => option.url === coverValue);
+  if (!exists) {
+    coverOptions.value.push({
+      url: coverValue,
+      source: 'custom',
+      title: currentBook.value?.title || '',
+      author: currentBook.value?.author?.name || ''
+    });
+  }
+  
+  toast.add({
+    severity: 'success',
+    summary: 'Custom URL Added',
+    detail: 'Custom cover URL has been added to options',
+    life: 2000
+  });
 };
 
 // Navigate to book detail page
@@ -1039,6 +1288,49 @@ const handleAuthorImageLoad = (authorId) => {
   setTimeout(() => {
     authorImageLoadingStates.value[authorId] = false;
   }, 300);
+};
+
+// Handle cover option error
+const handleCoverOptionError = (event, index) => {
+  // Mark the image as failed
+  coverLoadErrors.value[index] = true;
+  
+  console.warn(`Cover option ${index} failed to load: ${coverOptions.value[index]?.url}`);
+  
+  // If this was the selected cover, we should probably select another one
+  if (previewCoverUrl.value === coverOptions.value[index]?.url) {
+    // Find another cover that hasn't failed, if any
+    const anotherCover = coverOptions.value.find((c, i) => !coverLoadErrors.value[i]);
+    if (anotherCover) {
+      previewCoverUrl.value = anotherCover.url;
+    } else {
+      previewCoverUrl.value = null; // No valid covers available
+    }
+  }
+};
+
+// Handle cover option load success
+const handleCoverOptionLoad = (event, index) => {
+  // Mark the image as loaded successfully
+  coverLoadErrors.value[index] = false;
+};
+
+// Manejador de error para la imagen de vista previa
+const handlePreviewImageError = () => {
+  previewImageError.value = true;
+  console.error(`Failed to load preview image: ${previewCoverUrl.value}`);
+  
+  toast.add({
+    severity: 'error',
+    summary: 'Cover Preview Error',
+    detail: 'Failed to load the selected cover image.',
+    life: 3000
+  });
+};
+
+// Manejador de carga exitosa para la imagen de vista previa
+const handlePreviewImageLoad = () => {
+  previewImageError.value = false;
 };
 </script>
 

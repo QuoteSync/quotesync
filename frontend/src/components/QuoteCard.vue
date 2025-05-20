@@ -1,26 +1,30 @@
 <template>
   <div
-    class="w-full p-6 border border-surface-200 dark:border-surface-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm relative"
+    class="quote-card w-full p-6 border border-surface-200 dark:border-surface-700 rounded-lg bg-white dark:bg-gray-800 shadow-sm relative transition-all duration-300 hover:shadow-lg hover:scale-[1.02] hover:border-primary-200 dark:hover:border-primary-700"
   >
+    <!-- Decorative elements -->
+    <div class="quote-decoration absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 to-primary-700 opacity-0 transition-opacity duration-300"></div>
+    <div class="quote-decoration absolute bottom-0 right-0 w-1 h-full bg-gradient-to-b from-primary-500 to-primary-700 opacity-0 transition-opacity duration-300"></div>
+    
     <div v-if="isEditing || isNew">
       <textarea
         v-model="editedText"
-        class="w-full p-2 border rounded resize-none"
+        class="w-full p-3 border rounded-lg resize-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
         rows="3"
         :placeholder="isNew ? 'Escribe la nueva cita...' : ''"
       ></textarea>
       <!-- Sección para editar etiquetas con pills -->
-      <div class="mt-2">
+      <div class="mt-3">
         <div class="flex flex-wrap gap-2 items-center">
           <div
             v-for="(tag, idx) in editedTagsArray"
             :key="idx"
-            class="flex items-center px-3 py-1 rounded-full text-white text-xs shadow-sm"
+            class="flex items-center px-3 py-1.5 rounded-full text-white text-xs shadow-sm transition-all duration-200 hover:scale-105 hover:shadow-lg"
             :style="{ background: 'linear-gradient(135deg, #3B82F6, #1E3A8A)' }"
           >
             {{ tag }}
-            <button class="ml-1 text-white focus:outline-none" @click="removeTag(idx)">
-              x
+            <button class="ml-1.5 text-white hover:text-red-200 focus:outline-none transition-colors duration-200" @click="removeTag(idx)">
+              ×
             </button>
           </div>
           <!-- Campo de entrada y botón para agregar tag -->
@@ -30,10 +34,10 @@
               v-model="newTag"
               @keydown.enter.prevent="addTag"
               placeholder="Añadir tag"
-              class="p-1 border rounded focus:outline-none focus:ring-2 focus:ring-blue-300 text-xs"
+              class="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-sm transition-all duration-200 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm"
             />
             <button
-              class="ml-2 p-1 rounded bg-green-500 text-white hover:bg-green-600 transition-colors text-xs"
+              class="ml-2 p-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition-all duration-200 text-sm font-medium hover:scale-105 hover:shadow-lg"
               @click="addTag"
             >
               Add Tag
@@ -41,15 +45,15 @@
           </div>
         </div>
       </div>
-      <div class="flex justify-end gap-2 mt-2">
+      <div class="flex justify-end gap-2 mt-3">
         <button
-          class="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-100 transition-colors"
+          class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition-all duration-200 hover:scale-105 hover:shadow-md"
           @click="cancelEdit"
         >
           Cancel
         </button>
         <button
-          class="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          class="px-4 py-2 rounded-lg bg-primary-500 text-white hover:bg-primary-600 transition-all duration-200 hover:scale-105 hover:shadow-lg"
           @click="save"
         >
           {{ isNew ? "Create" : "Save" }}
@@ -57,12 +61,16 @@
       </div>
     </div>
     <div v-else>
-      <p class="text-xl italic cursor-pointer hover:text-primary-500 transition-colors" @click="openQuoteModal">"{{ quote.body }}"</p>
-      <div class="mt-2 flex flex-wrap gap-2">
+      <div class="quote-content relative">
+        <div class="quote-mark absolute -left-2 -top-2 text-4xl text-primary-500/20 dark:text-primary-400/20">"</div>
+        <p class="text-xl italic cursor-pointer hover:text-primary-500 transition-all duration-300 leading-relaxed pl-4" @click.stop="openQuoteModal">"{{ quote.body }}"</p>
+        <div class="quote-mark absolute -right-2 -bottom-2 text-4xl text-primary-500/20 dark:text-primary-400/20 transform rotate-180">"</div>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
         <div
           v-for="(tag, idx) in localQuote.tags"
           :key="tag.id || idx"
-          class="px-3 py-1 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90 tag-pill"
+          class="px-3 py-1.5 rounded-full text-white text-xs shadow-sm cursor-pointer hover:opacity-90 tag-pill transition-all duration-200 hover:scale-105 hover:shadow-lg"
           :class="{ 'newly-added-tag': tag.isNew }"
           :style="{ background: tag.gradient_primary_color && tag.gradient_secondary_color ? 
             `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
@@ -73,77 +81,59 @@
         </div>
       </div>
       <!-- Información del libro y autor en dos líneas, junto a los botones -->
-      <div class="mt-2 flex items-center justify-between">
-        <div>
+      <div class="mt-3 flex items-center justify-between">
+        <div class="space-y-1">
           <span 
-            class="text-sm font-medium text-gray-500 cursor-pointer hover:text-primary-500 hover:underline"
+            class="text-sm font-medium text-gray-500 cursor-pointer hover:text-primary-500 hover:underline transition-all duration-200 group"
             @click.stop.prevent="handleBookClick(quote.book)"
           >
+            <i class="pi pi-book mr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></i>
             {{ quote.book?.title || "Unknown Book" }}
           </span>
           <br />
           <span 
-            class="text-sm font-medium text-gray-500 cursor-pointer hover:text-primary-500 hover:underline"
+            class="text-sm font-medium text-gray-500 cursor-pointer hover:text-primary-500 hover:underline transition-all duration-200 group"
             @click.stop.prevent="handleAuthorClick(quote.book?.author)"
           >
+            <i class="pi pi-user mr-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></i>
             {{ quote.book?.author?.name || "Unknown Author" }}
           </span>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3 button-group">
           <Button
-            icon="pi pi-heart"
-            :class="{ 'p-button-rounded': true, 'p-button-text': !liked, 'p-button-danger': liked }"
+            :icon="liked ? 'pi pi-heart-fill' : 'pi pi-heart'"
+            :class="{ 
+              'fancy-button': true, 
+              'p-button-rounded': true, 
+              'p-button-text': !liked, 
+              'p-button-danger': liked,
+              'favorite-button': true,
+              'is-liked': liked
+            }"
             @click="$emit('toggle-like', quote.id)"
+            class="transition-all duration-300"
           />
           <Button
             icon="pi pi-pencil"
-            class="p-button-rounded p-button-text"
+            class="fancy-button p-button-rounded p-button-text transition-all duration-300 edit-button"
             @click="startEdit"
           />
           <GenerateTagsButton
             :quote="quote"
-            class="p-button-rounded p-button-text"
+            class="fancy-button p-button-rounded p-button-text transition-all duration-300 tag-button"
             @tag-accepted="handleAddTag"
           />
-          <QuoteListMenu
-            :quoteId="quote.id"
-            @quote-added-to-list="handleQuoteAddedToList"
-            @remove-quote="$emit('remove-quote', $event)"
-          />
+          <div class="relative">
+
+            <QuoteListMenu
+              :quoteId="quote.id"
+              @quote-added-to-list="handleQuoteAddedToList"
+              @remove-quote="$emit('remove-quote', $event)"
+              class="enhanced-menu"
+            />
+          </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Quote Modal -->
-    <QuoteModal
-      v-model:visible="showModal"
-      :quote="quote"
-      :liked="liked"
-      :has-previous="hasPrevious"
-      :has-next="hasNext"
-      @toggle-like="$emit('toggle-like', quote.id)"
-      @add-tag="handleAddTag"
-      @remove-tag="handleRemoveTag"
-      @previous-quote="emitPreviousQuote"
-      @next-quote="emitNextQuote"
-    />
-    
-    <!-- Actions Menu -->
-    <div v-if="showActions" class="absolute top-2 right-2">
-      <Button
-        icon="pi pi-ellipsis-v"
-        class="p-button-rounded p-button-text"
-        @click="toggleMenu"
-        aria-haspopup="true"
-        aria-controls="overlay_menu"
-      />
-      <Menu
-        ref="menu"
-        :model="menuItems"
-        :popup="true"
-        aria-haspopup="true"
-        aria-controls="overlay_menu"
-      />
     </div>
     
     <!-- AI Tag Review Panel -->
@@ -219,8 +209,6 @@ const isEditing = ref(props.isNew); // Si es nueva, ya iniciamos en modo edició
 const editedText = ref(props.isNew ? "" : props.quote.body);
 const editedTagsArray = ref(props.quote.tags.map((tag) => tag.title) || []);
 const newTag = ref("");
-const showModal = ref(false);
-const isAnyModalOpen = ref(false);
 
 // Make a reactive copy of the quote for local modifications
 const localQuote = ref({ ...props.quote });
@@ -263,7 +251,6 @@ const startEdit = () => {
   editedText.value = props.quote.body;
   editedTagsArray.value = props.quote.tags.map((tag) => tag.title);
   newTag.value = "";
-  showModal.value = false; // Close modal if open
 };
 
 const cancelEdit = () => {
@@ -402,17 +389,14 @@ const toggleMenu = (event) => {
   menu.value.toggle(event);
 };
 
-const openQuoteModal = () => {
-  if (!isAnyModalOpen.value) {
-    isAnyModalOpen.value = true;
-    showModal.value = true;
-    
-    // We'll emit the click event to let the parent know which quote is active
-    emit("click", {
-      ...props.quote,
-      _preventModalOpen: true
-    });
-  }
+const openQuoteModal = (event) => {
+  console.log('QuoteCard - openQuoteModal called');
+  // Prevent event propagation
+  event?.preventDefault();
+  event?.stopPropagation();
+  
+  // Just emit the click event to the parent
+  emit("click", props.quote);
 };
 
 const handleAddTag = async (tagTitle) => {
@@ -517,201 +501,77 @@ const emitNextQuote = () => {
     emit('next-quote');
   }, 50);
 };
-
-watch(() => showModal.value, (newValue) => {
-  if (!newValue) {
-    // Our modal was closed
-    isAnyModalOpen.value = false;
-  }
-});
 </script>
 
 <style scoped>
-/* Puedes agregar estilos adicionales para pulir la apariencia de los pills */
-
-.quote-list-menu {
-  :deep(.p-button) {
-    border-radius: 50%;
-    background: transparent;
-    border: none;
-    color: #6B7280;
-  }
-
-  :deep(.p-button:hover) {
-    background: #F3F4F6;
-  }
-
-  :deep(.dark .p-button) {
-    color: #9CA3AF;
-  }
-
-  :deep(.dark .p-button:hover) {
-    background: #374151;
-  }
-
-  :deep(.p-dropdown) {
-    min-width: 200px;
-  }
-
-  :deep(.p-dropdown-panel) {
-    background: white;
-    border: 1px solid #E5E7EB;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  }
-
-  :deep(.dark .p-dropdown-panel) {
-    background: #1F2937;
-    border-color: #374151;
-  }
-
-  :deep(.p-dropdown-items) {
-    padding: 0;
-  }
-
-  :deep(.p-dropdown-item) {
-    padding: 0.75rem 1rem;
-    color: #374151;
-  }
-
-  :deep(.dark .p-dropdown-item) {
-    color: #E5E7EB;
-  }
-
-  :deep(.p-dropdown-item:hover) {
-    background: #F3F4F6;
-  }
-
-  :deep(.dark .p-dropdown-item:hover) {
-    background: #374151;
-  }
-
-  :deep(.p-dialog) {
-    background: white;
-  }
-
-  :deep(.dark .p-dialog) {
-    background: #1F2937;
-  }
-
-  :deep(.p-dialog-header) {
-    background: white;
-    border-bottom: 1px solid #E5E7EB;
-    padding: 1rem;
-  }
-
-  :deep(.dark .p-dialog-header) {
-    background: #1F2937;
-    border-color: #374151;
-  }
-
-  :deep(.p-dialog-content) {
-    background: white;
-    padding: 1rem;
-  }
-
-  :deep(.dark .p-dialog-content) {
-    background: #1F2937;
-  }
-
-  :deep(.p-dialog-footer) {
-    background: white;
-    border-top: 1px solid #E5E7EB;
-    padding: 1rem;
-  }
-
-  :deep(.dark .p-dialog-footer) {
-    background: #1F2937;
-    border-color: #374151;
-  }
-
-  :deep(.p-inputtext) {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid #E5E7EB;
-    border-radius: 0.375rem;
-    background: white;
-  }
-
-  :deep(.dark .p-inputtext) {
-    background: #374151;
-    border-color: #4B5563;
-    color: #E5E7EB;
-  }
-
-  :deep(.p-button.p-button-primary) {
-    background: #3B82F6;
-    border-color: #3B82F6;
-    color: white;
-  }
-
-  :deep(.p-button.p-button-primary:hover) {
-    background: #2563EB;
-    border-color: #2563EB;
-  }
-
-  :deep(.p-button.p-button-secondary) {
-    background: #E5E7EB;
-    border-color: #E5E7EB;
-    color: #374151;
-  }
-
-  :deep(.p-button.p-button-secondary:hover) {
-    background: #D1D5DB;
-    border-color: #D1D5DB;
-  }
-
-  :deep(.dark .p-button.p-button-secondary) {
-    background: #374151;
-    border-color: #374151;
-    color: #E5E7EB;
-  }
-
-  :deep(.dark .p-button.p-button-secondary:hover) {
-    background: #4B5563;
-    border-color: #4B5563;
-  }
+.quote-card {
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
 }
 
-:deep(.p-menu) {
-  min-width: 200px;
-  background: white;
-  border: 1px solid #E5E7EB;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+.quote-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(30, 58, 138, 0.05));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
-:deep(.dark .p-menu) {
-  background: #1F2937;
-  border-color: #374151;
+.quote-card:hover::before {
+  opacity: 1;
 }
 
-:deep(.p-menu-item) {
-  padding: 0.75rem 1rem;
-  color: #374151;
+.quote-card:hover .quote-decoration {
+  opacity: 1;
 }
 
-:deep(.dark .p-menu-item) {
-  color: #E5E7EB;
+.quote-content {
+  position: relative;
+  padding: 1rem 0;
 }
 
-:deep(.p-menu-item:hover) {
-  background: #F3F4F6;
+.quote-mark {
+  font-family: Georgia, serif;
+  transition: all 0.3s ease;
 }
 
-:deep(.dark .p-menu-item:hover) {
-  background: #374151;
-}
-
-:deep(.p-menu-item .p-menuitem-icon) {
-  color: #6B7280;
-  margin-right: 0.5rem;
-}
-
-:deep(.dark .p-menu-item .p-menuitem-icon) {
-  color: #9CA3AF;
+.quote-card:hover .quote-mark {
+  transform: scale(1.1);
+  opacity: 0.3;
 }
 
 .tag-pill {
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tag-pill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.tag-pill:hover::before {
+  transform: translateX(100%);
+}
+
+.tag-pill:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .newly-added-tag {
@@ -735,5 +595,496 @@ watch(() => showModal.value, (newValue) => {
   }
 }
 
+/* Dark mode adjustments */
+:root.dark .quote-card {
+  background: linear-gradient(145deg, #1f2937, #111827);
+}
 
+:root.dark .quote-card::before {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(30, 58, 138, 0.1));
+}
+
+:root.dark .tag-pill {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+:root.dark .tag-pill:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced Fancy Button Styles */
+:deep(.fancy-button) {
+  position: relative;
+  overflow: hidden;
+  border-radius: 50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 2px solid transparent;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  backdrop-filter: blur(4px);
+}
+
+:deep(.fancy-button::before) {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+:deep(.fancy-button:hover::before) {
+  transform: translateX(100%);
+}
+
+:deep(.fancy-button::after) {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 2px;
+  background: linear-gradient(45deg, var(--primary-color), var(--primary-400));
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+:deep(.fancy-button:hover::after) {
+  opacity: 1;
+}
+
+:deep(.fancy-button:hover) {
+  transform: translateY(-3px) scale(1.1);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.fancy-button:active) {
+  transform: translateY(0) scale(0.95);
+}
+
+:deep(.fancy-button .p-button-icon) {
+  font-size: 1.1rem;
+  transition: all 0.4s ease;
+  position: relative;
+  z-index: 1;
+}
+
+:deep(.fancy-button:hover .p-button-icon) {
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* Special styles for each button type */
+:deep(.favorite-button) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+}
+
+:deep(.favorite-button.p-button-danger) {
+  color: var(--red-500);
+  background: linear-gradient(135deg, rgba(var(--red-500-rgb), 0.2), rgba(var(--red-500-rgb), 0.1));
+}
+
+:deep(.favorite-button.p-button-danger::after) {
+  background: linear-gradient(45deg, var(--red-500), var(--red-400));
+}
+
+:deep(.favorite-button:hover) {
+  background: linear-gradient(135deg, rgba(var(--red-500-rgb), 0.3), rgba(var(--red-500-rgb), 0.1));
+  box-shadow: 0 8px 16px rgba(var(--red-500-rgb), 0.2);
+}
+
+:deep(.edit-button) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+}
+
+:deep(.edit-button:hover) {
+  background: linear-gradient(135deg, rgba(var(--primary-500-rgb), 0.3), rgba(var(--primary-500-rgb), 0.1));
+  box-shadow: 0 8px 16px rgba(var(--primary-500-rgb), 0.2);
+}
+
+:deep(.edit-button::after) {
+  background: linear-gradient(45deg, var(--primary-500), var(--primary-400));
+}
+
+:deep(.tag-button) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+}
+
+:deep(.tag-button:hover) {
+  background: linear-gradient(135deg, rgba(var(--green-500-rgb), 0.3), rgba(var(--green-500-rgb), 0.1));
+  box-shadow: 0 8px 16px rgba(var(--green-500-rgb), 0.2);
+}
+
+:deep(.tag-button::after) {
+  background: linear-gradient(45deg, var(--green-500), var(--green-400));
+}
+
+/* Enhanced List Button Styles */
+:deep(.list-button) {
+  background: transparent;
+  border: 2px solid transparent;
+  position: relative;
+  overflow: hidden;
+  width: 2.75rem;
+  height: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:deep(.list-button::before) {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, 
+    rgba(147, 51, 234, 0.1),
+    rgba(168, 85, 247, 0.1)
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+:deep(.list-button:hover::before) {
+  opacity: 1;
+}
+
+:deep(.list-button:hover) {
+  background: linear-gradient(135deg, 
+    rgba(147, 51, 234, 0.2),
+    rgba(168, 85, 247, 0.2)
+  );
+  box-shadow: 0 8px 16px rgba(147, 51, 234, 0.2);
+  transform: translateY(-3px) scale(1.1);
+}
+
+:deep(.list-button:active) {
+  transform: translateY(0) scale(0.95);
+}
+
+:deep(.list-button .p-button-icon) {
+  color: var(--purple-500);
+  font-size: 1.1rem;
+  transition: all 0.4s ease;
+}
+
+:deep(.list-button:hover .p-button-icon) {
+  color: var(--purple-400);
+  transform: scale(1.2) rotate(5deg);
+}
+
+/* Dark mode adjustments for list button */
+:root.dark {
+  :deep(.list-button) {
+    background: transparent;
+  }
+
+  :deep(.list-button:hover) {
+    background: linear-gradient(135deg, 
+      rgba(147, 51, 234, 0.2),
+      rgba(168, 85, 247, 0.15)
+    );
+    box-shadow: 0 8px 16px rgba(147, 51, 234, 0.3);
+  }
+
+  :deep(.list-button .p-button-icon) {
+    color: var(--purple-400);
+  }
+
+  :deep(.list-button:hover .p-button-icon) {
+    color: var(--purple-300);
+  }
+}
+
+/* Button group hover effect */
+.button-group {
+  position: relative;
+  padding: 0.5rem;
+  border-radius: 1rem;
+  transition: all 0.3s ease;
+}
+
+.button-group::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, 
+    rgba(var(--primary-500-rgb), 0.15),
+    rgba(var(--primary-500-rgb), 0.05) 40%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  border-radius: 1rem;
+  backdrop-filter: blur(8px);
+}
+
+.button-group:hover::before {
+  opacity: 1;
+}
+
+/* Dark mode adjustments */
+:root.dark {
+  :deep(.fancy-button) {
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  :deep(.favorite-button) {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  }
+
+  :deep(.favorite-button.p-button-danger) {
+    background: linear-gradient(135deg, rgba(var(--red-500-rgb), 0.3), rgba(var(--red-500-rgb), 0.1));
+  }
+
+  :deep(.edit-button) {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  }
+
+  :deep(.tag-button) {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  }
+
+  :deep(.list-button) {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  }
+
+  .button-group::before {
+    background: radial-gradient(circle at center, 
+      rgba(var(--primary-400-rgb), 0.2),
+      rgba(var(--primary-400-rgb), 0.1) 40%,
+      transparent 70%
+    );
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  :deep(.fancy-button) {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
+  :deep(.fancy-button .p-button-icon) {
+    font-size: 1rem;
+  }
+
+  .button-group {
+    padding: 0.25rem;
+  }
+}
+
+/* Animation keyframes */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-500-rgb), 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(var(--primary-500-rgb), 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--primary-500-rgb), 0);
+  }
+}
+
+:deep(.fancy-button:hover) {
+  animation: pulse 2s infinite;
+}
+
+/* Enhanced Menu Styles */
+:deep(.enhanced-menu) {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.5rem;
+  min-width: 200px;
+}
+
+:deep(.enhanced-menu .p-menuitem) {
+  margin: 0.25rem 0;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+:deep(.enhanced-menu .p-menuitem-link) {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+:deep(.enhanced-menu .p-menuitem-link:hover) {
+  background: linear-gradient(135deg, 
+    rgba(var(--primary-500-rgb), 0.1),
+    rgba(var(--primary-500-rgb), 0.05)
+  );
+}
+
+:deep(.enhanced-menu .p-menuitem-icon) {
+  color: var(--primary-500);
+  margin-right: 0.75rem;
+  transition: all 0.3s ease;
+}
+
+:deep(.enhanced-menu .p-menuitem-link:hover .p-menuitem-icon) {
+  transform: scale(1.1);
+}
+
+:deep(.enhanced-menu .p-menuitem-text) {
+  color: var(--text-color);
+  font-weight: 500;
+}
+
+/* Dark mode adjustments for menu */
+:root.dark {
+  :deep(.enhanced-menu) {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+
+  :deep(.enhanced-menu .p-menuitem-link:hover) {
+    background: linear-gradient(135deg, 
+      rgba(var(--primary-400-rgb), 0.15),
+      rgba(var(--primary-400-rgb), 0.05)
+    );
+  }
+}
+
+/* Enhanced QuoteListMenu Styles */
+:deep(.p-menu) {
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  padding: 0.75rem;
+  min-width: 280px;
+  backdrop-filter: blur(12px);
+  animation: menuAppear 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:deep(.p-menu .p-menuitem) {
+  margin: 0.25rem 0;
+  border-radius: 12px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:deep(.p-menu .p-menuitem-link) {
+  padding: 0.875rem 1rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+:deep(.p-menu .p-menuitem-link:hover) {
+  background: linear-gradient(135deg, 
+    rgba(var(--primary-500-rgb), 0.1),
+    rgba(var(--primary-500-rgb), 0.05)
+  );
+  transform: translateX(4px);
+}
+
+:deep(.p-menu .p-menuitem-icon) {
+  color: var(--primary-500);
+  font-size: 1.1rem;
+  transition: all 0.3s ease;
+  background: linear-gradient(135deg, 
+    rgba(var(--primary-500-rgb), 0.1),
+    rgba(var(--primary-500-rgb), 0.05)
+  );
+  padding: 0.5rem;
+  border-radius: 8px;
+}
+
+:deep(.p-menu .p-menuitem-link:hover .p-menuitem-icon) {
+  transform: scale(1.1) rotate(5deg);
+  background: linear-gradient(135deg, 
+    rgba(var(--primary-500-rgb), 0.2),
+    rgba(var(--primary-500-rgb), 0.1)
+  );
+}
+
+:deep(.p-menu .p-menuitem-text) {
+  color: var(--text-color);
+  font-weight: 500;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+}
+
+:deep(.p-menu .p-menuitem-link:hover .p-menuitem-text) {
+  color: var(--primary-500);
+  transform: translateX(2px);
+}
+
+:deep(.p-menu .p-submenu-list) {
+  background: var(--surface-card);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  border: 1px solid var(--surface-border);
+}
+
+:deep(.p-menu .p-menuitem-separator) {
+  border-top: 1px solid var(--surface-border);
+  margin: 0.5rem 0;
+  opacity: 0.5;
+}
+
+/* Dark mode adjustments */
+:root.dark {
+  :deep(.p-menu) {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  }
+
+  :deep(.p-menu .p-menuitem-link:hover) {
+    background: linear-gradient(135deg, 
+      rgba(var(--primary-400-rgb), 0.15),
+      rgba(var(--primary-400-rgb), 0.05)
+    );
+  }
+
+  :deep(.p-menu .p-menuitem-icon) {
+    background: linear-gradient(135deg, 
+      rgba(var(--primary-400-rgb), 0.15),
+      rgba(var(--primary-400-rgb), 0.05)
+    );
+  }
+
+  :deep(.p-menu .p-menuitem-link:hover .p-menuitem-icon) {
+    background: linear-gradient(135deg, 
+      rgba(var(--primary-400-rgb), 0.25),
+      rgba(var(--primary-400-rgb), 0.15)
+    );
+  }
+
+  :deep(.p-menu .p-submenu-list) {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  }
+}
+
+@keyframes menuAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
 </style>
