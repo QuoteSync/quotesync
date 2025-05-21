@@ -269,14 +269,14 @@ onMounted(async () => {
         <div class="grid mt-2">
           <!-- Total Books -->
           <div class="col-12 md:col-6 lg:col-3">
-            <div class="surface-card shadow-2 p-3 border-round">
-              <div class="flex justify-content-between mb-3">
+            <div class="card stats-card hover:shadow-xl transition-all duration-300">
+              <div class="flex justify-between mb-4">
                 <div>
-                  <span class="block text-500 font-medium mb-3">Total Books</span>
-                  <div class="text-900 font-medium text-xl">{{ stats.totalBooks }}</div>
+                  <span class="block text-muted-color font-medium mb-4">Total Books</span>
+                  <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.totalBooks }}</div>
                 </div>
-                <div class="flex align-items-center justify-content-center bg-blue-100 border-round" style="width:2.5rem;height:2.5rem">
-                  <i class="pi pi-book text-blue-500 text-xl"></i>
+                <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+                  <i class="pi pi-book text-blue-500 !text-2xl"></i>
                 </div>
               </div>
             </div>
@@ -284,14 +284,14 @@ onMounted(async () => {
           
           <!-- Books Without Covers -->
           <div class="col-12 md:col-6 lg:col-3">
-            <div class="surface-card shadow-2 p-3 border-round">
-              <div class="flex justify-content-between mb-3">
+            <div class="card stats-card hover:shadow-xl transition-all duration-300">
+              <div class="flex justify-between mb-4">
                 <div>
-                  <span class="block text-500 font-medium mb-3">Books Without Covers</span>
-                  <div class="text-900 font-medium text-xl">{{ stats.booksWithoutCovers }}</div>
+                  <span class="block text-muted-color font-medium mb-4">Books Without Covers</span>
+                  <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.booksWithoutCovers }}</div>
                 </div>
-                <div class="flex align-items-center justify-content-center bg-orange-100 border-round" style="width:2.5rem;height:2.5rem">
-                  <i class="pi pi-image text-orange-500 text-xl"></i>
+                <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+                  <i class="pi pi-image text-orange-500 !text-2xl"></i>
                 </div>
               </div>
             </div>
@@ -299,14 +299,14 @@ onMounted(async () => {
           
           <!-- Total Authors -->
           <div class="col-12 md:col-6 lg:col-3">
-            <div class="surface-card shadow-2 p-3 border-round">
-              <div class="flex justify-content-between mb-3">
+            <div class="card stats-card hover:shadow-xl transition-all duration-300">
+              <div class="flex justify-between mb-4">
                 <div>
-                  <span class="block text-500 font-medium mb-3">Total Authors</span>
-                  <div class="text-900 font-medium text-xl">{{ stats.totalAuthors }}</div>
+                  <span class="block text-muted-color font-medium mb-4">Total Authors</span>
+                  <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.totalAuthors }}</div>
                 </div>
-                <div class="flex align-items-center justify-content-center bg-cyan-100 border-round" style="width:2.5rem;height:2.5rem">
-                  <i class="pi pi-user text-cyan-500 text-xl"></i>
+                <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+                  <i class="pi pi-user text-purple-500 !text-2xl"></i>
                 </div>
               </div>
             </div>
@@ -314,14 +314,14 @@ onMounted(async () => {
           
           <!-- Total Quotes -->
           <div class="col-12 md:col-6 lg:col-3">
-            <div class="surface-card shadow-2 p-3 border-round">
-              <div class="flex justify-content-between mb-3">
+            <div class="card stats-card hover:shadow-xl transition-all duration-300">
+              <div class="flex justify-between mb-4">
                 <div>
-                  <span class="block text-500 font-medium mb-3">Total Quotes</span>
-                  <div class="text-900 font-medium text-xl">{{ stats.totalQuotes }}</div>
+                  <span class="block text-muted-color font-medium mb-4">Total Quotes</span>
+                  <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.totalQuotes }}</div>
                 </div>
-                <div class="flex align-items-center justify-content-center bg-purple-100 border-round" style="width:2.5rem;height:2.5rem">
-                  <i class="pi pi-comment text-purple-500 text-xl"></i>
+                <div class="flex items-center justify-center bg-green-100 dark:bg-green-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+                  <i class="pi pi-comment text-green-500 !text-2xl"></i>
                 </div>
               </div>
             </div>
@@ -332,14 +332,14 @@ onMounted(async () => {
         <div class="grid mt-4">
           <!-- Quote Lists -->
           <div class="col-12 md:col-6 lg:col-3">
-            <div class="surface-card shadow-2 p-3 border-round">
-              <div class="flex justify-content-between mb-3">
+            <div class="card stats-card hover:shadow-xl transition-all duration-300">
+              <div class="flex justify-between mb-4">
                 <div>
-                  <span class="block text-500 font-medium mb-3">Quote Lists</span>
-                  <div class="text-900 font-medium text-xl">{{ stats.quoteLists }}</div>
+                  <span class="block text-muted-color font-medium mb-4">Quote Lists</span>
+                  <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.quoteLists }}</div>
                 </div>
-                <div class="flex align-items-center justify-content-center bg-green-100 border-round" style="width:2.5rem;height:2.5rem">
-                  <i class="pi pi-list text-green-500 text-xl"></i>
+                <div class="flex items-center justify-center bg-cyan-100 dark:bg-cyan-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+                  <i class="pi pi-list text-cyan-500 !text-2xl"></i>
                 </div>
               </div>
             </div>
@@ -347,14 +347,14 @@ onMounted(async () => {
           
           <!-- Quote Groups -->
           <div class="col-12 md:col-6 lg:col-3">
-            <div class="surface-card shadow-2 p-3 border-round">
-              <div class="flex justify-content-between mb-3">
+            <div class="card stats-card hover:shadow-xl transition-all duration-300">
+              <div class="flex justify-between mb-4">
                 <div>
-                  <span class="block text-500 font-medium mb-3">Quote Groups</span>
-                  <div class="text-900 font-medium text-xl">{{ stats.quoteGroups }}</div>
+                  <span class="block text-muted-color font-medium mb-4">Quote Groups</span>
+                  <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.quoteGroups }}</div>
                 </div>
-                <div class="flex align-items-center justify-content-center bg-indigo-100 border-round" style="width:2.5rem;height:2.5rem">
-                  <i class="pi pi-users text-indigo-500 text-xl"></i>
+                <div class="flex items-center justify-center bg-indigo-100 dark:bg-indigo-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+                  <i class="pi pi-users text-indigo-500 !text-2xl"></i>
                 </div>
               </div>
             </div>
@@ -512,4 +512,44 @@ onMounted(async () => {
       </template>
     </Dialog>
   </div>
-</template> 
+</template>
+
+<style scoped>
+/* Stats card enhancements */
+.stats-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1));
+  pointer-events: none;
+}
+
+.stats-icon {
+  transition: transform 0.3s ease;
+}
+
+.stats-card:hover .stats-icon {
+  transform: scale(1.1);
+}
+
+/* Dark mode enhancements */
+:root[data-theme="dark"] .card {
+  background: var(--surface-card);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stats-card .stats-icon:hover {
+    transform: scale(1.1) rotate(3deg);
+  }
+}
+</style> 

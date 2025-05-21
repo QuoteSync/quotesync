@@ -425,15 +425,56 @@ onUnmounted(() => {
   max-width: 20%;
 }
 
+/* Enhanced card styles */
+.card {
+  background: var(--surface-card);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Stats card enhancements */
+.stats-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1));
+  pointer-events: none;
+}
+
+.stats-icon {
+  transition: transform 0.3s ease;
+}
+
+.stats-card:hover .stats-icon {
+  transform: scale(1.1);
+}
+
 /* Book card hover effects */
 .book-card-hover {
   transform: translateY(0);
   will-change: transform, box-shadow;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .book-card-hover:hover {
-  transform: translateY(-5px) scale(1.05);
+  transform: translateY(-5px) scale(1.02);
   z-index: 10;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 /* Ensure proper spacing for transform effects */
@@ -444,338 +485,348 @@ onUnmounted(() => {
 
 /* Cover management card styles */
 .cover-management-card {
-  background-color: var(--surface-card);
-  border-radius: var(--border-radius);
-  padding: 1rem;
+  background: linear-gradient(135deg, var(--surface-card), var(--surface-ground));
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .cover-management-card .font-semibold {
   font-weight: 600;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-400));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .cover-management-card .p-button-rounded {
   border-radius: 1.5rem;
+  transition: all 0.3s ease;
 }
 
 .cover-management-card .p-button-outlined {
-  border: 1px solid var(--primary-color);
-}
-
-.cover-management-card .p-button-outlined:hover {
-  background-color: var(--primary-color);
-  color: var(--primary-color-text);
-}
-
-.cover-management-card .status-container {
-  margin-bottom: 1rem;
-}
-
-.cover-management-card .status-icon {
-  background-color: var(--primary-color);
-  border-radius: 50%;
-  padding: 0.5rem;
-  margin-right: 1rem;
-}
-
-.cover-management-card .status-icon i {
-  font-size: 1.5rem;
-  color: var(--primary-color-text);
-}
-
-.cover-management-card .progress-bar {
-  height: 0.5rem;
-  background-color: var(--surface-border);
-  border-radius: 0.25rem;
-  overflow: hidden;
-}
-
-.cover-management-card .progress-fill {
-  height: 100%;
-  background-color: var(--primary-color);
-  transition: width 0.3s ease;
-}
-
-.cover-management-card .cover-illustration {
-  height: 100%;
-  background-color: var(--surface-ground);
-  border-radius: var(--border-radius);
-  padding: 1rem;
-}
-
-.cover-management-card .cover-illustration i {
-  font-size: 2rem;
+  border: 2px solid var(--primary-color);
+  background: transparent;
   color: var(--primary-color);
 }
 
-.cover-management-card .cover-illustration .font-medium {
-  font-weight: 600;
+.cover-management-card .p-button-outlined:hover {
+  background: var(--primary-color);
+  color: var(--primary-color-text);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.cover-management-card .cover-illustration .text-sm {
-  color: var(--text-color-secondary);
+/* Progress bar enhancements */
+.progress-bar {
+  height: 0.5rem;
+  background: var(--surface-border);
+  border-radius: 1rem;
+  overflow: hidden;
+  position: relative;
 }
 
-.cover-management-card .cover-stats {
-  display: flex;
-  align-items: baseline;
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-400));
+  border-radius: 1rem;
+  transition: width 0.5s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.cover-management-card .cover-stats .value {
-  font-weight: 600;
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 2s infinite;
 }
 
-.cover-management-card .cover-stats .divider {
-  margin: 0 0.5rem;
-}
-
-.cover-management-card .cover-stats .total {
-  color: var(--text-color-secondary);
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
 }
 
 /* Cover preview dialog styles */
 .cover-preview-dialog {
-  background-color: var(--surface-ground);
-  border-radius: var(--border-radius);
-  padding: 1rem;
+  background: var(--surface-ground);
+  border-radius: 1rem;
+  padding: 1.5rem;
 }
 
 .cover-preview-dialog .dialog-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--surface-border);
 }
 
 .cover-preview-dialog .dialog-header h2 {
   margin: 0;
-}
-
-.cover-preview-dialog .dialog-subtitle {
-  color: var(--text-color-secondary);
-}
-
-.cover-preview-dialog .book-info {
-  margin-bottom: 1rem;
-}
-
-.cover-preview-dialog .book-info h3 {
-  margin: 0;
-}
-
-.cover-preview-dialog .book-info p {
-  margin: 0;
-}
-
-.cover-preview-dialog .grid {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.cover-preview-dialog .col-12 {
-  width: 100%;
-}
-
-.cover-preview-dialog .col-12 md:col-6 {
-  width: 50%;
+  font-size: 1.5rem;
+  font-weight: 600;
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-400));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .cover-preview-dialog .cover-preview {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .cover-preview-dialog .cover-preview img {
   width: 100%;
   height: auto;
-  border-radius: var(--border-radius);
+  transition: transform 0.3s ease;
 }
 
-.cover-preview-dialog .no-cover {
-  height: 15rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cover-preview-dialog .no-cover .text-center {
-  text-align: center;
+.cover-preview-dialog .cover-preview:hover img {
+  transform: scale(1.02);
 }
 
 .cover-preview-dialog .cover-options-grid {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+  background: var(--surface-ground);
+  border-radius: 0.5rem;
 }
 
-.cover-preview-dialog .cover-options-grid .cover-option {
-  width: 33.333%;
-  padding: 0.5rem;
+.cover-preview-dialog .cover-option {
+  position: relative;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
 }
 
-.cover-preview-dialog .cover-options-grid .cover-option:hover {
-  background-color: var(--surface-border);
+.cover-preview-dialog .cover-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.cover-preview-dialog .cover-options-grid .cover-option .cover-option-inner {
-  width: 100%;
-  height: 100%;
+.cover-preview-dialog .cover-option.selected {
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 0 2px var(--primary-200);
+}
+
+.cover-preview-dialog .cover-option .cover-option-inner {
+  aspect-ratio: 2/3;
+  background: var(--surface-ground);
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--border-radius);
-}
-
-.cover-preview-dialog .cover-options-grid .cover-option .cover-option-inner img {
-  width: 100%;
-  height: auto;
-  border-radius: var(--border-radius);
-}
-
-/* Manual search section */
-
-/* Cover management card styles */
-.cover-management-card {
-  background-color: var(--surface-card);
-  border-radius: var(--border-radius);
-  padding: 1rem;
-}
-
-.cover-management-card .cover-icon-wrapper {
-  background-color: var(--primary-color);
-  border-radius: 50%;
-  padding: 0.5rem;
-  margin-right: 1rem;
-}
-
-.cover-management-card .cover-icon-wrapper i {
-  font-size: 1.5rem;
-  color: var(--primary-color-text);
-}
-
-.cover-management-card .cover-description {
-  color: var(--text-color-secondary);
-}
-
-.cover-management-card .cover-stats-card {
-  background-color: var(--surface-ground);
-  border-radius: var(--border-radius);
-  padding: 1rem;
-}
-
-.cover-management-card .cover-stats-badge {
-  background-color: var(--primary-color);
-  border-radius: 1rem;
-  padding: 0.25rem 0.75rem;
-  color: var(--primary-color-text);
-  font-weight: 600;
-}
-
-.cover-management-card .cover-progress-bar {
-  height: 0.5rem;
-  background-color: var(--surface-border);
-  border-radius: 0.25rem;
   overflow: hidden;
 }
 
-.cover-management-card .cover-progress-fill {
+.cover-preview-dialog .cover-option .cover-option-inner img {
+  width: 100%;
   height: 100%;
-  background-color: var(--primary-color);
-  transition: width 0.3s ease;
+  object-fit: cover;
+  transition: transform 0.3s ease;
 }
 
-.cover-management-card .update-button {
-  background-color: var(--primary-color);
+.cover-preview-dialog .cover-option:hover .cover-option-inner img {
+  transform: scale(1.05);
+}
+
+/* Action buttons styling */
+.action-buttons .p-button {
+  transition: all 0.3s ease;
+}
+
+.action-buttons .p-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.action-buttons .update-button {
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-400));
+  border: none;
   color: var(--primary-color-text);
 }
 
-.cover-management-card .update-button:hover {
-  background-color: var(--primary-color-hover);
+.action-buttons .update-button:hover {
+  background: linear-gradient(90deg, var(--primary-400), var(--primary-500));
 }
 
-.cover-management-card .update-button:focus {
-  box-shadow: 0 0 0 0.2rem var(--primary-color-focus);
+/* Search section styling */
+.search-button {
+  background: linear-gradient(90deg, var(--primary-color), var(--primary-400));
+  border: none;
+  color: var(--primary-color-text);
+  transition: all 0.3s ease;
 }
 
-.cover-management-card .update-button:disabled {
-  background-color: var(--surface-border);
-  color: var(--text-color-secondary);
+.search-button:hover {
+  background: linear-gradient(90deg, var(--primary-400), var(--primary-500));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-.cover-preview-dialog .cover-options-grid .cover-option.selected .cover-option-inner {
-  border-radius: var(--border-radius);
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cover-preview-dialog .cover-options-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+  
+  .card {
+    padding: 1rem;
+  }
+}
+
+/* Dark mode enhancements */
+:root[data-theme="dark"] .card {
+  background: var(--surface-card);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme="dark"] .cover-management-card {
+  background: linear-gradient(135deg, var(--surface-card), var(--surface-ground));
+}
+
+:root[data-theme="dark"] .cover-preview-dialog {
+  background: var(--surface-ground);
+}
+
+:root[data-theme="dark"] .cover-options-grid {
+  background: var(--surface-card);
 }
 </style>
 
 
 <template>
   <div class="layout-main">
+    <!-- Header Section -->
+    <div class="sticky top-0 z-10 bg-surface-0 dark:bg-surface-800 shadow-lg backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90 rounded-t-3xl mb-8">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          <h1 class="text-4xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent rounded text-center sm:text-left">
+            Dashboard
+          </h1>
+          <div class="flex gap-3 justify-center sm:justify-end mt-4 sm:mt-0">
+            <Button 
+              v-if="stats.booksWithoutCovers > 0"
+              label="Update Covers" 
+              icon="pi pi-images"
+              class="p-button-rounded p-button-outlined"
+              @click="updateAllBookCovers"
+              :loading="updatingCovers"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="grid grid-cols-12 gap-8">
-      <!-- Stats Section -->
+      <!-- Stats Section with enhanced styling -->
       <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
+        <div class="card stats-card hover:shadow-xl transition-all duration-300">
           <div class="flex justify-between mb-4">
             <div>
-              <span class="block text-muted-color font-medium mb-4">Books</span>
-              <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{ stats.totalBooks }}</div>
+              <span class="block text-muted-color font-medium mb-4">Library Status</span>
+              <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.totalBooks }}</div>
             </div>
-            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-border" style="width:2.5rem;height:2.5rem;">
-              <i class="pi pi-book text-blue-500 !text-xl"></i>
+            <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+              <i class="pi pi-book text-blue-500 !text-2xl"></i>
             </div>
           </div>
-          <span class="text-primary font-medium">{{ stats.booksWithoutCovers }} </span>
-          <span class="text-muted-color">without covers</span>
+          <div class="flex items-center gap-2">
+            <Tag :value="`${Math.round((1 - stats.booksWithoutCovers/Math.max(stats.totalBooks, 1)) * 100)}% Complete`" 
+                 :severity="stats.booksWithoutCovers === 0 ? 'success' : 'warning'" />
+            <span class="text-muted-color text-sm">{{ stats.booksWithoutCovers }} need covers</span>
+          </div>
         </div>
       </div>
       
       <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
+        <div class="card stats-card hover:shadow-xl transition-all duration-300">
           <div class="flex justify-between mb-4">
             <div>
-              <span class="block text-muted-color font-medium mb-4">Authors</span>
-              <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{ stats.totalAuthors }}</div>
+              <span class="block text-muted-color font-medium mb-4">Author Diversity</span>
+              <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.totalAuthors }}</div>
             </div>
-            <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-border" style="width:2.5rem;height:2.5rem;">
-              <i class="pi pi-user text-orange-500 !text-xl"></i>
+            <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+              <i class="pi pi-user text-orange-500 !text-2xl"></i>
             </div>
           </div>
-          <span class="text-primary font-medium">{{ Math.round(stats.totalAuthors / Math.max(stats.totalBooks, 1) * 100) }}% </span>
-          <span class="text-muted-color">author to book ratio</span>
+          <div class="flex items-center gap-2">
+            <Tag :value="`${Math.round(stats.totalAuthors / Math.max(stats.totalBooks, 1) * 100)}% Unique`" 
+                 :severity="stats.totalAuthors / stats.totalBooks > 0.8 ? 'success' : 'info'" />
+            <span class="text-muted-color text-sm">authors per book</span>
+          </div>
         </div>
       </div>
       
       <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
+        <div class="card stats-card hover:shadow-xl transition-all duration-300">
           <div class="flex justify-between mb-4">
             <div>
-              <span class="block text-muted-color font-medium mb-4">Quote Lists</span>
-              <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{ stats.quoteLists }}</div>
+              <span class="block text-muted-color font-medium mb-4">Quote Organization</span>
+              <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.quoteLists }}</div>
             </div>
-            <div class="flex items-center justify-center bg-cyan-100 dark:bg-cyan-400/10 rounded-border" style="width:2.5rem;height:2.5rem;">
-              <i class="pi pi-list text-cyan-500 !text-xl"></i>
+            <div class="flex items-center justify-center bg-cyan-100 dark:bg-cyan-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+              <i class="pi pi-list text-cyan-500 !text-2xl"></i>
             </div>
           </div>
-          <span class="text-primary font-medium">{{ stats.quoteGroups }}</span>
-          <span class="text-muted-color"> quote groups</span>
+          <div class="flex items-center gap-2">
+            <Tag :value="`${stats.quoteGroups} Groups`" 
+                 :severity="stats.quoteGroups > 0 ? 'success' : 'info'" />
+            <span class="text-muted-color text-sm">organized collections</span>
+          </div>
         </div>
       </div>
       
       <div class="col-span-12 lg:col-span-6 xl:col-span-3">
-        <div class="card mb-0">
+        <div class="card stats-card hover:shadow-xl transition-all duration-300">
           <div class="flex justify-between mb-4">
             <div>
-              <span class="block text-muted-color font-medium mb-4">Quotes</span>
-              <div class="text-surface-900 dark:text-surface-0 font-medium text-xl">{{ stats.totalQuotes }}</div>
+              <span class="block text-muted-color font-medium mb-4">Quote Collection</span>
+              <div class="text-surface-900 dark:text-surface-0 font-medium text-2xl">{{ stats.totalQuotes }}</div>
             </div>
-            <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-border" style="width:2.5rem;height:2.5rem;">
-              <i class="pi pi-comment text-purple-500 !text-xl"></i>
+            <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-400/10 rounded-full stats-icon" style="width:3rem;height:3rem;">
+              <i class="pi pi-comment text-purple-500 !text-2xl"></i>
             </div>
           </div>
-          <span class="text-primary font-medium">{{ Math.round(stats.totalQuotes / Math.max(stats.totalBooks, 1)) }} </span>
-          <span class="text-muted-color">average quotes per book</span>
+          <div class="flex items-center gap-2">
+            <Tag :value="`${Math.round(stats.totalQuotes / Math.max(stats.totalBooks, 1))} Avg`" 
+                 :severity="stats.totalQuotes / stats.totalBooks > 5 ? 'success' : 'info'" />
+            <span class="text-muted-color text-sm">quotes per book</span>
+          </div>
         </div>
       </div>
       
-      <!-- Popular Books Section -->
+      <!-- Popular Books Section with enhanced styling -->
       <div class="col-span-12 mb-4">
-        <div class="card">
+        <div class="card hover:shadow-xl transition-all duration-300">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Popular Books
+            </h2>
+            <Button 
+              label="View All" 
+              icon="pi pi-arrow-right" 
+              class="p-button-rounded p-button-outlined"
+              @click="router.push('/books')"
+            />
+          </div>
           <PopularItemsWidget 
             :items="popularBooks"
             itemType="book"
@@ -789,9 +840,20 @@ onUnmounted(() => {
         </div>
       </div>
       
-      <!-- Popular Authors Section -->
+      <!-- Popular Authors Section with enhanced styling -->
       <div class="col-span-12 mb-4">
-        <div class="card">
+        <div class="card hover:shadow-xl transition-all duration-300">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Popular Authors
+            </h2>
+            <Button 
+              label="View All" 
+              icon="pi pi-arrow-right" 
+              class="p-button-rounded p-button-outlined"
+              @click="router.push('/authors')"
+            />
+          </div>
           <PopularItemsWidget 
             :items="popularAuthors"
             itemType="author"
@@ -807,13 +869,15 @@ onUnmounted(() => {
       
       <!-- Favorite Quotes and Popular Tags in same row -->
       <div class="col-span-12 xl:col-span-6">
-        <div class="card">
-          <div class="flex justify-between items-center mb-4">
-            <h5 class="m-0 text-xl font-medium">Favorite Quotes</h5>
+        <div class="card hover:shadow-xl transition-all duration-300">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Favorite Quotes
+            </h2>
             <Button 
-              label="See All" 
+              label="View All" 
               icon="pi pi-arrow-right" 
-              class="p-button-rounded p-button-outlined p-button-sm"
+              class="p-button-rounded p-button-outlined"
               @click="router.push('/quotes')"
             />
           </div>
@@ -822,13 +886,15 @@ onUnmounted(() => {
       </div>
       
       <div class="col-span-12 xl:col-span-6">
-        <div class="card">
-          <div class="flex justify-between items-center mb-4">
-            <h5 class="m-0 text-xl font-medium">Popular Tags</h5>
+        <div class="card hover:shadow-xl transition-all duration-300">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Popular Tags
+            </h2>
             <Button 
-              label="See All" 
+              label="View All" 
               icon="pi pi-arrow-right" 
-              class="p-button-rounded p-button-outlined p-button-sm"
+              class="p-button-rounded p-button-outlined"
               @click="router.push('/tags')"
             />
           </div>
@@ -838,13 +904,15 @@ onUnmounted(() => {
       
       <!-- Quote Groups and Quote Lists in same row -->
       <div class="col-span-12 xl:col-span-6">
-        <div class="card">
-          <div class="flex justify-between items-center mb-4">
-            <h5 class="m-0 text-xl font-medium">Quote Groups</h5>
+        <div class="card hover:shadow-xl transition-all duration-300">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Quote Groups
+            </h2>
             <Button 
-              label="See All" 
+              label="View All" 
               icon="pi pi-arrow-right" 
-              class="p-button-rounded p-button-outlined p-button-sm"
+              class="p-button-rounded p-button-outlined"
               @click="router.push('/groups')"
             />
           </div>
@@ -853,13 +921,15 @@ onUnmounted(() => {
       </div>
       
       <div class="col-span-12 xl:col-span-6">
-        <div class="card">
-          <div class="flex justify-between items-center mb-4">
-            <h5 class="m-0 text-xl font-medium">Quote Lists</h5>
+        <div class="card hover:shadow-xl transition-all duration-300">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Quote Lists
+            </h2>
             <Button 
-              label="See All" 
+              label="View All" 
               icon="pi pi-arrow-right" 
-              class="p-button-rounded p-button-outlined p-button-sm"
+              class="p-button-rounded p-button-outlined"
               @click="router.push('/lists')"
             />
           </div>
@@ -867,19 +937,13 @@ onUnmounted(() => {
         </div>
       </div>
       
-      <!-- Book Covers Management Card -->
+      <!-- Book Covers Management Card with enhanced styling -->
       <div class="col-span-12">
-        <div class="card">
-          <div class="flex justify-between align-items-center mb-4">
-            <div class="font-semibold text-xl">Book Covers Management</div>
-            <Button 
-              v-if="stats.booksWithoutCovers > 0"
-              label="Update Covers" 
-              icon="pi pi-images"
-              class="p-button-rounded p-button-outlined"
-              @click="updateAllBookCovers"
-              :loading="updatingCovers"
-            />
+        <div class="card hover:shadow-xl transition-all duration-300">
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Book Covers Management
+            </h2>
           </div>
           
           <div class="mb-4">
@@ -888,24 +952,26 @@ onUnmounted(() => {
               based on title and author information, and update your database.
             </p>
             
-            <div class="surface-100 p-3 border-round">
-              <div class="flex align-items-center mb-2">
-                <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-full mr-3" style="width:2.5rem;height:2.5rem;">
-                  <i class="pi pi-info-circle text-blue-500 text-xl"></i>
+            <div class="surface-100 p-6 border-round-lg">
+              <div class="flex align-items-center mb-4">
+                <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-400/10 rounded-full mr-4" style="width:3rem;height:3rem;">
+                  <i class="pi pi-info-circle text-blue-500 text-2xl"></i>
                 </div>
                 <div>
-                  <span class="block font-medium text-lg">Books without covers</span>
-                  <div class="flex align-items-center mt-1">
-                    <span class="text-primary font-medium">{{ stats.booksWithoutCovers }}</span>
-                    <span>&nbsp;</span>
-                    <span class="text-muted-color">of {{ stats.totalBooks }} total books</span>
+                  <span class="block font-medium text-xl">Books without covers</span>
+                  <div class="flex align-items-center mt-2">
+                    <span class="text-primary font-medium text-lg">{{ stats.booksWithoutCovers }}</span>
+                    <span class="mx-2">/</span>
+                    <span class="text-muted-color">{{ stats.totalBooks }} total books</span>
                   </div>
                 </div>
               </div>
               
-              <div class="mt-3">
-                <div class="w-full bg-surface-200 dark:bg-surface-700 rounded-border overflow-hidden" style="height: 0.5rem">
-                  <div class="bg-primary h-full" :style="{width: `${(1 - stats.booksWithoutCovers/Math.max(stats.totalBooks, 1)) * 100}%`}"></div>
+              <div class="mt-4">
+                <div class="w-full bg-surface-200 dark:bg-surface-700 rounded-full overflow-hidden" style="height: 0.75rem">
+                  <div class="bg-gradient-to-r from-primary-500 to-primary-700 h-full transition-all duration-500" 
+                       :style="{width: `${(1 - stats.booksWithoutCovers/Math.max(stats.totalBooks, 1)) * 100}%`}">
+                  </div>
                 </div>
               </div>
             </div>
@@ -925,14 +991,16 @@ onUnmounted(() => {
       @hide="exitCoverProcess"
     >
       <div class="flex flex-col items-center p-4">
-        <h3 class="text-xl font-semibold mb-2">{{ currentBook?.title }}</h3>
-        <p class="text-sm mb-4">by {{ currentBook?.author?.name }}</p>
+        <h3 class="text-2xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent mb-2">
+          {{ currentBook?.title }}
+        </h3>
+        <p class="text-lg mb-6">by {{ currentBook?.author?.name }}</p>
         
-        <div class="grid grid-cols-2">
+        <div class="grid grid-cols-2 gap-6">
           <!-- Selected cover preview (large) -->
           <div class="col-span-1 flex flex-col items-center">
-            <h4 class="font-medium mb-2">Selected Cover:</h4>
-            <div class="relative mb-4 w-64 h-96 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
+            <h4 class="font-medium mb-4">Selected Cover:</h4>
+            <div class="relative mb-4 w-64 h-96 bg-gray-100 dark:bg-gray-800 flex items-center justify-center border rounded-lg shadow-lg hover:shadow-xl transition-all duration-300">
               <img 
                 v-if="previewCoverUrl" 
                 :src="previewCoverUrl" 
@@ -948,16 +1016,16 @@ onUnmounted(() => {
           
           <!-- Cover options grid -->
           <div class="col-span-1 flex flex-col">
-            <h4 class="font-medium mb-2">Available Covers ({{ coverOptions.length }}):</h4>
-            <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-96 p-2">
+            <h4 class="font-medium mb-4">Available Covers ({{ coverOptions.length }}):</h4>
+            <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-4 overflow-y-auto max-h-96 p-2">
               <div 
                 v-for="(cover, index) in coverOptions" 
                 :key="index" 
-                class="cursor-pointer border rounded hover:shadow-md transition-shadow p-1"
-                :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
+                class="cursor-pointer border rounded-lg hover:shadow-lg transition-all duration-300 p-2"
+                :class="{ 'border-primary-500 ring-2 ring-primary-300': previewCoverUrl === cover.url }"
                 @click="selectCover(cover.url)"
               >
-                <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+                <div class="w-full h-40 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden">
                   <img 
                     :src="cover.url" 
                     :alt="`Cover option ${index+1}`"
@@ -966,59 +1034,59 @@ onUnmounted(() => {
                 </div>
               </div>
             </div>
-            <div v-else class="text-gray-500 p-4 text-center border rounded bg-gray-50">
-              <i class="pi pi-search text-2xl mb-2"></i>
-              <div>No cover options found</div>
+            <div v-else class="text-gray-500 p-6 text-center border rounded-lg bg-gray-50 dark:bg-gray-800">
+              <i class="pi pi-search text-3xl mb-3"></i>
+              <div class="text-lg">No cover options found</div>
             </div>
           </div>
         </div>
         
         <!-- Manual search section -->
-        <div class="w-full my-4">
-          <h4 class="font-medium mb-2">Search for more covers:</h4>
-          <div class="flex gap-2">
+        <div class="w-full my-6">
+          <h4 class="font-medium mb-3">Search for more covers:</h4>
+          <div class="flex gap-3">
             <InputText 
               v-model="customSearchTitle" 
               placeholder="Enter alternative title" 
-              class="flex-1"
+              class="flex-1 p-3"
               @keydown.enter="searchCoverForCurrentBook(customSearchTitle)"
             />
             <Button 
               icon="pi pi-search" 
               @click="searchCoverForCurrentBook(customSearchTitle)"
-              class="search-button"
+              class="search-button p-3"
             />
           </div>
-          <small class="text-gray-500 mt-1 block">
+          <small class="text-gray-500 mt-2 block">
             <i class="pi pi-info-circle mr-1"></i>
             Tip: Try with a more general title or series name
           </small>
         </div>
         
-        <div class="flex justify-center gap-3 mt-4 w-full action-buttons">
+        <div class="flex justify-center gap-4 mt-6 w-full action-buttons">
           <Button 
             icon="pi pi-times" 
             label="Reject" 
             severity="secondary" 
             @click="rejectCover"
-            class="p-button-outlined"
+            class="p-button-outlined p-3"
           />
           <Button 
             icon="pi pi-check" 
             label="Accept" 
-            class="update-button"
+            class="update-button p-3"
             :disabled="!previewCoverUrl"
             @click="acceptCover"
           />
           <Button 
             icon="pi pi-step-forward" 
             label="Skip" 
-            class="p-button-outlined" 
+            class="p-button-outlined p-3" 
             @click="processNextBook"
           />
         </div>
         
-        <div class="w-full pt-4 mt-4 border-t border-gray-200 text-center">
+        <div class="w-full pt-6 mt-6 border-t border-gray-200 dark:border-gray-700 text-center">
           <Button 
             icon="pi pi-times-circle" 
             label="Exit Without Changes" 

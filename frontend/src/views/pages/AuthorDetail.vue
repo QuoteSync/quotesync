@@ -1,48 +1,41 @@
 <template>
   <div v-if="author" class="flex h-screen overflow-hidden">
     <!-- Author Panel (1/4) -->
-    <div class="w-1/4 h-screen p-6 flex flex-col items-center sticky top-0">
-      <div class="w-full h-full bg-surface-0 dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-700 p-6 flex flex-col items-center">
+    <div class="w-1/4 p-6 flex flex-col items-center sticky top-0">
+      <div class="w-full bg-surface-0 dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-700 p-6 flex flex-col items-center animate-fade-in">
+        <!-- Author Cover -->
         <div class="relative group w-full" style="aspect-ratio: 3/4;">
-          <!-- Fixed size container to prevent layout shifts -->
-          <div class="absolute inset-0 w-full h-full bg-gray-100 rounded-2xl shadow-lg transform transition-transform duration-300 group-hover:scale-105">
-            <!-- Image loading skeleton -->
-            <div 
-              v-if="author.cover && coverIsLoading" 
-              class="absolute inset-0 w-full h-full rounded-2xl shadow-lg overflow-hidden bg-gray-200"
+          <div class="absolute inset-0 w-full h-full rounded-2xl shadow-lg transform transition-transform duration-300 group-hover:scale-105 overflow-hidden">
+            <!-- Loading State -->
+            <div v-if="author.cover && coverIsLoading" 
+              class="absolute inset-0 w-full h-full rounded-2xl shadow-lg overflow-hidden bg-surface-200 dark:bg-surface-700"
               :class="coverTransitionClass"
             >
               <div class="absolute inset-0 w-full h-full animate-pulse">
-                <div class="h-full w-full bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200"></div>
+                <div class="h-full w-full bg-gradient-to-r from-surface-200 via-surface-300 to-surface-200 dark:from-surface-700 dark:via-surface-600 dark:to-surface-700"></div>
               </div>
               
-              <!-- Author name placeholder -->
-              <div class="absolute inset-0 flex flex-col items-center justify-center">
-                <div class="w-1/2 h-6 bg-gray-300 rounded-md mb-4"></div>
-                <div class="w-1/3 h-4 bg-gray-300 rounded-md"></div>
-                
-                <!-- Loading spinner -->
-                <div class="mt-8">
-                  <div class="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
+              <!-- Loading spinner -->
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
             </div>
             
-            <!-- Actual author image -->
+            <!-- Author Cover Image -->
             <img 
               v-if="author.cover && !author.imageFailed" 
-              :src="author.cover + '?nocache=' + new Date().getTime()" 
+              :src="author.cover" 
               :alt="author.name" 
-              class="absolute inset-0 w-full h-full object-cover rounded-2xl shadow-lg"
+              class="absolute inset-0 w-full h-full object-cover rounded-2xl shadow-lg transition-transform duration-500 group-hover:scale-110"
               :class="[coverTransitionClass, coverIsLoading ? 'opacity-0' : 'opacity-100']"
               @error="handleAuthorImageError(author)"
               @load="handleImageLoad"
             />
             
-            <!-- Gradient fallback when no image or image error -->
+            <!-- Fallback Cover -->
             <div 
               v-if="(!author.cover || author.imageFailed)" 
-              class="absolute inset-0 w-full h-full rounded-2xl shadow-lg book-cover overflow-hidden flex items-center justify-center"
+              class="absolute inset-0 w-full h-full rounded-2xl shadow-lg overflow-hidden flex items-center justify-center"
               :class="coverTransitionClass"
               :style="{ 
                 background: author.gradient || 
@@ -51,13 +44,34 @@
                     getRandomGradient().background) 
               }"
             >
-              <!-- Author placeholder -->
-              <div class="text-white text-2xl font-bold p-4 text-center">
-                <div class="w-20 h-20 mx-auto rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                  <span class="text-4xl">{{ author.name.charAt(0) }}</span>
+              <div class="w-full h-full flex flex-col p-4 relative">
+                <!-- Light reflection effect -->
+                <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
+                
+                <!-- Decorative author elements -->
+                <div class="flex-1 flex flex-col items-center justify-center relative">
+                  <!-- Decorative circle -->
+                  <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
+                    <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+                      <span class="text-white/80 text-3xl font-serif">{{ author.name.charAt(0) }}</span>
+                    </div>
+                  </div>
+                  
+                  <!-- Decorative lines -->
+                  <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
+                  <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
                 </div>
-                <div>{{ author.name }}</div>
               </div>
+            </div>
+
+            <!-- Overlay with Actions -->
+            <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+              <Button 
+                icon="pi pi-image" 
+                rounded 
+                severity="secondary" 
+                @click.stop="openCoverDialog"
+              />
             </div>
           </div>
         </div>
@@ -65,18 +79,33 @@
         <!-- Author Name -->
         <h1 class="text-3xl font-bold fancy-font mt-6 mb-4 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">{{ author.name }}</h1>
 
-        <!-- Button for image management -->
+        <!-- Author Stats and Actions -->
+        <div class="w-full flex items-center justify-between mt-6">
+          <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-800 p-3 rounded-xl hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors duration-200">
+              <i class="pi pi-book text-primary-500 text-lg"></i>
+              <span class="font-semibold text-lg">{{ author.books?.length || 0 }}</span>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-800 p-3 rounded-xl hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors duration-200">
+              <i class="pi pi-comment text-primary-500 text-lg"></i>
+              <span class="font-semibold text-lg">{{ author.quotes_count || 0 }}</span>
+            </div>
+          </div>
+
           <Button 
-            icon="pi pi-image" 
-            label="Change Image" 
-            @click="openCoverDialog"
-          class="p-button-sm p-button-rounded p-button-outlined mt-4"
+            :icon="author.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'" 
+            rounded
+            :severity="author.is_favorite ? 'danger' : 'secondary'"
+            @click="toggleLike(author.id)"
+            class="p-button-outlined"
           />
+        </div>
       </div>
     </div>
 
     <!-- Content Panel (3/4) -->
-    <div class="w-3/4 h-screen overflow-y-auto pl-8">
+    <div class="w-3/4 overflow-y-auto pl-8 animate-slide-in">
       <div class="max-w-6xl mx-auto p-8 space-y-12">
         <!-- Books Section -->
         <div class="relative">
@@ -1012,6 +1041,33 @@ const handleEditFromModal = (quote) => {
   // Any additional logic for editing would go here
 };
 
+// Add toggleLike function for author favorites
+const toggleLike = async (authorId) => {
+  try {
+    const response = await AuthorService.toggleFavorite(authorId);
+    // Update the local state based on the server response
+    if (author.value) {
+      author.value.is_favorite = response.is_favorite;
+    }
+    
+    // Show toast notification
+    toast.add({
+      severity: response.is_favorite ? 'success' : 'info',
+      summary: response.is_favorite ? 'Added to Favorites' : 'Removed from Favorites',
+      detail: response.is_favorite ? 'Author has been added to your favorites' : 'Author has been removed from your favorites',
+      life: 3000
+    });
+  } catch (error) {
+    console.error("Error toggling favorite status:", error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to update favorite status',
+      life: 3000
+    });
+  }
+};
+
 onMounted(async () => {
   try {
     // Obtener datos del autor
@@ -1283,5 +1339,37 @@ onMounted(async () => {
 .dark .cover-dialog :deep(.p-dialog-footer) {
   background: var(--surface-800);
   border-top: 1px solid var(--surface-700);
+}
+
+/* Add transition animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add transition for the content panel */
+.w-3\/4 {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 </style>

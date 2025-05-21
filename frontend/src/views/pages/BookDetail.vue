@@ -576,168 +576,119 @@ const saveCoverChange = async () => {
 <template>
   <div v-if="book" class="flex h-screen overflow-hidden">
     <!-- Book Cover Panel (1/4) -->
-    <div class="w-1/4 h-screen p-6 flex flex-col items-center sticky top-0">
-      <div class="w-full h-full bg-surface-0 dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-700 p-6 flex flex-col items-center">
-        <!-- Portada del Libro -->
-        <div class="cover-container relative group w-full" style="aspect-ratio: 3/4;">
-            <!-- Fixed size container to prevent layout shifts -->
-          <div class="absolute inset-0 w-full h-full bg-gray-100 rounded-2xl shadow-lg transform transition-transform duration-300 group-hover:scale-105">
-              <!-- Skeleton loader that shows during loading -->
-              <div 
-                v-if="book.cover && coverIsLoading" 
-                class="absolute inset-0 w-full h-full rounded-md shadow-md overflow-hidden bg-gray-200"
-                :class="coverTransitionClass"
-              >
-                <!-- Skeleton animation -->
-                <div class="absolute inset-0 w-full h-full animate-pulse">
-                  <div class="h-full w-full bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200"></div>
-                </div>
-                
-                <!-- Book title placeholder -->
-                <div class="absolute inset-0 flex flex-col items-center justify-center">
-                  <div class="w-1/2 h-6 bg-gray-300 rounded-md mb-4"></div>
-                  <div class="w-1/3 h-4 bg-gray-300 rounded-md"></div>
-                  
-                  <!-- Loading spinner -->
-                  <div class="mt-8">
-                    <div class="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Actual book cover image -->
-              <img 
-                v-if="book.cover && !book.imageFailed" 
-                :src="book.cover + '?nocache=' + new Date().getTime()" 
-                :alt="book.title" 
-                class="absolute inset-0 w-full h-full object-contain rounded-md shadow-md"
-                :class="[coverTransitionClass, coverIsLoading ? 'opacity-0' : 'opacity-100']"
-                @error="handleImageError"
-                @load="handleImageLoad"
-              />
-              
-              <!-- Error fallback for failed images -->
-              <div 
-                v-if="book.cover && book.imageFailed" 
-                class="absolute inset-0 w-full h-full rounded-md shadow-md book-cover overflow-hidden"
-                :class="coverTransitionClass"
-                :style="{ background: book.gradient.background }"
-              >
-                <!-- Book-like cover design -->
-                <div class="w-full h-full flex flex-col p-4 relative">
-                  <!-- Light reflection effect -->
-                  <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
-                  
-                  <!-- Decorative book elements -->
-                  <div class="flex-1 flex flex-col items-center justify-center relative">
-                    <!-- Decorative circle -->
-                    <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                      <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-                        <span class="text-white/80 text-3xl font-serif">{{ book.title.charAt(0) }}</span>
-                      </div>
-                    </div>
-                    
-                    <!-- Decorative lines -->
-                    <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
-                    <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
-                  </div>
-                  
-                  <!-- Title area -->
-                  <div class="mt-auto flex flex-col p-3 text-center z-10">
-                    <span class="text-white font-bold text-xl leading-tight">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                    <div class="w-16 h-0.5 bg-white/40 mx-auto my-2"></div>
-                    <span class="text-white/80 text-sm mt-2">by {{ book.author.name }}</span>
-                    <div class="mt-3 flex flex-col items-center">
-                      <i class="pi pi-image text-white/60 text-xl mb-2"></i>
-                      <span class="text-white/60 text-sm">Image failed to load</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Fallback if no cover is available -->
-              <div 
-                v-if="!book.cover" 
-                class="absolute inset-0 w-full h-full rounded-md shadow-md book-cover overflow-hidden"
-                :class="coverTransitionClass"
-                :style="{ background: book.gradient.background }"
-              >
-                <!-- Book-like cover design -->
-                <div class="w-full h-full flex flex-col p-4 relative">
-                  <!-- Light reflection effect -->
-                  <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
-                  
-                  <!-- Decorative book elements -->
-                  <div class="flex-1 flex flex-col items-center justify-center relative">
-                    <!-- Decorative circle -->
-                    <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                      <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
-                        <span class="text-white/80 text-3xl font-serif">{{ book.title.charAt(0) }}</span>
-                      </div>
-                    </div>
-                    
-                    <!-- Decorative lines -->
-                    <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
-                    <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
-                  </div>
-                  
-                  <!-- Title area -->
-                  <div class="mt-auto flex flex-col p-3 text-center z-10">
-                    <span class="text-white font-bold text-2xl leading-tight uppercase tracking-wide">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                    <div class="w-16 h-0.5 bg-white/40 mx-auto my-2"></div>
-                    <span class="text-white/80 text-sm mt-2 italic">by {{ book.author.name }}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <div class="w-1/4 p-4 md:p-2 flex flex-col items-center sticky top-4">
+      <div class="w-full bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden flex flex-col group transform transition-all duration-300 hover:scale-105 hover:shadow-2xl animate-fade-in">
+        <!-- Book Cover -->
+        <div class="relative aspect-[2/3] overflow-hidden cover-container">
+          <!-- Loading State -->
+          <div 
+            v-if="book.cover && coverIsLoading" 
+            class="absolute inset-0 w-full h-full bg-gray-200 animate-pulse"
+          >
+            <div class="h-full w-full bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200"></div>
           </div>
           
-        <!-- Book Title -->
-        <h1 class="text-3xl font-bold fancy-font mt-6 mb-4 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">{{ book.title }}</h1>
-        
-        <!-- Author Link -->
-        <div
-          class="flex items-center justify-center mt-4 cursor-pointer hover:underline"
-          @click="$router.push({ name: 'authorDetail', params: { id: book.author.id } })"
-        >
-          <!-- Author image with gradient fallback -->
-          <div class="w-10 h-10 rounded-full overflow-hidden transition-transform duration-300 hover:scale-105">
-            <img
-              v-if="book.author.cover"
-              class="w-full h-full object-cover"
-              :src="book.author.cover"
-              alt="Author Avatar"
-              @error="handleAuthorImageError(book.author)"
-            />
-            <!-- Gradient fallback with initial -->
-            <div 
-              v-else
-              class="w-full h-full flex items-center justify-center"
-              :style="{ 
-                background: book.author.gradient || 
-                  (book.author.gradient_primary_color && book.author.gradient_secondary_color ? 
-                    `linear-gradient(135deg, ${book.author.gradient_primary_color}, ${book.author.gradient_secondary_color})` : 
-                    getRandomGradient().background) 
-              }"
-            >
-              <span class="text-white font-bold text-sm">{{ book.author.name.charAt(0) }}</span>
+          <!-- Book Cover Image -->
+          <img 
+            v-if="book.cover && !book.imageFailed" 
+            :src="book.cover" 
+            :alt="book.title" 
+            class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            :class="[coverTransitionClass, coverIsLoading ? 'opacity-0' : 'opacity-100']"
+            @error="handleImageError"
+            @load="handleImageLoad"
+          />
+          
+          <!-- Fallback Cover -->
+          <div 
+            v-if="!book.cover || book.imageFailed" 
+            class="absolute inset-0 w-full h-full"
+            :style="{ background: book.gradient.background }"
+          >
+            <div class="w-full h-full flex flex-col p-4 relative">
+              <!-- Light reflection effect -->
+              <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
+              
+              <!-- Decorative book elements -->
+              <div class="flex-1 flex flex-col items-center justify-center relative">
+                <!-- Decorative circle -->
+                <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
+                  <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+                    <span class="text-white/80 text-3xl font-serif">{{ book.title.charAt(0) }}</span>
+                  </div>
+                </div>
+                
+                <!-- Decorative lines -->
+                <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
+                <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
+              </div>
             </div>
           </div>
-          <span class="ml-3 text-xl font-semibold">{{ book.author.name }}</span>
-        </div>
-        
-        <!-- Button for cover management -->
+
+          <!-- Overlay with Actions -->
+          <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
             <Button 
               icon="pi pi-image" 
-              label="Change Cover" 
+              rounded 
+              severity="secondary" 
               @click="openCoverDialog"
-          class="p-button-sm p-button-rounded p-button-outlined mt-4"
             />
+          </div>
+        </div>
+
+        <!-- Book Info -->
+        <div class="p-4 flex-1 flex flex-col">
+          <h2 class="text-2xl font-bold fancy-font mb-3 line-clamp-2">{{ book.title }}</h2>
+          
+          <!-- Author Info -->
+          <div 
+            class="flex items-center mb-4 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-700 p-2 rounded-lg transition-colors duration-200"
+            @click="$router.push({ name: 'authorDetail', params: { id: book.author.id } })"
+          >
+            <div class="relative w-10 h-10 rounded-full overflow-hidden mr-3">
+              <img
+                v-if="book.author.cover"
+                class="w-full h-full object-cover"
+                :src="book.author.cover"
+                :alt="book.author.name"
+                @error="handleAuthorImageError(book.author)"
+              />
+              <div 
+                v-else
+                class="w-full h-full flex items-center justify-center"
+                :style="{ 
+                  background: book.author.gradient || 
+                    (book.author.gradient_primary_color && book.author.gradient_secondary_color ? 
+                      `linear-gradient(135deg, ${book.author.gradient_primary_color}, ${book.author.gradient_secondary_color})` : 
+                      getRandomGradient().background) 
+                }"
+              >
+                <span class="text-white font-bold text-sm">{{ book.author.name.charAt(0) }}</span>
+              </div>
+            </div>
+            <span class="text-surface-600 dark:text-surface-400 group-hover:text-primary-500 dark:group-hover:text-primary-400">{{ book.author.name }}</span>
+          </div>
+
+          <!-- Stats and Actions -->
+          <div class="mt-auto flex items-center justify-between">
+            <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-full">
+              <i class="pi pi-comment text-primary-500"></i>
+              <span class="text-sm font-medium">{{ book.quotes?.length || 0 }}</span>
+            </div>
+            <Button 
+              icon="pi pi-heart-fill" 
+              rounded 
+              severity="danger"
+              :class="{ 'p-button-outlined': !book.is_favorite }"
+              @click="toggleBookFavorite"
+            />
+          </div>
+        </div>
       </div>
     </div>
 
     <!-- Content Panel (3/4) -->
-    <div class="w-3/4 h-screen overflow-y-auto pl-8">
+    <div class="w-3/4 h-screen overflow-y-auto pl-8 animate-slide-in">
       <div class="max-w-6xl mx-auto p-8 space-y-12">
         <!-- Quotes Section -->
         <div class="relative">
@@ -861,270 +812,270 @@ const saveCoverChange = async () => {
           </div>
         </div>
       </div>
+    </div>
+
+    <!-- Cover Change Dialog -->
+    <Dialog
+      v-model:visible="coverDialogVisible"
+      header="Change Book Cover"
+      :style="{width: '800px'}"
+      :modal="true"
+    >
+      <div class="flex flex-col items-center p-4">
+        <h3 class="text-xl font-semibold mb-2">{{ book.title }}</h3>
+        <p class="text-sm mb-4">by {{ book.author.name }}</p>
+        
+        <div class="grid grid-cols-2">
+          <!-- Selected cover preview (large) -->
+          <div class="col-span-1 flex flex-col items-center">
+            <h4 class="font-medium mb-2">Selected Cover:</h4>
+            <div class="relative mb-4 w-64 h-96 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
+              <img 
+                v-if="previewCoverUrl" 
+                :src="previewCoverUrl" 
+                :alt="book.title"
+                class="max-w-full max-h-full object-contain"
+                @error="(e) => e.target.src = 'https://via.placeholder.com/200x300?text=Image+Error'"
+              />
+              <div v-else class="text-gray-400">No cover selected</div>
+            </div>
+            <div v-if="previewCoverUrl" class="text-xs text-center mt-1 p-1 w-full overflow-hidden">
+              <div class="truncate max-w-[250px]">{{ previewCoverUrl }}</div>
+            </div>
           </div>
           
-          <!-- Cover Change Dialog -->
-          <Dialog
-            v-model:visible="coverDialogVisible"
-            header="Change Book Cover"
-            :style="{width: '800px'}"
-            :modal="true"
-          >
-            <div class="flex flex-col items-center p-4">
-              <h3 class="text-xl font-semibold mb-2">{{ book.title }}</h3>
-              <p class="text-sm mb-4">by {{ book.author.name }}</p>
-              
-              <div class="grid grid-cols-2">
-                <!-- Selected cover preview (large) -->
-                <div class="col-span-1 flex flex-col items-center">
-                  <h4 class="font-medium mb-2">Selected Cover:</h4>
-                  <div class="relative mb-4 w-64 h-96 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
-                    <img 
-                      v-if="previewCoverUrl" 
-                      :src="previewCoverUrl" 
-                      :alt="book.title"
-                      class="max-w-full max-h-full object-contain"
-                      @error="(e) => e.target.src = 'https://via.placeholder.com/200x300?text=Image+Error'"
-                    />
-                    <div v-else class="text-gray-400">No cover selected</div>
-                  </div>
-                  <div v-if="previewCoverUrl" class="text-xs text-center mt-1 p-1 w-full overflow-hidden">
-                    <div class="truncate max-w-[250px]">{{ previewCoverUrl }}</div>
-                  </div>
-                </div>
-                
-                <!-- Cover options grid -->
-                <div class="col-span-1 flex flex-col">
-                  <h4 class="font-medium mb-2">Available Covers ({{ coverOptions.length }}):</h4>
-                  <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-96 p-2">
-                    <div 
-                      v-for="(cover, index) in coverOptions" 
-                      :key="index" 
-                      class="cursor-pointer border rounded hover:shadow-md transition-shadow p-1"
-                      :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
-                      @click="selectCover(cover.url)"
-                    >
-                      <div class="w-full h-40 flex items-center justify-center bg-gray-100">
-                        <img 
-                          :src="cover.url" 
-                          :alt="`Cover option ${index+1}`"
-                          class="max-w-full max-h-full object-contain"
-                          @error="(e) => e.target.src = 'https://via.placeholder.com/200x300?text=Image+Error'"
-                        />
-                      </div>
-                      <div v-if="previewCoverUrl === cover.url" class="bg-blue-100 text-blue-800 text-xs text-center mt-1 p-1 rounded">
-                        Selected
-                      </div>
-                    </div>
-                  </div>
-                  <div v-else class="text-gray-500 p-4 text-center border rounded bg-gray-50">
-                    No cover options found
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Manual search section -->
-              <div class="w-full my-4">
-                <h4 class="font-medium mb-2">Search for more covers:</h4>
-                <div class="flex gap-2">
-                  <InputText 
-                    v-model="customSearchTitle" 
-                    placeholder="Enter alternative title" 
-                    class="flex-1"
-                    @keydown.enter="searchCoverForBook(customSearchTitle)"
-                  />
-                  <Button 
-                    icon="pi pi-search" 
-                    @click="searchCoverForBook(customSearchTitle)"
-                    :loading="changingCover"
-                  />
-                </div>
-                <small class="text-gray-500 mt-1 block">
-                  Tip: Try with a more general title or series name
-                </small>
-              </div>
-              
-              <!-- Custom URL input directly in change cover dialog -->
-              <div class="w-full my-4 border-t pt-4">
-                <h4 class="font-medium mb-2">Or enter a custom cover URL:</h4>
-                <div class="flex gap-2">
-                  <InputText 
-                    v-model="customCoverUrl" 
-                    placeholder="https://example.com/book-cover.jpg" 
-                    class="flex-1"
-                    @keydown.enter="previewCustomCoverUrl"
-                  />
-                  <Button 
-                    icon="pi pi-image" 
-                    @click="previewCustomCoverUrl"
-                    :disabled="!customCoverUrl"
-                  />
-                </div>
-                <small class="text-gray-500 mt-1 block">
-                  Enter the full URL to an image you want to use as the cover
-                </small>
-                
-                <!-- Preview for custom URL -->
-                <div v-if="customCoverUrl && showCustomPreview" class="mt-3 border rounded p-2 flex flex-col items-center">
-                  <div class="w-full h-40 flex items-center justify-center bg-gray-100">
-                    <img 
-                      :src="customCoverUrl" 
-                      :alt="book.title" 
-                      class="max-w-full max-h-full object-contain"
-                      @error="handleCustomUrlError"
-                      @load="handleCustomUrlSuccess"
-                    />
-                    <div v-if="previewError" class="text-red-500">
-                      Invalid image URL
-                    </div>
-                  </div>
-                  <Button 
-                    v-if="!previewError" 
-                    class="mt-2" 
-                    label="Use This URL" 
-                    icon="pi pi-check" 
-                    @click="useCustomCoverUrl"
-                  />
-                </div>
-              </div>
-              
-              <div class="flex justify-center gap-3 mt-4 w-full">
-                <Button 
-                  icon="pi pi-times" 
-                  label="Cancel" 
-                  severity="secondary" 
-                  @click="coverDialogVisible = false"
-                />
-                <Button 
-                  icon="pi pi-check" 
-                  label="Save Cover" 
-                  :disabled="!previewCoverUrl"
-                  @click="saveCoverChange"
-                  :loading="changingCover"
-                />
-              </div>
-            </div>
-          </Dialog>
-          
-          <!-- Custom URL Dialog -->
-          <Dialog
-            v-model:visible="customUrlDialogVisible"
-            header="Set Custom Cover URL"
-            :style="{width: '500px'}"
-            :modal="true"
-          >
-            <div class="flex flex-col p-4">
-              <div class="mb-4">
-                <label for="customUrl" class="block font-medium mb-2">Enter Cover URL:</label>
-                <InputText 
-                  id="customUrl"
-                  v-model="customCoverUrl" 
-                  placeholder="https://example.com/cover.jpg" 
-                  class="w-full"
-                />
-                <small class="text-gray-500 block mt-1">
-                  Enter a full URL to an image online
-                </small>
-              </div>
-              
-              <div class="mb-4" v-if="customCoverUrl">
-                <label class="block font-medium mb-2">Preview:</label>
-                <div class="border rounded p-2 flex items-center justify-center bg-gray-50 h-64">
+          <!-- Cover options grid -->
+          <div class="col-span-1 flex flex-col">
+            <h4 class="font-medium mb-2">Available Covers ({{ coverOptions.length }}):</h4>
+            <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-96 p-2">
+              <div 
+                v-for="(cover, index) in coverOptions" 
+                :key="index" 
+                class="cursor-pointer border rounded hover:shadow-md transition-shadow p-1"
+                :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
+                @click="selectCover(cover.url)"
+              >
+                <div class="w-full h-40 flex items-center justify-center bg-gray-100">
                   <img 
-                    :src="customCoverUrl" 
-                    :alt="book.title" 
+                    :src="cover.url" 
+                    :alt="`Cover option ${index+1}`"
                     class="max-w-full max-h-full object-contain"
-                    @error="previewError = true"
-                    @load="previewError = false"
+                    @error="(e) => e.target.src = 'https://via.placeholder.com/200x300?text=Image+Error'"
                   />
-                  <div v-if="previewError" class="text-red-500">
-                    Invalid image URL
-                  </div>
+                </div>
+                <div v-if="previewCoverUrl === cover.url" class="bg-blue-100 text-blue-800 text-xs text-center mt-1 p-1 rounded">
+                  Selected
                 </div>
               </div>
-              
-              <div class="flex justify-end gap-2 mt-4">
-                <Button 
-                  label="Cancel" 
-                  class="p-button-text" 
-                  @click="customUrlDialogVisible = false"
-                />
-                <Button 
-                  label="Set Cover" 
-                  icon="pi pi-check" 
-                  @click="setCustomCover"
-                  :disabled="!customCoverUrl || previewError"
-                />
-              </div>
             </div>
-          </Dialog>
+            <div v-else class="text-gray-500 p-4 text-center border rounded bg-gray-50">
+              No cover options found
+            </div>
+          </div>
+        </div>
+        
+        <!-- Manual search section -->
+        <div class="w-full my-4">
+          <h4 class="font-medium mb-2">Search for more covers:</h4>
+          <div class="flex gap-2">
+            <InputText 
+              v-model="customSearchTitle" 
+              placeholder="Enter alternative title" 
+              class="flex-1"
+              @keydown.enter="searchCoverForBook(customSearchTitle)"
+            />
+            <Button 
+              icon="pi pi-search" 
+              @click="searchCoverForBook(customSearchTitle)"
+              :loading="changingCover"
+            />
+          </div>
+          <small class="text-gray-500 mt-1 block">
+            Tip: Try with a more general title or series name
+          </small>
+        </div>
+        
+        <!-- Custom URL input directly in change cover dialog -->
+        <div class="w-full my-4 border-t pt-4">
+          <h4 class="font-medium mb-2">Or enter a custom cover URL:</h4>
+          <div class="flex gap-2">
+            <InputText 
+              v-model="customCoverUrl" 
+              placeholder="https://example.com/book-cover.jpg" 
+              class="flex-1"
+              @keydown.enter="previewCustomCoverUrl"
+            />
+            <Button 
+              icon="pi pi-image" 
+              @click="previewCustomCoverUrl"
+              :disabled="!customCoverUrl"
+            />
+          </div>
+          <small class="text-gray-500 mt-1 block">
+            Enter the full URL to an image you want to use as the cover
+          </small>
           
-          <!-- Simple direct URL dialog -->
-          <Dialog
-            v-model:visible="simpleCoverDialogVisible"
-            header="Set Cover URL Directly"
-            :style="{width: '500px'}"
-            :modal="true"
-          >
-            <div class="flex flex-col p-4 gap-4">
-              <div>
-                <label for="directUrl" class="block font-medium mb-2">Enter Cover URL:</label>
-                <InputText 
-                  id="directUrl"
-                  v-model="directCoverUrl" 
-                  placeholder="https://example.com/cover.jpg" 
-                  class="w-full"
-                />
-                <small class="text-gray-500 block mt-1">
-                  Enter a full URL to an image online
-                </small>
-              </div>
-              
-              <div v-if="directCoverUrl" class="border rounded p-3 bg-gray-50">
-                <label class="block font-medium mb-2">Preview:</label>
-                <div class="flex justify-center">
-                  <img 
-                    :src="directCoverUrl" 
-                    :alt="book.title" 
-                    class="max-h-[200px] object-contain"
-                    @error="directUrlError = true"
-                    @load="directUrlError = false"
-                  />
-                </div>
-                <div v-if="directUrlError" class="text-red-500 text-center mt-2">
-                  Invalid image URL
-                </div>
-              </div>
-              
-              <div class="flex justify-end gap-2 mt-2">
-                <Button 
-                  label="Cancel" 
-                  class="p-button-text" 
-                  @click="simpleCoverDialogVisible = false"
-                />
-                <Button 
-                  label="Save Cover" 
-                  icon="pi pi-check" 
-                  @click="saveDirectCoverUrl"
-                  :disabled="!directCoverUrl || directUrlError"
-                />
+          <!-- Preview for custom URL -->
+          <div v-if="customCoverUrl && showCustomPreview" class="mt-3 border rounded p-2 flex flex-col items-center">
+            <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+              <img 
+                :src="customCoverUrl" 
+                :alt="book.title" 
+                class="max-w-full max-h-full object-contain"
+                @error="handleCustomUrlError"
+                @load="handleCustomUrlSuccess"
+              />
+              <div v-if="previewError" class="text-red-500">
+                Invalid image URL
               </div>
             </div>
-          </Dialog>
+            <Button 
+              v-if="!previewError" 
+              class="mt-2" 
+              label="Use This URL" 
+              icon="pi pi-check" 
+              @click="useCustomCoverUrl"
+            />
+          </div>
+        </div>
+        
+        <div class="flex justify-center gap-3 mt-4 w-full">
+          <Button 
+            icon="pi pi-times" 
+            label="Cancel" 
+            severity="secondary" 
+            @click="coverDialogVisible = false"
+          />
+          <Button 
+            icon="pi pi-check" 
+            label="Save Cover" 
+            :disabled="!previewCoverUrl"
+            @click="saveCoverChange"
+            :loading="changingCover"
+          />
+        </div>
+      </div>
+    </Dialog>
+    
+    <!-- Custom URL Dialog -->
+    <Dialog
+      v-model:visible="customUrlDialogVisible"
+      header="Set Custom Cover URL"
+      :style="{width: '500px'}"
+      :modal="true"
+    >
+      <div class="flex flex-col p-4">
+        <div class="mb-4">
+          <label for="customUrl" class="block font-medium mb-2">Enter Cover URL:</label>
+          <InputText 
+            id="customUrl"
+            v-model="customCoverUrl" 
+            placeholder="https://example.com/cover.jpg" 
+            class="w-full"
+          />
+          <small class="text-gray-500 block mt-1">
+            Enter a full URL to an image online
+          </small>
+        </div>
+        
+        <div class="mb-4" v-if="customCoverUrl">
+          <label class="block font-medium mb-2">Preview:</label>
+          <div class="border rounded p-2 flex items-center justify-center bg-gray-50 h-64">
+            <img 
+              :src="customCoverUrl" 
+              :alt="book.title" 
+              class="max-w-full max-h-full object-contain"
+              @error="previewError = true"
+              @load="previewError = false"
+            />
+            <div v-if="previewError" class="text-red-500">
+              Invalid image URL
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex justify-end gap-2 mt-4">
+          <Button 
+            label="Cancel" 
+            class="p-button-text" 
+            @click="customUrlDialogVisible = false"
+          />
+          <Button 
+            label="Set Cover" 
+            icon="pi pi-check" 
+            @click="setCustomCover"
+            :disabled="!customCoverUrl || previewError"
+          />
+        </div>
+      </div>
+    </Dialog>
+    
+    <!-- Simple direct URL dialog -->
+    <Dialog
+      v-model:visible="simpleCoverDialogVisible"
+      header="Set Cover URL Directly"
+      :style="{width: '500px'}"
+      :modal="true"
+    >
+      <div class="flex flex-col p-4 gap-4">
+        <div>
+          <label for="directUrl" class="block font-medium mb-2">Enter Cover URL:</label>
+          <InputText 
+            id="directUrl"
+            v-model="directCoverUrl" 
+            placeholder="https://example.com/cover.jpg" 
+            class="w-full"
+          />
+          <small class="text-gray-500 block mt-1">
+            Enter a full URL to an image online
+          </small>
+        </div>
+        
+        <div v-if="directCoverUrl" class="border rounded p-3 bg-gray-50">
+          <label class="block font-medium mb-2">Preview:</label>
+          <div class="flex justify-center">
+            <img 
+              :src="directCoverUrl" 
+              :alt="book.title" 
+              class="max-h-[200px] object-contain"
+              @error="directUrlError = true"
+              @load="directUrlError = false"
+            />
+          </div>
+          <div v-if="directUrlError" class="text-red-500 text-center mt-2">
+            Invalid image URL
+          </div>
+        </div>
+        
+        <div class="flex justify-end gap-2 mt-2">
+          <Button 
+            label="Cancel" 
+            class="p-button-text" 
+            @click="simpleCoverDialogVisible = false"
+          />
+          <Button 
+            label="Save Cover" 
+            icon="pi pi-check" 
+            @click="saveDirectCoverUrl"
+            :disabled="!directCoverUrl || directUrlError"
+          />
+        </div>
+      </div>
+    </Dialog>
 
-  <!-- Add the QuoteModal component -->
-  <QuoteModal
-    v-if="selectedQuote"
-    v-model:visible="showQuoteModal"
-    :quote="selectedQuote"
-    :liked="selectedQuote ? likedQuotes[selectedQuote.id] : false"
-    :has-previous="selectedQuoteIndex > 0"
-    :has-next="selectedQuoteIndex < (filteredQuotes?.length || 0) - 1"
-    @toggle-like="toggleLikeQuote"
-    @edit-quote="handleEditFromModal"
-    @previous-quote="navigateToPreviousQuote"
-    @next-quote="navigateToNextQuote"
-  />
+    <!-- Add the QuoteModal component -->
+    <QuoteModal
+      v-if="selectedQuote"
+      v-model:visible="showQuoteModal"
+      :quote="selectedQuote"
+      :liked="selectedQuote ? likedQuotes[selectedQuote.id] : false"
+      :has-previous="selectedQuoteIndex > 0"
+      :has-next="selectedQuoteIndex < (filteredQuotes?.length || 0) - 1"
+      @toggle-like="toggleLikeQuote"
+      @edit-quote="handleEditFromModal"
+      @previous-quote="navigateToPreviousQuote"
+      @next-quote="navigateToNextQuote"
+    />
   </div>
   <div v-else class="flex justify-center items-center h-full">
     <p>Loading...</p>
@@ -1153,6 +1104,38 @@ const saveCoverChange = async () => {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Add transition animations */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add transition for the content panel */
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -1222,5 +1205,37 @@ const saveCoverChange = async () => {
 
 .dark .w-1\/4 > div:hover {
   box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+/* Book detail entrance animation */
+@keyframes bookEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-book-enter {
+  animation: bookEnter 0.3s ease-out;
+}
+
+/* Add styles for the cover container */
+.cover-container {
+  animation: coverEnter 0.3s ease-out;
+}
+
+@keyframes coverEnter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

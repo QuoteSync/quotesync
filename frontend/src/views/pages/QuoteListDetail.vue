@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { QuoteListService } from '@/service/QuoteListService';
 import { QuoteGroupService } from '@/service/QuoteGroupService';
@@ -37,6 +37,31 @@ const groups = ref([]);
 const loadingGroups = ref(false);
 const selectedGroups = ref([]);
 const showShareDialog = ref(false);
+
+// Add these new reactive states for filters
+const selectedTag = ref("");
+const showFavorites = ref(false);
+const selectedChapter = ref("");
+
+// Predefined gradient pairs for list cards
+const gradients = [
+  { primary: '#0093E9', secondary: '#80D0C7' },
+  { primary: '#8EC5FC', secondary: '#E0C3FC' },
+  { primary: '#4158D0', secondary: '#C850C0' },
+  { primary: '#85FFBD', secondary: '#FFFB7D' },
+  { primary: '#74EBD5', secondary: '#9FACE6' },
+  { primary: '#F4D03F', secondary: '#16A085' },
+  { primary: '#FF9A8B', secondary: '#FF6A88' },
+  { primary: '#FF6CAB', secondary: '#7366FF' },
+];
+
+// Generate a consistent gradient for a list based on its ID
+const getListGradient = (listId) => {
+  if (!listId) return gradients[0]; // Return default gradient if no ID
+  // Use the last digit of the list ID to select a gradient
+  const index = parseInt(listId.toString().slice(-1)) % gradients.length;
+  return gradients[index];
+};
 
 const loadQuoteList = async () => {
   try {
@@ -381,6 +406,66 @@ const closeAllModals = () => {
   showShareDialog.value = false;
 };
 
+// Compute all unique tags from quotes
+const allTags = computed(() => {
+  if (!quoteList.value || !quoteList.value.quotes) return [];
+
+  const tags = [];
+  quoteList.value.quotes.forEach((quote) => {
+    if (quote.tags) {
+      quote.tags.forEach((tag) => {
+        if (!tags.includes(tag.title)) {
+          tags.push(tag.title);
+        }
+      });
+    }
+  });
+
+  return tags.sort();
+});
+
+// Compute all unique chapters from quotes
+const availableChapters = computed(() => {
+  if (!quoteList.value || !quoteList.value.quotes) return [];
+  
+  const chapters = quoteList.value.quotes
+    .map(quote => quote.chapter)
+    .filter(chapter => chapter) // Filter out empty/null chapters
+    .reduce((unique, chapter) => {
+      if (!unique.includes(chapter)) {
+        unique.push(chapter);
+      }
+      return unique;
+    }, []);
+  
+  return chapters.sort(); // Sort alphabetically
+});
+
+// Filtered quotes based on selected filters
+const filteredQuotes = computed(() => {
+  if (!quoteList.value || !quoteList.value.quotes) return [];
+
+  return quoteList.value.quotes.filter((quote) => {
+    // Filter by favorites
+    if (showFavorites.value && !likedQuotes.value[quote.id]) {
+      return false;
+    }
+
+    // Filter by tag
+    if (selectedTag.value && 
+        (!quote.tags || !quote.tags.some((tag) => tag.title === selectedTag.value))) {
+      return false;
+    }
+    
+    // Filter by chapter
+    if (selectedChapter.value && quote.chapter !== selectedChapter.value) {
+      return false;
+    }
+
+    return true;
+  });
+});
+
 onMounted(async () => {
   await loadQuoteList();
   await loadGroups();
@@ -388,8 +473,114 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="flex flex-col">
-    <div class="card">
+  <div class="flex h-screen overflow-hidden">
+    <!-- List Info Panel (1/4) -->
+    <div class="w-1/4 p-4 md:p-2 flex flex-col items-center sticky top-4">
+      <div class="w-full bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden flex flex-col group transform transition-all duration-300 hover:scale-105 hover:shadow-2xl animate-fade-in">
+        <!-- List Cover -->
+        <div class="relative aspect-[21/9] overflow-hidden">
+          <!-- List Cover Background -->
+          <div 
+            class="absolute inset-0 flex items-center justify-center overflow-hidden"
+            :style="{ background: quoteList?.title === 'Favourites' 
+                      ? 'linear-gradient(135deg, #FF5E62, #FF9966)'
+                      : `linear-gradient(135deg, ${getListGradient(quoteList?.id).primary}, ${getListGradient(quoteList?.id).secondary})` }"
+          >
+            <div class="w-full h-full flex flex-col items-center justify-center p-4 relative">
+              <!-- Light reflection effect -->
+              <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
+              
+              <!-- List name -->
+              <div class="relative z-10 text-center w-full px-4">
+                <span class="text-white font-bold text-2xl fancy-font whitespace-normal break-words">{{ quoteList?.title || 'Loading...' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- List Info -->
+        <div class="p-6 flex-1 flex flex-col">
+          <p class="text-surface-600 dark:text-surface-400 mb-4">{{ quoteList?.description || 'No description' }}</p>
+          
+          <!-- Stats and Actions -->
+          <div class="mt-auto flex items-center justify-between">
+            <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-full">
+              <i class="pi pi-comment text-primary-500"></i>
+              <span class="text-sm font-medium">{{ quoteList?.quotes?.length || 0 }} quotes</span>
+            </div>
+            <div class="flex gap-2">
+              <Button
+                icon="pi pi-share-alt"
+                rounded
+                severity="secondary"
+                @click="showShareDialog = true"
+                v-tooltip.top="'Share List'"
+              />
+              <Button
+                icon="pi pi-pencil"
+                rounded
+                severity="secondary"
+                @click="showEditDialog = true"
+                v-tooltip.top="'Edit List'"
+              />
+              <Button
+                icon="pi pi-trash"
+                rounded
+                severity="danger"
+                @click="handleDeleteList"
+                v-tooltip.top="'Delete List'"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content Panel (3/4) -->
+    <div class="w-3/4 h-screen overflow-y-auto pl-8 animate-slide-in">
+      <div class="max-w-6xl mx-auto p-8 space-y-12">
+        <!-- Quotes Section -->
+        <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-surface-50 to-surface-100 dark:from-surface-800 dark:to-surface-900 rounded-3xl transform -rotate-0.25"></div>
+          <div class="p-8 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-3xl hover:shadow-xl transition-all duration-300 relative">
+            <h2 class="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">Quotes</h2>
+
+            <!-- Filtros de Citas -->
+            <div class="mb-8 flex flex-col md:flex-row items-center justify-center gap-6 bg-surface-50 dark:bg-surface-800 p-6 rounded-2xl shadow-sm">
+              <!-- Chapter filter -->
+              <div v-if="availableChapters.length > 0" class="filter-item">
+                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Chapter:</label>
+                <select v-model="selectedChapter" class="border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                  <option value="">All Chapters</option>
+                  <option v-for="chapter in availableChapters" :key="chapter" :value="chapter">
+                    {{ chapter }}
+                  </option>
+                </select>
+              </div>
+              
+              <!-- Tag filter -->
+              <div v-if="allTags.length > 0" class="filter-item">
+                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Tag:</label>
+                <select v-model="selectedTag" class="border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200">
+                  <option value="">All Tags</option>
+                  <option v-for="tag in allTags" :key="tag" :value="tag">{{ tag }}</option>
+                </select>
+              </div>
+              
+              <!-- Favorites filter -->
+              <div class="filter-item flex items-center">
+                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Favorites:</label>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    v-model="showFavorites" 
+                    class="sr-only peer"
+                  />
+                  <div class="w-11 h-6 bg-surface-200 dark:bg-surface-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-surface-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-surface-600 peer-checked:bg-primary-500"></div>
+                </label>
+              </div>
+            </div>
+
       <!-- Loading state -->
       <div v-if="loading" class="grid grid-cols-12 gap-4">
         <div class="col-span-12">
@@ -397,73 +588,48 @@ onMounted(async () => {
             <div class="h-8 bg-gray-300 rounded w-1/3 mb-4"></div>
             <div class="h-4 bg-gray-300 rounded w-1/4"></div>
           </div>
-        </div>
-      </div>
-
-      <!-- Quote List Content -->
-      <div v-else-if="quoteList" class="flex flex-col">
-        <!-- Header -->
-        <div class="flex justify-between items-start mb-6">
-          <div>
-            <h1 class="text-3xl font-bold fancy-font mb-2">{{ quoteList.title }}</h1>
-            <p class="text-gray-600">{{ quoteList.description || 'No description' }}</p>
-          </div>
-          <div class="flex gap-2">
-            <Button
-              label="Share"
-              icon="pi pi-share-alt"
-              @click="showShareDialog = true"
-            />
-            <Button
-              label="Edit"
-              icon="pi pi-pencil"
-              @click="showEditDialog = true"
-            />
-            <Button
-              label="Delete"
-              icon="pi pi-trash"
-              class="p-button-danger"
-              @click="handleDeleteList"
-            />
           </div>
         </div>
 
         <!-- Quotes Grid -->
-        <div class="mt-10">
-          <div v-if="quoteList.quotes && quoteList.quotes.length" class="flex flex-col gap-6">
-            <div v-for="(quote, index) in quoteList.quotes" :key="quote.id" class="quote-item">
-              <div class="flex justify-end mb-2 gap-2 reorder-buttons">
-                <Button
-                  icon="pi pi-arrow-up"
-                  class="p-button-rounded p-button-outlined p-button-sm"
-                  :disabled="index === 0 || savingOrder"
-                  @click="moveQuoteUp(quote.id)"
-                  title="Move Up"
-                />
-                <Button
-                  icon="pi pi-arrow-down"
-                  class="p-button-rounded p-button-outlined p-button-sm"
-                  :disabled="index === quoteList.quotes.length - 1 || savingOrder"
-                  @click="moveQuoteDown(quote.id)"
-                  title="Move Down"
-                />
-              </div>
+            <div v-else-if="quoteList" class="mt-10">
+              <div v-if="filteredQuotes && filteredQuotes.length" class="flex flex-col gap-6">
+                <div v-for="(quote, index) in filteredQuotes" :key="quote.id" class="relative group">
+                  <div class="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-primary-600/20 rounded-2xl transform rotate-2 group-hover:rotate-3 transition-transform duration-300"></div>
               <QuoteCard
                 :quote="quote"
                 :liked="likedQuotes[quote.id]"
                 :showActions="true"
                 :has-previous="index > 0"
-                :has-next="index < quoteList.quotes.length - 1"
+                    :has-next="index < filteredQuotes.length - 1"
                 @toggle-like="toggleLikeQuote"
                 @remove-quote="handleRemoveQuote"
                 @previous-quote="navigateToPreviousQuote"
                 @next-quote="navigateToNextQuote"
                 @click="openQuoteModal(quote, index)"
-              />
+                    class="transform transition-all duration-300 hover:-translate-y-1 relative"
+                  />
+                  
+                  <!-- Display chapter information if present -->
+                  <div v-if="quote.chapter" class="text-sm text-gray-600 mt-2 ml-4">
+                    <span class="font-medium">Chapter:</span> {{ quote.chapter }}
+                  </div>
+                  
+                  <!-- Display link to Google Books if present -->
+                  <div v-if="quote.book_url" class="text-sm text-blue-600 mt-1 ml-4">
+                    <a :href="quote.book_url" target="_blank" class="flex items-center">
+                      <i class="pi pi-external-link mr-1"></i>
+                      <span>View in Google Books</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="text-center text-surface-500 p-8">
+                <i class="pi pi-quote-right text-4xl mb-4"></i>
+                <p class="text-lg">No quotes available with these filters.</p>
+              </div>
             </div>
           </div>
-          <div v-else class="text-center text-gray-500">
-            <p>No quotes in this list.</p>
           </div>
         </div>
       </div>
@@ -490,6 +656,7 @@ onMounted(async () => {
       header="Share List"
       :style="{ width: '500px' }"
       :modal="true"
+    class="fancy-dialog"
     >
       <div class="p-4">
         <div v-if="loadingGroups" class="flex justify-center p-4">
@@ -504,7 +671,7 @@ onMounted(async () => {
           <div 
             v-for="group in groups" 
             :key="group.id"
-            class="flex items-center justify-between p-3 border border-surface-200 dark:border-surface-700 rounded-lg"
+          class="flex items-center justify-between p-3 border border-surface-200 dark:border-surface-700 rounded-lg hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors duration-200"
           >
             <div>
               <h3 class="font-medium">{{ group.name }}</h3>
@@ -533,24 +700,25 @@ onMounted(async () => {
       header="Edit List"
       :style="{ width: '400px' }"
       :modal="true"
+    class="fancy-dialog"
     >
       <div class="p-4">
         <div class="mb-4">
-          <label for="listTitle" class="block mb-2">Title</label>
+        <label for="listTitle" class="block mb-2 fancy-label">Title</label>
           <InputText
             id="listTitle"
             v-model="editedTitle"
-            class="w-full"
+          class="w-full fancy-input"
             placeholder="Enter list title"
           />
         </div>
         
         <div class="mb-4">
-          <label for="listDescription" class="block mb-2">Description</label>
+        <label for="listDescription" class="block mb-2 fancy-label">Description</label>
           <Textarea
             id="listDescription"
             v-model="editedDescription"
-            class="w-full"
+          class="w-full fancy-textarea"
             rows="3"
             placeholder="Enter list description (optional)"
           />
@@ -559,11 +727,12 @@ onMounted(async () => {
         <div class="flex justify-end gap-2">
           <Button
             label="Cancel"
-            class="p-button-text"
+          class="p-button-text fancy-cancel-button"
             @click="showEditDialog = false"
           />
           <Button
             label="Save"
+          class="fancy-create-button"
             @click="updateList"
           />
         </div>
@@ -576,18 +745,20 @@ onMounted(async () => {
       header="Remove Quote"
       :style="{ width: '400px' }"
       :modal="true"
+    class="fancy-dialog"
     >
       <div class="p-4">
         <p class="mb-4">Are you sure you want to remove this quote from the list?</p>
         <div class="flex justify-end gap-2">
           <Button
             label="Cancel"
-            class="p-button-text"
+          class="p-button-text fancy-cancel-button"
             @click="showDeleteDialog = false"
           />
           <Button
             label="Remove"
             severity="danger"
+          class="fancy-delete-button"
             @click="confirmDelete"
           />
         </div>
@@ -600,30 +771,104 @@ onMounted(async () => {
       header="Delete List"
       :style="{ width: '400px' }"
       :modal="true"
+    class="fancy-dialog"
     >
       <div class="p-4">
         <p class="mb-4">Are you sure you want to delete this list? This action cannot be undone.</p>
         <div class="flex justify-end gap-2">
           <Button
             label="Cancel"
-            class="p-button-text"
+          class="p-button-text fancy-cancel-button"
             @click="showDeleteListDialog = false"
           />
           <Button
             label="Delete"
             severity="danger"
+          class="fancy-delete-button"
             @click="confirmDeleteList"
           />
         </div>
       </div>
     </Dialog>
-  </div>
 </template>
 
 <style scoped>
-/* Add styles for the reorder buttons */
+/* Add these new styles */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add transition for the content panel */
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Layout styles */
+.h-screen {
+  height: 100vh;
+  max-height: 100vh;
+}
+
+.overflow-hidden {
+  overflow: hidden;
+}
+
+.overflow-y-auto {
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for the content panel */
+.overflow-y-auto::-webkit-scrollbar {
+  width: 8px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* Quote item styles */
 .quote-item {
   position: relative;
+  transition: all 0.3s ease;
 }
 
 .reorder-buttons {
@@ -635,9 +880,134 @@ onMounted(async () => {
   opacity: 1;
 }
 
-.p-button-sm {
-  width: 2rem;
-  height: 2rem;
-  font-size: 0.75rem;
+/* Dialog styles */
+:deep(.fancy-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:deep(.fancy-dialog .p-dialog-header) {
+  background: linear-gradient(135deg, 
+    rgba(var(--primary-500-rgb), 0.1),
+    rgba(var(--primary-500-rgb), 0.05)
+  );
+  border-bottom: 1px solid var(--surface-border);
+}
+
+:deep(.fancy-dialog .p-dialog-content) {
+  background: var(--surface-card);
+}
+
+/* Input styles */
+:deep(.fancy-input),
+:deep(.fancy-textarea) {
+  border-radius: 12px;
+  border: 2px solid var(--surface-border);
+  transition: all 0.3s ease;
+  background: var(--surface-ground);
+}
+
+:deep(.fancy-input:hover),
+:deep(.fancy-textarea:hover) {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px rgba(var(--primary-500-rgb), 0.1);
+}
+
+:deep(.fancy-input:focus),
+:deep(.fancy-textarea:focus) {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(var(--primary-500-rgb), 0.2);
+}
+
+/* Label styles */
+.fancy-label {
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-input:focus) + .fancy-label,
+:deep(.fancy-textarea:focus) + .fancy-label {
+  color: var(--primary-500);
+}
+
+/* Button styles */
+:deep(.fancy-cancel-button) {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-cancel-button:hover) {
+  background: rgba(var(--surface-500-rgb), 0.1);
+  transform: translateY(-2px);
+}
+
+:deep(.fancy-create-button) {
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-400));
+  border: none;
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-create-button:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--primary-500-rgb), 0.3);
+}
+
+:deep(.fancy-delete-button) {
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--red-500), var(--red-400));
+  border: none;
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-delete-button:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--red-500-rgb), 0.3);
+}
+
+/* Dark mode adjustments */
+:root.dark {
+  :deep(.fancy-dialog) {
+    background: var(--surface-ground);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  }
+
+  :deep(.fancy-dialog .p-dialog-header) {
+    background: linear-gradient(135deg, 
+      rgba(var(--primary-400-rgb), 0.15),
+      rgba(var(--primary-400-rgb), 0.05)
+    );
+  }
+
+  :deep(.fancy-input),
+  :deep(.fancy-textarea) {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+  }
+
+  :deep(.fancy-input:hover),
+  :deep(.fancy-textarea:hover) {
+    border-color: var(--primary-400);
+  }
+
+  :deep(.fancy-input:focus),
+  :deep(.fancy-textarea:focus) {
+    border-color: var(--primary-400);
+    box-shadow: 0 0 0 3px rgba(var(--primary-400-rgb), 0.2);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Add these new styles */
+.filter-item {
+  @apply mb-2 md:mb-0;
 }
 </style> 

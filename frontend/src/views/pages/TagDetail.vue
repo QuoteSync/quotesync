@@ -1,15 +1,24 @@
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { TagService } from "@/service/TagService";
 import { QuoteService } from "@/service/QuoteService";
+import { QuoteListService } from "@/service/QuoteListService";
 import QuoteCard from "@/components/QuoteCard.vue"; // Import the reusable QuoteCard component
 import QuoteModal from '@/components/QuoteModal.vue'; // Import QuoteModal
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
+import InputText from 'primevue/inputtext';
+import { useToast } from 'primevue/usetoast';
+import QuoteListMenu from '@/components/QuoteListMenu.vue';
 
 const route = useRoute();
+const router = useRouter();
+const toast = useToast();
 const tag = ref(null);
 const tagId = route.params.id;
 const quotes = ref([]);
+const loading = ref(true);
 
 // Function to generate a random gradient for the tag
 const getRandomGradient = () => {
@@ -46,6 +55,9 @@ const showFavorites = ref(false);
 const showQuoteModal = ref(false);
 const selectedQuote = ref(null);
 const selectedQuoteIndex = ref(-1);
+
+const showQuoteListMenu = ref(false);
+const selectedQuoteForList = ref(null);
 
 // Computed: List of all available books from the quotes
 const allBooks = computed(() => {
@@ -159,46 +171,87 @@ const navigateToNextQuote = () => {
   }
 };
 
-onMounted(async () => {
+const loadTag = async () => {
   try {
-    // Get tag details
     const tagData = await TagService.getTag(tagId);
-    
-    // Create gradient object - either from stored values or generate new one
-    if (tagData.gradient_primary_color && tagData.gradient_secondary_color) {
-      // Use the stored gradient colors from the database
-      console.log(`Tag ${tagData.id} already has gradient colors:`, tagData.gradient_primary_color, tagData.gradient_secondary_color);
-      tagData.gradient = {
-        primary: tagData.gradient_primary_color,
-        secondary: tagData.gradient_secondary_color,
-        background: `linear-gradient(135deg, ${tagData.gradient_primary_color}, ${tagData.gradient_secondary_color})`
-      };
-    } else {
-      // Generate a new random gradient and store it in the database
-      console.log(`Tag ${tagData.id} needs new gradient colors`);
-      tagData.gradient = getRandomGradient();
-      console.log(`Generated colors for tag ${tagData.id}:`, tagData.gradient.primary, tagData.gradient.secondary);
-      
-      // Save the gradient colors to the database
-      TagService.updateGradientColors(
-        tagData.id,
-        tagData.gradient.primary,
-        tagData.gradient.secondary
-      ).then(response => {
-        console.log(`Successfully saved gradient colors for tag ${tagData.id}:`, response);
-      }).catch(error => {
-        console.error(`Error saving gradient colors for tag ${tagData.id}:`, error);
-      });
-    }
-    
     tag.value = tagData;
     
     // Get quotes with this tag
     const quotesData = await TagService.getQuotesByTag(tagData.title);
-    quotesData.forEach((quote) => {
-      likedQuotes.value[quote.id] = quote.is_favorite;
-    });
     quotes.value = quotesData;
+    
+    // Initialize liked status for each quote
+    quotesData.forEach(quote => {
+      likedQuotes.value[quote.id] = quote.is_favorite || false;
+    });
+  } catch (error) {
+    console.error('Error loading tag:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to load tag',
+      life: 3000
+    });
+  } finally {
+    loading.value = false;
+  }
+};
+
+const addAllQuotesToList = async (listId) => {
+  try {
+    // Add all quotes to the selected list
+    for (const quote of quotes.value) {
+      await QuoteListService.addQuoteToList(listId, quote.id);
+    }
+
+    toast.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: 'All quotes added to the list',
+      life: 3000
+    });
+  } catch (error) {
+    console.error('Error adding quotes to list:', error);
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: 'Failed to add quotes to list',
+      life: 3000
+    });
+  }
+};
+
+onMounted(async () => {
+  try {
+    // Get tag details
+    await loadTag();
+    
+    // Create gradient object - either from stored values or generate new one
+    if (tag.value.gradient_primary_color && tag.value.gradient_secondary_color) {
+      // Use the stored gradient colors from the database
+      console.log(`Tag ${tag.value.id} already has gradient colors:`, tag.value.gradient_primary_color, tag.value.gradient_secondary_color);
+      tag.value.gradient = {
+        primary: tag.value.gradient_primary_color,
+        secondary: tag.value.gradient_secondary_color,
+        background: `linear-gradient(135deg, ${tag.value.gradient_primary_color}, ${tag.value.gradient_secondary_color})`
+      };
+    } else {
+      // Generate a new random gradient and store it in the database
+      console.log(`Tag ${tag.value.id} needs new gradient colors`);
+      tag.value.gradient = getRandomGradient();
+      console.log(`Generated colors for tag ${tag.value.id}:`, tag.value.gradient.primary, tag.value.gradient.secondary);
+      
+      // Save the gradient colors to the database
+      TagService.updateGradientColors(
+        tag.value.id,
+        tag.value.gradient.primary,
+        tag.value.gradient.secondary
+      ).then(response => {
+        console.log(`Successfully saved gradient colors for tag ${tag.value.id}:`, response);
+      }).catch(error => {
+        console.error(`Error saving gradient colors for tag ${tag.value.id}:`, error);
+      });
+    }
   } catch (error) {
     console.error("Error loading tag data:", error);
   }
@@ -206,104 +259,114 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="tag" class="flex h-screen overflow-hidden">
-    <!-- Tag Panel (1/4) -->
-    <div class="w-1/4 h-screen p-6 flex flex-col items-center sticky top-0">
-      <div class="w-full h-full bg-surface-0 dark:bg-surface-900 rounded-3xl shadow-2xl border border-surface-200 dark:border-surface-700 p-6 flex flex-col items-center">
-        <!-- Tag Badge -->
-        <div 
-          class="relative group w-full" 
-          style="aspect-ratio: 3/4;"
-        >
-          <div class="absolute inset-0 w-full h-full rounded-2xl shadow-lg transform transition-transform duration-300 group-hover:scale-105 overflow-hidden"
-            :style="{ background: tag.gradient.background }"
+  <div class="flex h-screen overflow-hidden">
+    <!-- Tag Info Panel (1/4) -->
+    <div class="w-1/4 p-4 md:p-2 flex flex-col items-center sticky top-4">
+      <div class="w-full bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden flex flex-col group transform transition-all duration-300 hover:scale-105 hover:shadow-2xl animate-fade-in">
+        <!-- Tag Cover -->
+        <div class="relative aspect-[21/9] overflow-hidden">
+          <!-- Tag Cover Background -->
+          <div 
+            class="absolute inset-0 flex items-center justify-center overflow-hidden"
+            :style="{ background: tag?.gradient?.background || (tag?.gradient_primary_color && tag?.gradient_secondary_color ? 
+              `linear-gradient(135deg, ${tag.gradient_primary_color}, ${tag.gradient_secondary_color})` : 
+              getRandomGradient().background) }"
           >
-            <!-- Light reflection effect -->
-            <div class="absolute top-0 right-0 w-16 h-[150%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-5px) translateY(-5px);"></div>
-            
-            <!-- Decorative elements -->
-            <div class="w-full h-full flex flex-col items-center justify-center p-4 relative">
-              <!-- Decorative circle -->
-              <div class="w-20 h-20 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-                  <span class="text-white/90 text-4xl font-serif">{{ tag.title.charAt(0).toUpperCase() }}</span>
-                </div>
-              </div>
+            <div class="w-full h-full flex items-center justify-center p-4 relative">
+              <!-- Light reflection effect -->
+              <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
               
               <!-- Tag name -->
-              <div class="mt-4 text-center z-10">
-                <span class="text-white font-bold text-3xl">#{{ tag.title }}</span>
+              <div class="relative z-10 text-center w-full px-4">
+                <span class="text-white font-bold text-3xl fancy-font whitespace-normal break-words">{{ tag?.title || 'Loading...' }}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tag Name -->
-        <h1 class="text-3xl font-bold fancy-font mt-6 mb-4 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">#{{ tag.title }}</h1>
-
-        <!-- Tag Stats -->
-        <div class="text-center text-surface-600 dark:text-surface-400">
-          <p class="text-lg">{{ quotes.length }} quotes with this tag</p>
+        <!-- Tag Info -->
+        <div class="p-6 flex-1 flex flex-col">
+          <p class="text-surface-600 dark:text-surface-400 mb-4">{{ tag?.description || 'No description' }}</p>
+          
+          <!-- Stats and Actions -->
+          <div class="mt-auto flex items-center justify-between">
+            <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-full">
+              <i class="pi pi-comment text-primary-500"></i>
+              <span class="text-sm font-medium">{{ tag?.quotes?.length || 0 }} quotes</span>
+            </div>
+            <div class="relative">
+              <Button
+                icon="pi pi-list"
+                rounded
+                text
+                outlined
+                size="small"
+                class="fancy-list-button fancy-button transition-all duration-300"
+                @click="showQuoteListMenu = true"
+                v-tooltip.top="'Save to List'"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- Content Panel (3/4) -->
-    <div class="w-3/4 h-screen overflow-y-auto pl-8">
+    <div class="w-3/4 h-screen overflow-y-auto pl-8 animate-slide-in">
       <div class="max-w-6xl mx-auto p-8 space-y-12">
         <!-- Quotes Section -->
         <div class="relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-surface-50 to-surface-100 dark:from-surface-800 dark:to-surface-900 rounded-3xl transform -rotate-0.25"></div>
           <div class="p-8 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-3xl hover:shadow-xl transition-all duration-300 relative">
-            <h2 class="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">Tagged Quotes</h2>
+            <h2 class="text-3xl font-bold mb-8 text-center bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">Quotes</h2>
 
-            <!-- Filters -->
-            <div class="mb-8 flex flex-col md:flex-row items-center justify-center gap-6 bg-surface-50 dark:bg-surface-800 p-6 rounded-2xl shadow-sm">
-              <!-- Book filter -->
-              <div v-if="allBooks.length > 0" class="filter-item">
-                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Book:</label>
-                <select 
-                  v-model="selectedBook" 
-                  class="border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 p-2 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
-                >
-                  <option value="">All Books</option>
-                  <option v-for="book in allBooks" :key="book" :value="book">{{ book }}</option>
-                </select>
+            <!-- Loading state -->
+            <div v-if="loading" class="grid grid-cols-12 gap-4">
+              <div class="col-span-12">
+                <div class="p-6 border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg animate-pulse">
+                  <div class="h-8 bg-gray-300 rounded w-1/3 mb-4"></div>
+                  <div class="h-4 bg-gray-300 rounded w-1/4"></div>
+                </div>
               </div>
-              
-              <!-- Favorites filter -->
-              <div class="filter-item flex items-center">
-                <label class="mr-2 font-semibold text-surface-700 dark:text-surface-200">Favorites:</label>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    v-model="showFavorites" 
-                    class="sr-only peer"
+            </div>
+
+            <!-- Quotes Grid -->
+            <div v-else-if="tag" class="mt-10">
+              <div v-if="quotes && quotes.length" class="flex flex-col gap-6">
+                <div v-for="(quote, index) in quotes" :key="quote.id" class="relative group">
+                  <div class="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-primary-600/20 rounded-2xl transform rotate-2 group-hover:rotate-3 transition-transform duration-300"></div>
+                  <QuoteCard
+                    :quote="quote"
+                    :liked="likedQuotes[quote.id]"
+                    :showActions="true"
+                    :has-previous="index > 0"
+                    :has-next="index < quotes.length - 1"
+                    @toggle-like="toggleLikeQuote"
+                    @remove-quote="handleRemoveQuote"
+                    @previous-quote="navigateToPreviousQuote"
+                    @next-quote="navigateToNextQuote"
+                    @click="openQuoteModal(quote, index)"
+                    class="transform transition-all duration-300 hover:-translate-y-1 relative"
                   />
-                  <div class="w-11 h-6 bg-surface-200 dark:bg-surface-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-surface-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-surface-600 peer-checked:bg-primary-500"></div>
-                </label>
+                  
+                  <!-- Display chapter information if present -->
+                  <div v-if="quote.chapter" class="text-sm text-gray-600 mt-2 ml-4">
+                    <span class="font-medium">Chapter:</span> {{ quote.chapter }}
+                  </div>
+                  
+                  <!-- Display link to Google Books if present -->
+                  <div v-if="quote.book_url" class="text-sm text-blue-600 mt-1 ml-4">
+                    <a :href="quote.book_url" target="_blank" class="flex items-center">
+                      <i class="pi pi-external-link mr-1"></i>
+                      <span>View in Google Books</span>
+                    </a>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            <!-- Quotes List -->
-            <div v-if="filteredQuotes && filteredQuotes.length" class="flex flex-col gap-6 mt-8">
-              <div v-for="(quote, index) in filteredQuotes" :key="quote.id" class="relative group">
-                <div class="absolute inset-0 bg-gradient-to-r from-primary-500/20 to-primary-600/20 rounded-2xl transform rotate-2 group-hover:rotate-3 transition-transform duration-300"></div>
-                <QuoteCard
-                  :quote="quote"
-                  :liked="likedQuotes[quote.id]"
-                  :has-previous="index > 0"
-                  :has-next="index < filteredQuotes.length - 1"
-                  @toggle-like="toggleLikeQuote"
-                  @save-edit="saveEditedQuote"
-                  @cancel-edit="cancelEditingQuote"
-                  @click="openQuoteModal(quote)"
-                  class="transform transition-all duration-300 hover:-translate-y-1 relative"
-                />
+              <div v-else class="text-center text-surface-500 p-8">
+                <i class="pi pi-quote-right text-4xl mb-4"></i>
+                <p class="text-lg">No quotes available for this tag.</p>
               </div>
-            </div>
-            <div v-else class="text-center text-surface-500 p-8">
-              <i class="pi pi-quote-right text-4xl mb-4"></i>
-              <p class="text-lg">No quotes available with these filters.</p>
             </div>
           </div>
         </div>
@@ -322,12 +385,8 @@ onMounted(async () => {
       @previous-quote="navigateToPreviousQuote"
       @next-quote="navigateToNextQuote"
     />
-  </div>
-  <div v-else class="flex justify-center items-center h-screen">
-    <div class="text-center">
-      <i class="pi pi-spin pi-spinner text-primary text-4xl mb-4"></i>
-      <p class="text-lg text-surface-600">Loading tag details...</p>
-    </div>
+
+
   </div>
 </template>
 
@@ -407,5 +466,262 @@ onMounted(async () => {
 
 .dark .w-1\/4 > div:hover {
   box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.6);
+}
+
+/* Add these new styles */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add transition for the content panel */
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* View transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Dialog styles */
+:deep(.fancy-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:deep(.fancy-dialog .p-dialog-header) {
+  background: linear-gradient(135deg, 
+    rgba(var(--primary-500-rgb), 0.1),
+    rgba(var(--primary-500-rgb), 0.05)
+  );
+  border-bottom: 1px solid var(--surface-border);
+}
+
+:deep(.fancy-dialog .p-dialog-content) {
+  background: var(--surface-card);
+}
+
+/* Input styles */
+:deep(.fancy-input) {
+  border-radius: 12px;
+  border: 2px solid var(--surface-border);
+  transition: all 0.3s ease;
+  background: var(--surface-ground);
+}
+
+:deep(.fancy-input:hover) {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px rgba(var(--primary-500-rgb), 0.1);
+}
+
+:deep(.fancy-input:focus) {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 3px rgba(var(--primary-500-rgb), 0.2);
+}
+
+/* Label styles */
+.fancy-label {
+  color: var(--text-color-secondary);
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-input:focus) + .fancy-label {
+  color: var(--primary-500);
+}
+
+/* Button styles */
+:deep(.fancy-cancel-button) {
+  border-radius: 12px;
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-cancel-button:hover) {
+  background: rgba(var(--surface-500-rgb), 0.1);
+  transform: translateY(-2px);
+}
+
+:deep(.fancy-create-button) {
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-400));
+  border: none;
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-create-button:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--primary-500-rgb), 0.3);
+}
+
+/* Dark mode adjustments */
+:root.dark {
+  :deep(.fancy-dialog) {
+    background: var(--surface-ground);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  }
+
+  :deep(.fancy-dialog .p-dialog-header) {
+    background: linear-gradient(135deg, 
+      rgba(var(--primary-400-rgb), 0.15),
+      rgba(var(--primary-400-rgb), 0.05)
+    );
+  }
+
+  :deep(.fancy-input) {
+    background: var(--surface-ground);
+    border-color: var(--surface-border);
+  }
+
+  :deep(.fancy-input:hover) {
+    border-color: var(--primary-400);
+  }
+
+  :deep(.fancy-input:focus) {
+    border-color: var(--primary-400);
+    box-shadow: 0 0 0 3px rgba(var(--primary-400-rgb), 0.2);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Update styles for the save to list button */
+:deep(.save-to-list-button) {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  transition: all 0.3s ease;
+  border: none;
+  padding: 0.75rem;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+:deep(.save-to-list-button:hover) {
+  background: linear-gradient(135deg, rgba(var(--primary-500-rgb), 0.3), rgba(var(--primary-500-rgb), 0.1));
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(var(--primary-500-rgb), 0.2);
+}
+
+:deep(.save-to-list-button::after) {
+  background: linear-gradient(45deg, var(--primary-500), var(--primary-400));
+}
+
+:deep(.save-to-list-button .p-button-icon) {
+  margin-right: 0.5rem;
+}
+
+/* Update styles for the fancy list button */
+:deep(.fancy-list-button) {
+  background: transparent;
+  border: 1px solid var(--surface-border);
+  color: var(--text-color-secondary);
+  transition: all 0.3s ease;
+}
+
+:deep(.fancy-list-button:hover) {
+  background: var(--surface-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.fancy-button) {
+  position: relative;
+  overflow: hidden;
+}
+
+:deep(.fancy-button::after) {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, var(--primary-500), var(--primary-400));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+:deep(.fancy-button:hover::after) {
+  opacity: 0.1;
 }
 </style>

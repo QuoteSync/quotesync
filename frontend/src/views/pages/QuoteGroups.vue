@@ -179,24 +179,32 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="surface-ground p-4">
-    <div class="surface-card p-4 border-round shadow-2">
-      <div class="flex justify-between items-center mb-4">
-        <h1 class="text-2xl font-bold m-0">Quote Groups</h1>
-        <Button
-          label="Create Group"
-          icon="pi pi-plus"
-          severity="success"
-          class="p-button-rounded"
-          @click="showCreateDialog = true"
-        />
+  <div class="flex flex-col min-h-screen bg-surface-50 dark:bg-surface-900 rounded-3xl">
+    <!-- Header Section -->
+    <div class="sticky top-0 z-10 bg-surface-0 dark:bg-surface-800 shadow-lg backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90 rounded-t-3xl">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          <h1 class="text-4xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent rounded text-center sm:text-left">
+            Quote Groups
+          </h1>
+          <Button
+            label="Create Group"
+            icon="pi pi-plus"
+            severity="success"
+            class="p-button-rounded"
+            @click="showCreateDialog = true"
+          />
+        </div>
       </div>
+    </div>
 
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
       <ProgressSpinner v-if="loading" class="w-4rem h-4rem" strokeWidth="4" fill="var(--surface-ground)" animationDuration=".5s" />
       
-      <div v-else-if="groups.length > 0" class="grid">
+      <div v-else-if="groups.length > 0" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <div v-for="group in groups" :key="group.id" 
-             class="col-12 md:col-6 lg:col-4 p-2">
+             class="group transform transition-all duration-300 hover:scale-105 hover:shadow-2xl">
           <div class="group-card" 
                :class="{ 'hovered': hoverGroup === group.id }"
                :style="{
@@ -254,6 +262,7 @@ onMounted(() => {
       header="Create New Group"
       :style="{ width: '500px' }"
       :modal="true"
+      class="fancy-dialog"
     >
       <div class="p-4">
         <div class="mb-4">
@@ -298,6 +307,7 @@ onMounted(() => {
       header="Edit Group"
       :style="{ width: '500px' }"
       :modal="true"
+      class="fancy-dialog"
     >
       <div class="p-4">
         <div class="mb-4">
@@ -350,7 +360,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .group-card::before {
@@ -450,25 +460,84 @@ onMounted(() => {
   background: var(--surface-card);
   border-radius: 16px;
   border: 1px dashed var(--surface-border);
+  transition: all 0.3s ease;
 }
 
-:deep(.p-dialog-header) {
-  @apply bg-surface-0 border-b border-surface-200 dark:border-surface-700;
+.empty-state:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
-:deep(.p-dialog-content) {
-  @apply bg-surface-0;
+/* Dialog enhancements */
+.fancy-dialog {
+  :deep(.p-dialog-header) {
+    @apply bg-surface-0 border-b border-surface-200 dark:border-surface-700;
+  }
+  
+  :deep(.p-dialog-content) {
+    @apply bg-surface-0;
+  }
+  
+  :deep(.p-dialog-footer) {
+    @apply bg-surface-0 border-t border-surface-200 dark:border-surface-700;
+  }
 }
 
-:deep(.p-dialog-footer) {
-  @apply bg-surface-0 border-t border-surface-200 dark:border-surface-700;
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-:deep(.p-button-text:hover) {
-  @apply bg-surface-100 dark:bg-surface-700;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-:deep(.p-button-text.p-button-danger:hover) {
-  @apply bg-red-50 dark:bg-red-900/20;
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* View transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Fancy font */
+.fancy-font {
+  font-family: inherit;
+  letter-spacing: -0.02em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
 }
 </style> 

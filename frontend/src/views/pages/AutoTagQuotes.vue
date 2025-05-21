@@ -1,358 +1,383 @@
 <template>
-  <div class="card">
-    <h1 class="text-3xl font-bold mb-4">Auto Tag Quotes</h1>
-    
-    <div class="mb-4">
-      <p class="text-gray-700 dark:text-gray-300 mb-2">
-        Use AI to automatically generate tags for your quotes. Select quotes from the list below, 
-        then click "Generate Tags" to have our AI analyze and tag them.
-      </p>
-    </div>
-    
-    <div class="mb-4 flex flex-wrap gap-2">
-      <Button 
-        label="Generate Tags" 
-        icon="pi pi-tag" 
-        :disabled="selectedQuotes.length === 0 || processing" 
-        :loading="processing"
-        @click="generateTagsForSelected" 
-        class="p-button-primary flex-grow sm:flex-grow-0" 
-      />
-      <Button 
-        label="Apply All Tags" 
-        icon="pi pi-check" 
-        :disabled="!hasProcessedQuotes || applyingTags" 
-        :loading="applyingTags"
-        @click="applyAllTags" 
-        class="p-button-success flex-grow sm:flex-grow-0" 
-      />
-      <Button 
-        label="Clear Selection" 
-        icon="pi pi-times" 
-        :disabled="selectedQuotes.length === 0" 
-        @click="clearSelection" 
-        class="p-button-secondary flex-grow sm:flex-grow-0" 
-      />
-      <Button 
-        label="Clear Filters" 
-        icon="pi pi-filter-slash" 
-        @click="clearAllFilters" 
-        class="p-button-outlined flex-grow sm:flex-grow-0" 
-      />
-    </div>
-    
-    <!-- AI Settings Panel -->
-    <Panel header="AI Settings" :toggleable="true" class="mb-4">
-      <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <div class="flex items-center gap-4">
-          <div class="flex flex-col">
-            <label class="text-sm font-bold mb-2">Select AI Service:</label>
-            <div class="flex gap-2">
-              <Button 
-                :class="['p-button-sm', aiService === 'claude' ? 'p-button-primary' : 'p-button-outlined']"
-                label="Claude" 
-                icon="pi pi-star"
-                @click="aiService = 'claude'"
-              />
-              <Button 
-                :class="['p-button-sm', aiService === 'ollama' ? 'p-button-primary' : 'p-button-outlined']"
-                label="Ollama" 
-                icon="pi pi-desktop"
-                @click="aiService = 'ollama'"
-              />
-              <Button 
-                :class="['p-button-sm', aiService === 'quotesync' ? 'p-button-primary' : 'p-button-outlined']"
-                label="QuoteSync" 
-                icon="pi pi-cloud"
-                @click="aiService = 'quotesync'"
-              />
-            </div>
+  <div class="flex flex-col min-h-screen bg-surface-50 dark:bg-surface-900 rounded-3xl">
+    <!-- Header Section -->
+    <div class="sticky top-0 z-10 bg-surface-0 dark:bg-surface-800 shadow-lg backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90 rounded-t-3xl">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          <h1 class="text-4xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent rounded text-center sm:text-left">
+            Auto Tag Quotes
+          </h1>
+          <div class="flex gap-3 justify-center sm:justify-end mt-4 sm:mt-0">
+            <Button 
+              label="Generate Tags" 
+              icon="pi pi-tag" 
+              :disabled="selectedQuotes.length === 0 || processing" 
+              :loading="processing"
+              @click="generateTagsForSelected" 
+              class="p-button-primary p-button-rounded" 
+            />
+            <Button 
+              label="Apply All Tags" 
+              icon="pi pi-check" 
+              :disabled="!hasProcessedQuotes || applyingTags" 
+              :loading="applyingTags"
+              @click="applyAllTags" 
+              class="p-button-success p-button-rounded" 
+            />
+            <Button 
+              label="Clear Selection" 
+              icon="pi pi-times" 
+              :disabled="selectedQuotes.length === 0" 
+              @click="clearSelection" 
+              class="p-button-secondary p-button-rounded" 
+            />
+            <Button 
+              label="Clear Filters" 
+              icon="pi pi-filter-slash" 
+              @click="clearAllFilters" 
+              class="p-button-outlined p-button-rounded" 
+            />
           </div>
         </div>
-        
-        <div class="flex items-center" v-if="aiService === 'ollama'">
-          <Button 
-            icon="pi pi-refresh" 
-            @click="checkOllamaStatus" 
-            class="p-button-text p-button-rounded"
-            v-tooltip.top="'Check Ollama status'"
-            :disabled="checkingOllamaStatus"
-          />
-          <span class="ml-2">
-            <i 
-              v-if="ollamaAvailable" 
-              class="pi pi-check-circle text-green-500"
-              v-tooltip.top="'Ollama is available'"
-            ></i>
-            <i 
-              v-else-if="checkingOllamaStatus" 
-              class="pi pi-spin pi-spinner text-blue-500"
-            ></i>
-            <i 
-              v-else 
-              class="pi pi-exclamation-circle text-yellow-500"
-              v-tooltip.top="'Ollama not available or not checked'"
-              @click="checkOllamaStatus"
-              style="cursor: pointer;"
-            ></i>
-          </span>
-        </div>
       </div>
-    </Panel>
-    
-    <!-- Quote selection table -->
-    <DataTable 
-      v-model:selection="selectedQuotes" 
-      :value="quotes" 
-      dataKey="id" 
-      :paginator="true" 
-      :rows="rows"
-      :totalRecords="totalRecords"
-      :loading="loading"
-      :filters="filters"
-      :lazy="true"
-      filterDisplay="menu"
-      :rowsPerPageOptions="[5, 10, 20, 50]"
-      class="p-datatable-sm mb-4"
-      :scrollable="true"
-      :scrollHeight="getScrollHeight()"
-      @page="onPage"
-      @sort="onSort"
-      @filter="onFilter"
-      :rowClass="rowClass"
-      @row-click="onRowClick"
-      @row-select-checkbox="onRowSelectCheckbox"
-      responsiveLayout="stack"
-      breakpoint="960px"
-    >
-      <template #header>
-        <div class="flex flex-col sm:flex-row justify-between gap-2">
-          <div class="flex items-center">
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+      <div class="mb-4">
+        <p class="text-gray-700 dark:text-gray-300 mb-2">
+          Use AI to automatically generate tags for your quotes. Select quotes from the list below, 
+          then click "Generate Tags" to have our AI analyze and tag them.
+        </p>
+      </div>
+      
+      <!-- AI Settings Panel -->
+      <Panel header="AI Settings" :toggleable="true" class="mb-4 fancy-panel">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div class="flex items-center gap-4">
+            <div class="flex flex-col">
+              <label class="text-sm font-bold mb-2">Select AI Service:</label>
+              <div class="flex gap-2">
+                <Button 
+                  :class="['p-button-sm p-button-rounded', aiService === 'claude' ? 'p-button-primary' : 'p-button-outlined']"
+                  label="Claude" 
+                  icon="pi pi-star"
+                  @click="aiService = 'claude'"
+                />
+                <Button 
+                  :class="['p-button-sm p-button-rounded', aiService === 'ollama' ? 'p-button-primary' : 'p-button-outlined']"
+                  label="Ollama" 
+                  icon="pi pi-desktop"
+                  @click="aiService = 'ollama'"
+                />
+                <Button 
+                  :class="['p-button-sm p-button-rounded', aiService === 'quotesync' ? 'p-button-primary' : 'p-button-outlined']"
+                  label="QuoteSync" 
+                  icon="pi pi-cloud"
+                  @click="aiService = 'quotesync'"
+                />
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex items-center" v-if="aiService === 'ollama'">
             <Button 
               icon="pi pi-refresh" 
-              @click="loadQuotes" 
-              class="p-button-text p-button-rounded" 
+              @click="checkOllamaStatus" 
+              class="p-button-text p-button-rounded"
+              v-tooltip.top="'Check Ollama status'"
+              :disabled="checkingOllamaStatus"
             />
-            <span class="text-xs text-gray-500 ml-2" v-tooltip.right="'Hold Shift and click checkboxes to select multiple quotes in a range'">
-              <i class="pi pi-info-circle mr-1"></i>Tip: Use Shift+Click on checkboxes for range selection
+            <span class="ml-2">
+              <i 
+                v-if="ollamaAvailable" 
+                class="pi pi-check-circle text-green-500"
+                v-tooltip.top="'Ollama is available'"
+              ></i>
+              <i 
+                v-else-if="checkingOllamaStatus" 
+                class="pi pi-spin pi-spinner text-blue-500"
+              ></i>
+              <i 
+                v-else 
+                class="pi pi-exclamation-circle text-yellow-500"
+                v-tooltip.top="'Ollama not available or not checked'"
+                @click="checkOllamaStatus"
+                style="cursor: pointer;"
+              ></i>
             </span>
           </div>
-          <span class="p-input-icon-left w-full sm:w-auto">
-            <i class="pi pi-search" />
-            <InputText v-model="filters['global'].value" placeholder="Search quotes..." class="w-full" />
-          </span>
         </div>
-      </template>
+      </Panel>
       
-      <Column selectionMode="multiple" headerStyle="width: 3rem" :showFilterMenu="false"></Column>
-      
-      <Column field="body" header="Quote" style="min-width: 50%" :sortable="true" filterField="body">
-        <template #body="{ data }">
-          <div>
-            <p :class="{'line-through': processedQuoteIds.has(data.id)}">{{ truncateText(data.body, 100) }}</p>
-            <div class="text-xs text-gray-500 mt-1">
-              {{ data.book ? data.book.title : 'Unknown book' }} - 
-              {{ data.book && data.book.author ? data.book.author.name : 'Unknown author' }}
-            </div>
-          </div>
-        </template>
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" type="text" class="p-column-filter w-full" placeholder="Search by content" />
-        </template>
-      </Column>
-      
-      <Column field="book.title" header="Book" :sortable="true" class="break-words" style="min-width: 12rem" :showFilterMenu="false">
-        <template #body="{ data }">
-          <div class="text-sm break-words">{{ data.book ? data.book.title : 'Unknown' }}</div>
-        </template>
-        <template #filter="{ filterModel }">
-          <div>
-            <AutoComplete
-              v-model="selectedBookFilter"
-              :suggestions="filteredBooks"
-              @complete="suggestBooks"
-              optionLabel="label"
-              placeholder="Search or select a book"
-              class="w-full"
-              @item-select="applyBookFilter"
-              @clear="clearBookFilter"
-              :dropdown="true"
-            />
-          </div>
-        </template>
-      </Column>
-      
-      <Column field="book.author.name" header="Author" :sortable="true" class="break-words" style="min-width: 12rem" :showFilterMenu="false">
-        <template #body="{ data }">
-          <div class="text-sm break-words">{{ data.book && data.book.author ? data.book.author.name : 'Unknown' }}</div>
-        </template>
-        <template #filter="{ filterModel }">
-          <div>
-            <AutoComplete 
-              v-model="selectedAuthorFilter"
-              :suggestions="filteredAuthors"
-              @complete="suggestAuthors"
-              optionLabel="label"
-              placeholder="Search or select an author"
-              class="w-full"
-              @item-select="applyAuthorFilter"
-              @clear="clearAuthorFilter"
-              :dropdown="true"
-            />
-          </div>
-        </template>
-      </Column>
-      
-      <Column field="tags" header="Current Tags" :sortable="true" :filterFunction="tagFilter" @sort="tagSorter" class="break-words" :showFilterMenu="false">
-        <template #body="{ data }">
-          <div class="flex flex-wrap gap-1">
-            <Chip 
-              v-for="tag in data.tags" 
-              :key="tag.id" 
-              :label="tag.title" 
-              class="text-xs"
-              :style="getTagStyle(tag)" 
-            />
-            <span v-if="data.tags.length === 0" class="text-gray-500 text-xs italic">No tags</span>
-          </div>
-        </template>
-        <template #filter="{ filterModel }">
-          <div>
-            <AutoComplete 
-              v-model="selectedTagFilter"
-              :suggestions="filteredTags"
-              @complete="suggestTags"
-              optionLabel="label"
-              placeholder="Search or select a tag"
-              class="w-full"
-              @item-select="applyTagFilter"
-              @clear="clearTagFilter"
-              :dropdown="true"
-            />
-          </div>
-        </template>
-      </Column>
-      
-      <Column field="generatedTags" header="Generated Tags" class="break-words" :showFilterMenu="false">
-        <template #body="{ data }">
-          <div v-if="processedQuoteIds.has(data.id)" class="flex flex-wrap gap-1">
-            <div v-for="(tag, i) in generatedTags[data.id]" :key="i" class="flex items-center mb-1">
-              <Checkbox 
-                :inputId="`tag-${data.id}-${i}`" 
-                v-model="tagSelections[data.id][i]" 
-                :binary="true" 
-                class="mr-1"
-              />
-              <label :for="`tag-${data.id}-${i}`" class="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900">
-                {{ tag }}
-              </label>
-            </div>
-            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-2 mt-2 w-full">
-              <AutoComplete 
-                v-model="customTags[data.id]" 
-                placeholder="Add custom tag..." 
-                class="text-xs w-full sm:w-2/3"
-                :suggestions="filteredCustomTagSuggestions"
-                @complete="suggestCustomTags"
-                @keydown.enter="addCustomTag(data.id)"
-                dropdown
-              />
-              <Button 
-                icon="pi pi-plus" 
-                class="p-button-sm p-button-outlined mt-1 sm:mt-0"
-                @click="addCustomTag(data.id)" 
-                v-tooltip.top="'Add custom tag'"
-              />
-            </div>
-          </div>
-          <ProgressSpinner v-else-if="processingQuotes.has(data.id)" style="width: 20px; height: 20px" />
-          <span v-else class="text-gray-500 text-xs italic">Not generated yet</span>
-        </template>
-      </Column>
-      
-      <Column header="Actions" :showFilterMenu="false">
-        <template #body="{ data }">
-          <div class="flex gap-1 flex-wrap justify-start">
-            <Button 
-              icon="pi pi-tag" 
-              class="p-button-rounded p-button-sm p-button-outlined"
-              :disabled="processingQuotes.has(data.id)"
-              @click="generateTagsForQuote(data)" 
-              v-tooltip.top="'Generate tags'"
-            />
-            <Button 
-              icon="pi pi-check" 
-              class="p-button-rounded p-button-sm p-button-success p-button-outlined"
-              :disabled="!processedQuoteIds.has(data.id) || applyingTagsForQuote[data.id]"
-              :loading="applyingTagsForQuote[data.id]"
-              @click="applyTagsForQuote(data)" 
-              v-tooltip.top="'Apply tags'"
-            />
-            <Button 
-              icon="pi pi-plus" 
-              class="p-button-rounded p-button-sm p-button-info p-button-outlined"
-              @click="showCustomTagDialog(data)"
-              v-tooltip.top="'Add custom tag'"
-            />
-          </div>
-        </template>
-      </Column>
-    </DataTable>
-
-    <!-- Custom Tag Dialog -->
-    <Dialog 
-      v-model:visible="customTagDialogVisible" 
-      :style="{ width: '100%', maxWidth: '450px' }" 
-      header="Add Custom Tag" 
-      :modal="true"
-      :closable="true"
-      class="p-fluid"
-    >
-      <div class="flex flex-col p-3">
-        <div class="mb-3">
-          <label for="customTagInput" class="block mb-2 font-medium">Enter tag:</label>
-          <AutoComplete 
-            id="customTagInput" 
-            v-model="newCustomTag" 
-            class="w-full" 
-            placeholder="New tag..."
-            :suggestions="filteredCustomTagSuggestions"
-            @complete="suggestCustomTags"
-            @keydown.enter="addCustomTagFromDialog"
-            dropdown
-          />
-        </div>
-        <div v-if="availableTags.length > 0" class="mb-3">
-          <label class="block mb-2 font-medium">Or select existing tag:</label>
-          <div class="flex flex-wrap gap-1 max-h-40 overflow-y-auto p-2 border rounded">
-            <Chip
-              v-for="tag in availableTags" 
-              :key="tag.value" 
-              :label="tag.label" 
-              class="cursor-pointer hover:bg-primary-100 transition-colors my-1" 
-              @click="selectExistingTag(tag.label)"
-            />
-          </div>
-        </div>
+      <!-- Quote selection table -->
+      <div class="bg-white dark:bg-surface-800 rounded-xl shadow-lg overflow-hidden">
+        <!-- Table Content -->
+        <DataTable 
+          v-model:selection="selectedQuotes" 
+          :value="quotes" 
+          dataKey="id" 
+          :paginator="true" 
+          :rows="rows"
+          :totalRecords="totalRecords"
+          :loading="loading"
+          :filters="filters"
+          :lazy="true"
+          filterDisplay="menu"
+          :rowsPerPageOptions="[5, 10, 20, 50]"
+          class="p-datatable-sm"
+          :scrollable="true"
+          :scrollHeight="getScrollHeight()"
+          @page="onPage"
+          @sort="onSort"
+          @filter="onFilter"
+          :rowClass="rowClass"
+          @row-click="onRowClick"
+          @row-select-checkbox="onRowSelectCheckbox"
+          responsiveLayout="stack"
+          breakpoint="960px"
+          stripedRows
+        >
+          <!-- Selection Column -->
+          <Column selectionMode="multiple" headerStyle="width: 3rem" :showFilterMenu="true">
+            <template #header>
+              <div class="flex items-center justify-center">
+                <i class="pi pi-check-square text-primary-500"></i>
+              </div>
+            </template>
+          </Column>
+          
+          <!-- Quote Column -->
+          <Column field="body" style="min-width: 40%" :sortable="true" filterField="body" :showFilterMenu="true">
+            <template #header>
+              <div class="flex items-center gap-2">
+                <i class="pi pi-quote-right text-primary-500"></i>
+                <span>Quote</span>
+              </div>
+            </template>
+            <template #body="{ data }">
+              <div class="p-2">
+                <p 
+                  :class="{'line-through': processedQuoteIds.has(data.id)}" 
+                  class="text-sm leading-relaxed whitespace-pre-wrap"
+                  v-tooltip.top="data.body"
+                >
+                  {{ data.body }}
+                </p>
+              </div>
+            </template>
+            <template #filter="{ filterModel }">
+              <InputText v-model="filterModel.value" type="text" class="p-column-filter w-full" placeholder="Search by content" />
+            </template>
+          </Column>
+          
+          <!-- Book Column -->
+          <Column field="book.title" :sortable="true" class="break-words" style="min-width: 15%" :showFilterMenu="true">
+            <template #header>
+              <div class="flex items-center gap-2">
+                <i class="pi pi-book text-primary-500"></i>
+                <span>Book</span>
+              </div>
+            </template>
+            <template #body="{ data }">
+              <div class="p-2">
+                <div class="text-sm font-medium">{{ data.book ? data.book.title : 'Unknown' }}</div>
+                <div class="text-xs text-gray-500">{{ data.book && data.book.author ? data.book.author.name : 'Unknown' }}</div>
+              </div>
+            </template>
+            <template #filter="{ filterModel }">
+              <div>
+                <Dropdown
+                  v-model="filterModel.value"
+                  :options="availableBooks"
+                  optionLabel="label"
+                  placeholder="Select a book"
+                  class="w-full"
+                  :filter="true"
+                  :showClear="true"
+                />
+              </div>
+            </template>
+          </Column>
+          
+          <!-- Tags Column -->
+          <Column field="tags" :sortable="true" :filterFunction="tagFilter" @sort="tagSorter" class="break-words" style="min-width: 20%" :showFilterMenu="true">
+            <template #header>
+              <div class="flex items-center gap-2">
+                <i class="pi pi-tags text-primary-500"></i>
+                <span>Tags</span>
+              </div>
+            </template>
+            <template #body="{ data }">
+              <div class="p-2">
+                <div class="flex flex-wrap gap-1">
+                  <Chip 
+                    v-for="tag in data.tags" 
+                    :key="tag.id" 
+                    :label="tag.title" 
+                    class="text-xs"
+                    :style="getTagStyle(tag)" 
+                  />
+                  <span v-if="data.tags.length === 0" class="text-gray-500 text-xs italic">No tags</span>
+                </div>
+              </div>
+            </template>
+            <template #filter="{ filterModel }">
+              <div>
+                <Dropdown
+                  v-model="filterModel.value"
+                  :options="availableTags"
+                  optionLabel="label"
+                  placeholder="Select a tag"
+                  class="w-full"
+                  :filter="true"
+                  :showClear="true"
+                />
+              </div>
+            </template>
+          </Column>
+          
+          <!-- Generated Tags Column -->
+          <Column field="generatedTags" class="break-words" style="min-width: 25%" :showFilterMenu="true">
+            <template #header>
+              <div class="flex items-center gap-2">
+                <i class="pi pi-magic text-primary-500"></i>
+                <span>Generated Tags</span>
+              </div>
+            </template>
+            <template #body="{ data }">
+              <div class="p-2">
+                <div v-if="processedQuoteIds.has(data.id)" class="flex flex-wrap gap-1">
+                  <div v-for="(tag, i) in generatedTags[data.id]" :key="i" class="flex items-center">
+                    <Checkbox 
+                      :inputId="`tag-${data.id}-${i}`" 
+                      v-model="tagSelections[data.id][i]" 
+                      :binary="true" 
+                      class="mr-1"
+                    />
+                    <label :for="`tag-${data.id}-${i}`" class="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900">
+                      {{ tag }}
+                    </label>
+                  </div>
+                  <div class="flex items-center gap-2 mt-2 w-full">
+                    <AutoComplete 
+                      v-model="customTags[data.id]" 
+                      placeholder="Add custom tag..." 
+                      class="text-xs w-full"
+                      :suggestions="filteredCustomTagSuggestions"
+                      @complete="suggestCustomTags"
+                      @keydown.enter="addCustomTag(data.id)"
+                      dropdown
+                    />
+                    <Button 
+                      icon="pi pi-plus" 
+                      class="p-button-sm p-button-outlined"
+                      @click="addCustomTag(data.id)" 
+                      v-tooltip.top="'Add custom tag'"
+                    />
+                  </div>
+                </div>
+                <ProgressSpinner v-else-if="processingQuotes.has(data.id)" style="width: 20px; height: 20px" />
+                <span v-else class="text-gray-500 text-xs italic">Not generated yet</span>
+              </div>
+            </template>
+            <template #filter="{ filterModel }">
+              <InputText v-model="filterModel.value" type="text" class="p-column-filter w-full" placeholder="Search generated tags" />
+            </template>
+          </Column>
+          
+          <!-- Actions Column -->
+          <Column :showFilterMenu="false" style="width: 120px">
+            <template #header>
+              <div class="flex items-center gap-2">
+                <i class="pi pi-cog text-primary-500"></i>
+                <span>Actions</span>
+              </div>
+            </template>
+            <template #body="{ data }">
+              <div class="flex gap-1 justify-center">
+                <Button 
+                  icon="pi pi-tag" 
+                  class="p-button-rounded p-button-sm p-button-outlined"
+                  :disabled="processingQuotes.has(data.id)"
+                  @click="generateTagsForQuote(data)" 
+                  v-tooltip.top="'Generate tags'"
+                />
+                <Button 
+                  icon="pi pi-check" 
+                  class="p-button-rounded p-button-sm p-button-success p-button-outlined"
+                  :disabled="!processedQuoteIds.has(data.id) || applyingTagsForQuote[data.id]"
+                  :loading="applyingTagsForQuote[data.id]"
+                  @click="applyTagsForQuote(data)" 
+                  v-tooltip.top="'Apply tags'"
+                />
+                <Button 
+                  icon="pi pi-plus" 
+                  class="p-button-rounded p-button-sm p-button-info p-button-outlined"
+                  @click="showCustomTagDialog(data)"
+                  v-tooltip.top="'Add custom tag'"
+                />
+              </div>
+            </template>
+          </Column>
+        </DataTable>
       </div>
-      <template #footer>
-        <div class="flex justify-end gap-2">
-          <Button 
-            label="Cancel" 
-            icon="pi pi-times" 
-            @click="customTagDialogVisible = false" 
-            class="p-button-text"
-          />
-          <Button 
-            label="Add Tag" 
-            icon="pi pi-check" 
-            @click="addCustomTagFromDialog" 
-            class="p-button-primary" 
-            :disabled="!newCustomTag || newCustomTag.trim() === ''"
-          />
+
+      <!-- Custom Tag Dialog -->
+      <Dialog 
+        v-model:visible="customTagDialogVisible" 
+        :style="{ width: '100%', maxWidth: '450px' }" 
+        header="Add Custom Tag" 
+        :modal="true"
+        :closable="true"
+        class="p-fluid"
+      >
+        <div class="flex flex-col p-3">
+          <div class="mb-3">
+            <label for="customTagInput" class="block mb-2 font-medium">Enter tag:</label>
+            <AutoComplete 
+              id="customTagInput" 
+              v-model="newCustomTag" 
+              class="w-full" 
+              placeholder="New tag..."
+              :suggestions="filteredCustomTagSuggestions"
+              @complete="suggestCustomTags"
+              @keydown.enter="addCustomTagFromDialog"
+              dropdown
+            />
+          </div>
+          <div v-if="availableTags.length > 0" class="mb-3">
+            <label class="block mb-2 font-medium">Or select existing tag:</label>
+            <div class="flex flex-wrap gap-1 max-h-40 overflow-y-auto p-2 border rounded">
+              <Chip
+                v-for="tag in availableTags" 
+                :key="tag.value" 
+                :label="tag.label" 
+                class="cursor-pointer hover:bg-primary-100 transition-colors my-1" 
+                @click="selectExistingTag(tag.label)"
+              />
+            </div>
+          </div>
         </div>
-      </template>
-    </Dialog>
+        <template #footer>
+          <div class="flex justify-end gap-2">
+            <Button 
+              label="Cancel" 
+              icon="pi pi-times" 
+              @click="customTagDialogVisible = false" 
+              class="p-button-text"
+            />
+            <Button 
+              label="Add Tag" 
+              icon="pi pi-check" 
+              @click="addCustomTagFromDialog" 
+              class="p-button-primary" 
+              :disabled="!newCustomTag || newCustomTag.trim() === ''"
+            />
+          </div>
+        </template>
+      </Dialog>
+    </div>
   </div>
 </template>
 
@@ -376,6 +401,7 @@ import ToggleSwitch from 'primevue/toggleswitch';
 import Panel from 'primevue/panel';
 import AutoComplete from 'primevue/autocomplete';
 import Dialog from 'primevue/dialog';
+import Dropdown from 'primevue/dropdown';
 
 const toast = useToast();
 
@@ -708,14 +734,22 @@ const clearSelection = () => {
 
 // Load filter options
 const loadFilterOptions = () => {
-  // Extract unique books
-  const books = new Set();
+  // Extract unique books with authors
+  const books = new Map();
   const authors = new Set();
   const tags = new Set();
   
   quotes.value.forEach(quote => {
     if (quote.book && quote.book.title) {
-      books.add(quote.book.title);
+      const authorName = quote.book.author ? quote.book.author.name : 'Unknown';
+      const key = `${quote.book.title}|${authorName}`;
+      if (!books.has(key)) {
+        books.set(key, {
+          label: `${quote.book.title} - ${authorName}`,
+          value: quote.book.title,
+          author: authorName
+        });
+      }
     }
     
     if (quote.book && quote.book.author && quote.book.author.name) {
@@ -729,7 +763,7 @@ const loadFilterOptions = () => {
     }
   });
   
-  availableBooks.value = Array.from(books).sort().map(title => ({ label: title, value: title }));
+  availableBooks.value = Array.from(books.values()).sort((a, b) => a.label.localeCompare(b.label));
   availableAuthors.value = Array.from(authors).sort().map(name => ({ label: name, value: name }));
   availableTags.value = Array.from(tags).sort().map(title => ({ label: title, value: title }));
 };
@@ -1079,95 +1113,187 @@ const onRowSelectCheckbox = (event) => {
   // Update last checked index
   lastCheckedIndex.value = index;
 };
+
+// Add to script section
+const showAdvancedFilters = ref(false);
+const statusFilter = ref(null);
+const sortField = ref(null);
+
+const statusOptions = [
+  { label: 'All', value: 'all' },
+  { label: 'Not Processed', value: 'not_processed' },
+  { label: 'Processed', value: 'processed' },
+  { label: 'Processing', value: 'processing' }
+];
+
+const sortOptions = [
+  { label: 'Quote (A-Z)', value: 'body' },
+  { label: 'Book (A-Z)', value: 'book.title' },
+  { label: 'Author (A-Z)', value: 'book.author.name' },
+  { label: 'Most Tags', value: 'tags' },
+  { label: 'Recently Added', value: 'created_at' }
+];
+
+const toggleAdvancedFilters = () => {
+  showAdvancedFilters.value = !showAdvancedFilters.value;
+};
+
+const clearGlobalFilter = () => {
+  filters.value['global'].value = null;
+};
+
+const applyStatusFilter = () => {
+  if (!statusFilter.value || statusFilter.value === 'all') {
+    // Clear status filter
+    filters.value.status = null;
+  } else {
+    // Apply status filter
+    filters.value.status = statusFilter.value;
+  }
+  loadQuotes();
+};
+
+const applySort = () => {
+  if (sortField.value) {
+    currentSortField.value = sortField.value.value;
+    currentSortOrder.value = 'asc';
+    loadQuotes();
+  }
+};
 </script>
 
 <style scoped>
-:deep(.p-datatable-wrapper) {
-  border-radius: 0.5rem;
+/* Fancy panel styling */
+.fancy-panel {
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  border: 1px solid var(--surface-border);
 }
 
-:deep(.p-checkbox .p-checkbox-box.p-highlight) {
-  background-color: var(--primary-color);
-  border-color: var(--primary-color);
+.fancy-panel:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
 }
 
-:deep(.p-button.p-button-sm) {
-  padding: 0.25rem;
-  font-size: 0.75rem;
+/* Fancy table styling */
+.fancy-table {
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
 }
 
-:deep(.p-button-sm .p-button-icon) {
-  font-size: 0.875rem;
+.fancy-table:hover {
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-:deep(.p-panel) {
-  border-radius: 0.5rem;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-:deep(.p-panel .p-panel-header) {
-  background-color: var(--surface-card);
-  border-radius: 0.5rem 0.5rem 0 0;
-  border-bottom: 1px solid var(--surface-border);
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-:deep(.p-dropdown) {
-  width: 100%;
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
 }
 
-/* Responsive styles */
-:deep(.p-datatable.p-datatable-sm .p-datatable-thead > tr > th) {
-  padding: 0.5rem 0.5rem;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
 }
 
-:deep(.p-datatable.p-datatable-sm .p-datatable-tbody > tr > td) {
-  padding: 0.5rem 0.5rem;
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
 }
 
-:deep(.p-datatable.p-datatable-responsive-stack tbody tr) {
-  margin-bottom: 1rem;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  border-radius: 0.5rem;
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
 }
 
-:deep(.p-datatable.p-datatable-responsive-stack tbody td .p-column-title) {
-  font-weight: 600;
-  margin-right: 0.5rem;
+/* Fancy font */
+.fancy-font {
+  font-family: inherit;
 }
 
-:deep(.p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td) {
-  text-align: left;
-  display: block;
-  width: 100%;
-  padding: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-bottom: 1px solid var(--surface-border);
+/* View transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
 }
 
-:deep(.p-datatable.p-datatable-responsive-stack .p-datatable-tbody > tr > td:last-child) {
-  border-bottom: none;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
 }
 
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Responsive adjustments */
 @media (max-width: 640px) {
-  :deep(.p-dialog) {
-    width: 95% !important;
-    margin: 0 auto;
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
   
-  :deep(.p-button) {
+  .p-button {
     padding: 0.5rem 0.75rem;
   }
   
-  :deep(.p-button .p-button-label) {
+  .p-button .p-button-label {
     font-size: 0.875rem;
   }
 }
 
-@media (min-width: 768px) {
-  :deep(.p-dropdown) {
-    min-width: 16rem;
+/* Enhanced button styles */
+.p-button {
+  transition: all 0.3s ease;
+}
+
+.p-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Table row hover effect */
+:deep(.p-datatable .p-datatable-tbody > tr) {
+  transition: all 0.3s ease;
+}
+
+:deep(.p-datatable .p-datatable-tbody > tr:hover) {
+  background-color: var(--surface-hover);
+  transform: translateX(4px);
+}
+
+/* Tag chip styling */
+:deep(.p-chip) {
+  transition: all 0.3s ease;
+}
+
+:deep(.p-chip:hover) {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading spinner animation */
+:deep(.p-progress-spinner) {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 </style> 

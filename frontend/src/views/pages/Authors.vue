@@ -8,6 +8,7 @@ import Dialog from "primevue/dialog";
 import InputText from "primevue/inputtext";
 import TabView from "primevue/tabview";
 import TabPanel from "primevue/tabpanel";
+import SelectButton from "primevue/selectbutton";
 
 // Initialize the router and toast
 const router = useRouter();
@@ -49,10 +50,6 @@ const previewError = ref(false);
 // Función para actualizar el estado según el tamaño de la ventana
 const handleResize = () => {
   isSmallScreen.value = window.innerWidth < 768;
-  // Si es pantalla pequeña, forzamos el gridview
-  if (isSmallScreen.value) {
-    layout.value = "grid";
-  }
 };
 
 onMounted(async () => {
@@ -568,415 +565,497 @@ const processNextAuthor = () => {
 </script>
 
 <template>
-  <div class="flex flex-col">
-    <div class="card">
-      <div class="flex justify-between items-center mb-4">
-        <div class="font-semibold text-xl">Authors</div>
-        <div class="flex gap-2">
-          <Button 
-            label="Update Author Covers" 
-            icon="pi pi-refresh" 
-            severity="info" 
-            @click="fetchAuthorCovers"
-            :loading="updatingCovers"
-          />
-        </div>
-      </div>
-      <DataView :value="authors" :layout="layout">
-        <template #header>
-          <div class="flex justify-end">
-            <!-- Se muestra el SelectButton solo en pantallas grandes -->
+  <div class="flex flex-col min-h-screen bg-surface-50 dark:bg-surface-900 rounded-3xl">
+    <!-- Header Section -->
+    <div class="sticky top-0 z-10 bg-surface-0 dark:bg-surface-800 shadow-lg backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90 rounded-t-3xl">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          <h1 class="text-4xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent rounded text-center sm:text-left">
+            Author Collection
+          </h1>
+          <div class="flex gap-3 justify-center sm:justify-end mt-4 sm:mt-0">
+            <Button 
+              label="Update Author Covers" 
+              icon="pi pi-refresh" 
+              severity="info" 
+              @click="fetchAuthorCovers"
+              :loading="updatingCovers"
+              class="p-button-rounded"
+            />
             <SelectButton
-              v-if="!isSmallScreen"
               v-model="layout"
               :options="options"
               :allowEmpty="false"
+              class="p-button-rounded"
             >
               <template #option="{ option }">
-                <i :class="[option === 'list' ? 'pi pi-bars' : 'pi pi-table']" />
+                <i :class="[option === 'list' ? 'pi pi-bars' : 'pi pi-table']"></i>
               </template>
             </SelectButton>
           </div>
-        </template>
+        </div>
+      </div>
+    </div>
 
-        <!-- Layout tipo Lista: se renderiza solo en pantallas grandes -->
-        <template v-if="!isSmallScreen" #list="slotProps">
-          <div class="flex flex-col">
-            <div v-for="(author, index) in slotProps.items" :key="author.id">
-              <div
-                class="flex flex-col sm:flex-row md:items-center p-6 gap-4 hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer"
-                :class="{ 'border-t border-surface': index !== 0 }"
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+      <!-- Loading Skeleton -->
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div v-for="n in skeletonCount" :key="n" class="animate-pulse">
+          <div class="bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden">
+            <div class="aspect-[2/3] bg-surface-200 dark:bg-surface-700"></div>
+            <div class="p-6 space-y-4">
+              <div class="h-6 bg-surface-200 dark:bg-surface-700 rounded w-3/4"></div>
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-surface-200 dark:bg-surface-700"></div>
+                <div class="h-4 bg-surface-200 dark:bg-surface-700 rounded w-1/3"></div>
+              </div>
+              <div class="h-4 bg-surface-200 dark:bg-surface-700 rounded w-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Authors Grid/List View -->
+      <div v-else>
+        <Transition name="fade" mode="out-in">
+          <template v-if="layout === 'grid'">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <div v-for="author in authors" :key="author.id" 
+                :data-author-id="author.id"
+                class="group transform transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer"
                 @click="navigateToAuthor(author.id)"
               >
-                <!-- Contenedor del cover en List view (300x200 px) con efecto hover -->
-                <div class="md:w-40 relative">
-                  <div
-                    class="block mx-auto rounded transition-transform duration-300 hover:scale-105 hover:shadow-xl"
-                    :style="
-                      author.cover
-                        ? { maxWidth: '300px', height: '200px' }
-                        : {
-                            background: author.gradient || 
-                              (author.gradient_primary_color && author.gradient_secondary_color ? 
-                                `linear-gradient(135deg, ${author.gradient_primary_color}, ${author.gradient_secondary_color})` : 
-                                getRandomGradient().background),
-                            maxWidth: '300px',
-                            height: '200px',
-                          }
-                    "
-                  >
-                    <img
-                      v-if="author.cover"
-                      class="rounded-lg w-full h-full object-cover"
+                <div class="bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden h-full flex flex-col">
+                  <!-- Author Cover -->
+                  <div class="relative aspect-[2/3] overflow-hidden">
+                    <!-- Loading State -->
+                    <div v-if="author.cover && loadingCovers[author.id]" 
+                      class="absolute inset-0 bg-surface-200 dark:bg-surface-700 animate-pulse flex items-center justify-center">
+                      <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+
+                    <!-- Author Cover Image -->
+                    <img v-if="author.cover && !coverLoadErrors[author.id]"
                       :src="author.cover"
                       :alt="author.name"
+                      class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       @error="handleAuthorImageError(author)"
+                      @load="handleAuthorImageLoad(author.id)"
                     />
-                    <!-- Author placeholder if no cover -->
-                    <div v-else class="w-full h-full flex items-center justify-center">
-                      <div class="text-white text-xl font-bold p-4 text-center">
-                        <div class="w-16 h-16 mx-auto rounded-full border-2 border-white/30 flex items-center justify-center mb-2">
-                          <span class="text-3xl">{{ author.name.charAt(0) }}</span>
+
+                    <!-- Fallback Cover -->
+                    <div v-if="!author.cover || coverLoadErrors[author.id]"
+                      class="absolute inset-0 flex items-center justify-center overflow-hidden"
+                      :style="{ background: author.gradient || getRandomGradient().background }"
+                    >
+                      <div class="w-full h-full flex flex-col p-4 relative">
+                        <!-- Light reflection effect -->
+                        <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
+                        
+                        <!-- Decorative author elements -->
+                        <div class="flex-1 flex flex-col items-center justify-center relative">
+                          <!-- Decorative circle -->
+                          <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
+                            <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+                              <span class="text-white/80 text-3xl font-serif">{{ author.name.charAt(0) }}</span>
+                            </div>
+                          </div>
+                          
+                          <!-- Decorative lines -->
+                          <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
+                          <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
                         </div>
-                        <div>{{ author.name.split(' ')[0] }}</div>
                       </div>
                     </div>
-                  </div>
-                </div>
 
-                <!-- Información del autor -->
-                <div class="flex flex-col justify-between flex-1">
-                  <!-- Nombre y bio -->
-                  <div>
-                    <h2 class="text-3xl font-bold fancy-font">
-                      {{ author.name }}
-                    </h2>
-                    <p class="text-sm mt-2">
-                      {{ author.bio }}
-                    </p>
-                  </div>
-                  <!-- Sección inferior: rating y botones -->
-                  <div class="mt-4 flex flex-col md:items-end gap-4">
-                    <div
-                      class="bg-surface-100 p-1 rounded-full"
-                      style="border-radius: 30px"
-                    >
-                      <div
-                        class="bg-surface-0 flex items-center gap-2 justify-center py-1 px-2 rounded-full"
-                        style="
-                          box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.04),
-                            0px 1px 2px rgba(0, 0, 0, 0.06);
-                        "
-                      >
-                        <span class="text-surface-900 font-medium text-sm">{{ author.quotes_count || 0 }}</span>
-                        <i class="pi pi-comment text-primary-500"></i>
-                      </div>
-                    </div>
-                    <div class="flex flex-row-reverse md:flex-row gap-2">
-                      <Button
-                        :icon="author.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
-                        outlined
-                        @click.stop="toggleLike(author.id)"
-                      ></Button>
-                      <Button
-                        icon="pi pi-book"
-                        label="Read More"
-                        class="flex-auto whitespace-nowrap"
+                    <!-- Overlay with Actions -->
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <Button 
+                        icon="pi pi-user" 
+                        rounded 
+                        severity="secondary" 
                         @click.stop="navigateToAuthor(author.id)"
-                      ></Button>
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Author Info -->
+                  <div class="p-6 flex-1 flex flex-col">
+                    <h2 class="text-2xl font-bold fancy-font mb-3 line-clamp-2">{{ author.name }}</h2>
+                    
+                    <!-- Bio -->
+                    <p class="text-surface-600 dark:text-surface-400 text-sm line-clamp-3 mb-4">{{ author.bio }}</p>
+
+                    <!-- Stats and Actions -->
+                    <div class="mt-auto flex items-center justify-between">
+                      <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-full">
+                        <i class="pi pi-comment text-primary-500"></i>
+                        <span class="text-sm font-medium">{{ author.quotes_count || 0 }} quotes</span>
+                      </div>
+                      <Button 
+                        :icon="author.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'" 
+                        rounded 
+                        :severity="author.is_favorite ? 'danger' : 'secondary'"
+                        @click.stop="toggleLike(author.id)"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </template>
+          </template>
 
-        <!-- Layout tipo Grid: se muestra siempre -->
-        <template #grid="slotProps">
-          <div class="grid grid-cols-12 gap-4 auto-rows-fr">
-            <div
-              v-for="(author, index) in slotProps.items"
-              :key="author.id"
-              class="col-span-12 sm:col-span-6 lg:col-span-4 p-2"
-            >
-              <div
+          <template v-else>
+            <div class="space-y-4">
+              <div v-for="author in authors" :key="author.id" 
+                :data-author-id="author.id"
+                class="group bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
                 @click="navigateToAuthor(author.id)"
-                class="p-6 h-full border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg flex flex-col hover:scale-105 hover:shadow-xl mx-auto transition-transform duration-300 cursor-pointer"
               >
-                <!-- Cover: se muestra primero con dimensiones 200x300 px y efecto hover -->
-                <div class="mx-auto">
-                  <div v-if="author.cover">
-                    <img
-                      class="rounded-lg w-[200px] h-[300px] object-cover transition-transform duration-300"
+                <div class="flex h-48">
+                  <!-- Author Cover -->
+                  <div class="relative w-32 flex-shrink-0">
+                    <!-- Loading State -->
+                    <div v-if="author.cover && loadingCovers[author.id]" 
+                      class="absolute inset-0 bg-surface-200 dark:bg-surface-700 animate-pulse flex items-center justify-center">
+                      <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+
+                    <!-- Author Cover Image -->
+                    <img v-if="author.cover && !coverLoadErrors[author.id]"
                       :src="author.cover"
                       :alt="author.name"
+                      class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       @error="handleAuthorImageError(author)"
+                      @load="handleAuthorImageLoad(author.id)"
                     />
-                  </div>
-                  <div v-else
-                    :style="{ 
-                      background: author.gradient || 
-                        (author.gradient_primary_color && author.gradient_secondary_color ? 
-                          `linear-gradient(135deg, ${author.gradient_primary_color}, ${author.gradient_secondary_color})` : 
-                          getRandomGradient().background) 
-                    }"
-                    class="rounded-lg w-[200px] h-[300px] transition-transform duration-300 flex items-center justify-center"
-                  >
-                    <!-- Author placeholder -->
-                    <div class="text-white text-xl font-bold p-4 text-center">
-                      <div class="w-16 h-16 mx-auto rounded-full border-2 border-white/30 flex items-center justify-center mb-2">
-                        <span class="text-3xl">{{ author.name.charAt(0) }}</span>
-                      </div>
-                      <div>{{ author.name.split(' ')[0] }}</div>
-                    </div>
-                  </div>
-                </div>
 
-                <!-- Detalles del autor: nombre y bio -->
-                <div class="mt-4 text-center">
-                  <h2 class="text-3xl font-bold fancy-font">
-                    {{ author.name }}
-                  </h2>
-                  <p class="text-sm mt-2">
-                    {{ author.bio }}
-                  </p>
-                </div>
-                <!-- Sección inferior: rating y botones -->
-                <div class="mt-auto pt-4">
-                  <div class="flex flex-row justify-between items-center">
-                    <div
-                      class="bg-surface-100 p-1 rounded-full"
-                      style="border-radius: 30px"
+                    <!-- Fallback Cover -->
+                    <div v-if="!author.cover || coverLoadErrors[author.id]"
+                      class="absolute inset-0 flex items-center justify-center overflow-hidden"
+                      :style="{ background: author.gradient || getRandomGradient().background }"
                     >
-                      <div
-                        class="bg-surface-0 flex items-center gap-2 justify-center py-1 px-2 rounded-full"
-                        style="
-                          box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.04),
-                            0px 1px 2px rgba(0, 0, 0, 0.06);
-                        "
-                      >
-                        <span class="text-surface-900 font-medium text-sm">{{ author.quotes_count || 0 }}</span>
-                        <i class="pi pi-comment text-primary-500"></i>
+                      <div class="w-full h-full flex flex-col p-4 relative">
+                        <!-- Light reflection effect -->
+                        <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
+                        
+                        <!-- Decorative author elements -->
+                        <div class="flex-1 flex flex-col items-center justify-center relative">
+                          <!-- Decorative circle -->
+                          <div class="w-16 h-16 rounded-full border-2 border-white/30 flex items-center justify-center mb-2">
+                            <div class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center">
+                              <span class="text-white/80 text-xl font-serif">{{ author.name.charAt(0) }}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div class="flex gap-2">
-                      <Button
-                        icon="pi pi-book"
-                        label="Read More"
-                        class="flex-auto whitespace-nowrap"
-                        @click.stop="navigateToAuthor(author.id)"
-                      ></Button>
-                      <Button
-                        :icon="author.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
-                        outlined
+                  </div>
+
+                  <!-- Author Info -->
+                  <div class="flex-1 p-6 flex flex-col">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <h2 class="text-2xl font-bold fancy-font mb-2">{{ author.name }}</h2>
+                        <p class="text-surface-600 dark:text-surface-400 text-sm line-clamp-2 mb-3">{{ author.bio }}</p>
+                      </div>
+                      <Button 
+                        :icon="author.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'" 
+                        rounded 
+                        :severity="author.is_favorite ? 'danger' : 'secondary'"
                         @click.stop="toggleLike(author.id)"
-                      ></Button>
+                      />
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="mt-auto flex items-center gap-4">
+                      <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-full">
+                        <i class="pi pi-comment text-primary-500"></i>
+                        <span class="text-sm font-medium">{{ author.quotes_count || 0 }} quotes</span>
+                      </div>
+                      <Button 
+                        icon="pi pi-user" 
+                        rounded 
+                        severity="secondary" 
+                        @click.stop="navigateToAuthor(author.id)"
+                        class="opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </template>
-      </DataView>
+          </template>
+        </Transition>
+      </div>
+    </div>
 
-      <!-- Cover Preview Dialog -->
-      <Dialog 
-        v-model:visible="coverDialogVisible" 
-        :style="{width: '800px'}" 
-        header="Author Cover Preview" 
-        :modal="true"
-        :closable="true"
-        @hide="exitCoverProcess"
-      >
-        <div class="flex flex-col items-center p-4">
-          <h3 class="text-xl font-semibold mb-2">{{ currentAuthor?.name }}</h3>
-          
-          <div class="grid grid-cols-2">
-            <!-- Selected cover preview (large) -->
-            <div class="col-span-1 flex flex-col items-center">
-              <h4 class="font-medium mb-2">Selected Cover:</h4>
-              <div class="relative mb-4 w-64 h-64 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
-                <img 
-                  v-if="previewCoverUrl" 
-                  :src="previewCoverUrl" 
-                  :alt="currentAuthor?.name"
-                  class="max-w-full max-h-full object-contain"
-                  @error="handlePreviewImageError"
-                  @load="handlePreviewImageLoad"
-                />
-                <!-- No cover selected or error loading -->
-                <div 
-                  v-if="!previewCoverUrl || previewImageError" 
-                  class="flex flex-col items-center justify-center text-gray-400 p-4 text-center"
-                >
-                  <i class="pi pi-image text-4xl mb-2"></i>
-                  <div v-if="previewImageError" class="text-sm text-red-400">
-                    Error loading selected cover
-                  </div>
-                  <div v-else class="text-sm">
-                    No cover selected
-                  </div>
-                  <div class="mt-2 text-xs">
-                    Select a cover from the options or upload a custom one
-                  </div>
+    <!-- Cover Preview Dialog -->
+    <Dialog 
+      v-model:visible="coverDialogVisible" 
+      :style="{width: '800px'}" 
+      header="Author Cover Preview" 
+      :modal="true"
+      :closable="true"
+      @hide="exitCoverProcess"
+    >
+      <div class="flex flex-col items-center p-4">
+        <h3 class="text-xl font-semibold mb-2">{{ currentAuthor?.name }}</h3>
+        
+        <div class="grid grid-cols-2">
+          <!-- Selected cover preview (large) -->
+          <div class="col-span-1 flex flex-col items-center">
+            <h4 class="font-medium mb-2">Selected Cover:</h4>
+            <div class="relative mb-4 w-64 h-64 bg-gray-100 flex items-center justify-center border rounded shadow-sm">
+              <img 
+                v-if="previewCoverUrl" 
+                :src="previewCoverUrl" 
+                :alt="currentAuthor?.name"
+                class="max-w-full max-h-full object-contain"
+                @error="handlePreviewImageError"
+                @load="handlePreviewImageLoad"
+              />
+              <!-- No cover selected or error loading -->
+              <div 
+                v-if="!previewCoverUrl || previewImageError" 
+                class="flex flex-col items-center justify-center text-gray-400 p-4 text-center"
+              >
+                <i class="pi pi-image text-4xl mb-2"></i>
+                <div v-if="previewImageError" class="text-sm text-red-400">
+                  Error loading selected cover
+                </div>
+                <div v-else class="text-sm">
+                  No cover selected
+                </div>
+                <div class="mt-2 text-xs">
+                  Select a cover from the options or upload a custom one
                 </div>
               </div>
-              <div v-if="previewCoverUrl" class="text-xs text-center mt-1 p-1 w-full overflow-hidden">
-                <div class="truncate max-w-[250px]">{{ previewCoverUrl }}</div>
-              </div>
-              <!-- Add a "Remove Image" button -->
-              <Button 
-                v-if="previewCoverUrl || currentAuthor?.cover" 
-                icon="pi pi-trash" 
-                label="Remove Image" 
-                severity="danger" 
-                class="p-button-sm mt-2" 
-                @click="removeAuthorImage"
-                text
-              />
-              <small v-if="!previewCoverUrl" class="text-gray-500 mt-1 block text-center">
-                Showing gradient background only
-              </small>
             </div>
-            
-            <!-- Cover options grid -->
-            <div class="col-span-1 flex flex-col">
-              <h4 class="font-medium mb-2">Available Covers ({{ coverOptions.length }}):</h4>
-              <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-96 p-2">
-                <div 
-                  v-for="(cover, index) in coverOptions" 
-                  :key="index" 
-                  class="cursor-pointer border rounded hover:shadow-md transition-shadow p-1"
-                  :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
-                  @click="selectCover(cover.url)"
-                >
-                  <div class="w-full h-40 flex items-center justify-center bg-gray-100">
-                    <img 
-                      :src="cover.url" 
-                      :alt="`Cover option ${index+1}`"
-                      class="max-w-full max-h-full object-contain"
-                      @error="(e) => e.target.src = 'https://via.placeholder.com/200x200?text=Image+Error'"
-                    />
-                  </div>
-                  <div v-if="previewCoverUrl === cover.url" class="bg-blue-100 text-blue-800 text-xs text-center mt-1 p-1 rounded">
-                    Selected
-                  </div>
-                  <div class="bg-gray-100 text-gray-800 text-xs text-center mt-1 p-1">
-                    <span class="font-semibold">Source: </span>{{ cover.source === 'wikipedia' ? 'Wikipedia' : 'OpenLibrary' }}
-                  </div>
-                </div>
-              </div>
-              <div v-else class="text-gray-500 p-4 text-center border rounded bg-gray-50">
-                No cover options found
-              </div>
+            <div v-if="previewCoverUrl" class="text-xs text-center mt-1 p-1 w-full overflow-hidden">
+              <div class="truncate max-w-[250px]">{{ previewCoverUrl }}</div>
             </div>
-          </div>
-          
-          <!-- Search sections with separate tabs for each method -->
-          <div class="w-full my-4 border-t pt-4">
-            <h3 class="text-lg font-semibold mb-3">Search for Author Images</h3>
-            
-            <!-- Wikipedia search section -->
-            <div class="p-3">
-              <p class="mb-2 text-sm text-gray-600">
-                Search Wikipedia for author images. Adding terms like "writer", "novelist", 
-                or "author" may improve results.
-              </p>
-              <div class="flex gap-2 mt-3">
-                <InputText 
-                  v-model="wikipediaSearchTerm" 
-                  placeholder="e.g. J.K. Rowling writer" 
-                  class="flex-1"
-                  @keydown.enter="searchWithWikipedia"
-                />
-                <Button 
-                  icon="pi pi-search" 
-                  label="Search Wikipedia"
-                  @click="searchWithWikipedia"
-                  :loading="changingCover"
-                  :disabled="!wikipediaSearchTerm"
-                />
-              </div>
-            </div>
-          </div>
-          
-          <!-- Custom URL input -->
-          <div class="w-full my-4 border-t pt-4">
-            <h4 class="font-medium mb-2">Or enter a custom image URL:</h4>
-            <div class="flex gap-2">
-              <InputText 
-                v-model="customCoverUrl" 
-                placeholder="https://example.com/author-image.jpg" 
-                class="flex-1"
-                @keydown.enter="previewCustomCoverUrl"
-              />
-              <Button 
-                icon="pi pi-image" 
-                @click="previewCustomCoverUrl"
-                :disabled="!customCoverUrl"
-              />
-            </div>
-            <small class="text-gray-500 mt-1 block">
-              Enter the full URL to an image you want to use
+            <!-- Add a "Remove Image" button -->
+            <Button 
+              v-if="previewCoverUrl || currentAuthor?.cover" 
+              icon="pi pi-trash" 
+              label="Remove Image" 
+              severity="danger" 
+              class="p-button-sm mt-2" 
+              @click="removeAuthorImage"
+              text
+            />
+            <small v-if="!previewCoverUrl" class="text-gray-500 mt-1 block text-center">
+              Showing gradient background only
             </small>
-            
-            <!-- Preview for custom URL -->
-            <div v-if="customCoverUrl && showCustomPreview" class="mt-3 border rounded p-2 flex flex-col items-center">
-              <div class="w-full h-40 flex items-center justify-center bg-gray-100">
-                <img 
-                  :src="customCoverUrl" 
-                  :alt="currentAuthor?.name" 
-                  class="max-w-full max-h-full object-contain"
-                  @error="handleCustomUrlError"
-                  @load="handleCustomUrlSuccess"
-                />
-                <div v-if="previewError" class="text-red-500">
-                  Invalid image URL
+          </div>
+          
+          <!-- Cover options grid -->
+          <div class="col-span-1 flex flex-col">
+            <h4 class="font-medium mb-2">Available Covers ({{ coverOptions.length }}):</h4>
+            <div v-if="coverOptions.length > 0" class="grid grid-cols-2 gap-2 overflow-y-auto max-h-96 p-2">
+              <div 
+                v-for="(cover, index) in coverOptions" 
+                :key="index" 
+                class="cursor-pointer border rounded hover:shadow-md transition-shadow p-1"
+                :class="{ 'border-blue-500 ring-2 ring-blue-300': previewCoverUrl === cover.url }"
+                @click="selectCover(cover.url)"
+              >
+                <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+                  <img 
+                    :src="cover.url" 
+                    :alt="`Cover option ${index+1}`"
+                    class="max-w-full max-h-full object-contain"
+                    @error="(e) => e.target.src = 'https://via.placeholder.com/200x200?text=Image+Error'"
+                  />
+                </div>
+                <div v-if="previewCoverUrl === cover.url" class="bg-blue-100 text-blue-800 text-xs text-center mt-1 p-1 rounded">
+                  Selected
+                </div>
+                <div class="bg-gray-100 text-gray-800 text-xs text-center mt-1 p-1">
+                  <span class="font-semibold">Source: </span>{{ cover.source === 'wikipedia' ? 'Wikipedia' : 'OpenLibrary' }}
                 </div>
               </div>
+            </div>
+            <div v-else class="text-gray-500 p-4 text-center border rounded bg-gray-50">
+              No cover options found
+            </div>
+          </div>
+        </div>
+        
+        <!-- Search sections with separate tabs for each method -->
+        <div class="w-full my-4 border-t pt-4">
+          <h3 class="text-lg font-semibold mb-3">Search for Author Images</h3>
+          
+          <!-- Wikipedia search section -->
+          <div class="p-3">
+            <p class="mb-2 text-sm text-gray-600">
+              Search Wikipedia for author images. Adding terms like "writer", "novelist", 
+              or "author" may improve results.
+            </p>
+            <div class="flex gap-2 mt-3">
+              <InputText 
+                v-model="wikipediaSearchTerm" 
+                placeholder="e.g. J.K. Rowling writer" 
+                class="flex-1"
+                @keydown.enter="searchWithWikipedia"
+              />
               <Button 
-                v-if="!previewError" 
-                class="mt-2" 
-                label="Use This URL" 
-                icon="pi pi-check" 
-                @click="useCustomCoverUrl"
+                icon="pi pi-search" 
+                label="Search Wikipedia"
+                @click="searchWithWikipedia"
+                :loading="changingCover"
+                :disabled="!wikipediaSearchTerm"
               />
             </div>
           </div>
-          
-          <div class="flex justify-center gap-3 mt-4 w-full">
-            <Button 
-              icon="pi pi-times" 
-              label="Reject" 
-              severity="secondary" 
-              @click="rejectCover"
+        </div>
+        
+        <!-- Custom URL input -->
+        <div class="w-full my-4 border-t pt-4">
+          <h4 class="font-medium mb-2">Or enter a custom image URL:</h4>
+          <div class="flex gap-2">
+            <InputText 
+              v-model="customCoverUrl" 
+              placeholder="https://example.com/author-image.jpg" 
+              class="flex-1"
+              @keydown.enter="previewCustomCoverUrl"
             />
             <Button 
-              icon="pi pi-check" 
-              label="Accept" 
-              :disabled="!previewCoverUrl"
-              @click="acceptCover"
-            />
-            <Button 
-              icon="pi pi-step-forward" 
-              label="Skip" 
-              class="p-button-outlined" 
-              @click="processNextAuthor"
+              icon="pi pi-image" 
+              @click="previewCustomCoverUrl"
+              :disabled="!customCoverUrl"
             />
           </div>
+          <small class="text-gray-500 mt-1 block">
+            Enter the full URL to an image you want to use
+          </small>
           
-          <div class="w-full pt-4 mt-4 border-t border-gray-200 text-center">
+          <!-- Preview for custom URL -->
+          <div v-if="customCoverUrl && showCustomPreview" class="mt-3 border rounded p-2 flex flex-col items-center">
+            <div class="w-full h-40 flex items-center justify-center bg-gray-100">
+              <img 
+                :src="customCoverUrl" 
+                :alt="currentAuthor?.name" 
+                class="max-w-full max-h-full object-contain"
+                @error="handleCustomUrlError"
+                @load="handleCustomUrlSuccess"
+              />
+              <div v-if="previewError" class="text-red-500">
+                Invalid image URL
+              </div>
+            </div>
             <Button 
-              icon="pi pi-times-circle" 
-              label="Exit Without Changes" 
-              class="p-button-text p-button-danger"
-              @click="exitCoverProcess"
+              v-if="!previewError" 
+              class="mt-2" 
+              label="Use This URL" 
+              icon="pi pi-check" 
+              @click="useCustomCoverUrl"
             />
           </div>
         </div>
-      </Dialog>
-    </div>
+        
+        <div class="flex justify-center gap-3 mt-4 w-full">
+          <Button 
+            icon="pi pi-times" 
+            label="Reject" 
+            severity="secondary" 
+            @click="rejectCover"
+          />
+          <Button 
+            icon="pi pi-check" 
+            label="Accept" 
+            :disabled="!previewCoverUrl"
+            @click="acceptCover"
+          />
+          <Button 
+            icon="pi pi-step-forward" 
+            label="Skip" 
+            class="p-button-outlined" 
+            @click="processNextAuthor"
+          />
+        </div>
+        
+        <div class="w-full pt-4 mt-4 border-t border-gray-200 text-center">
+          <Button 
+            icon="pi pi-times-circle" 
+            label="Exit Without Changes" 
+            class="p-button-text p-button-danger"
+            @click="exitCoverProcess"
+          />
+        </div>
+      </div>
+    </Dialog>
   </div>
 </template>
+
+<style scoped>
+/* Add these new styles */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* View transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+</style>

@@ -261,17 +261,7 @@ onMounted(() => {
 
 <template>
   <div>
-    <div class="flex justify-between mb-4">
-      <h5 class="m-0 font-semibold text-xl">{{ title }}</h5>
-      <Button 
-        v-if="viewMoreRoute"
-        :label="`More ${itemType === 'book' ? 'Books' : 'Authors'}`" 
-        icon="pi pi-external-link" 
-        size="small"
-        class="p-button-text"
-        @click="$router.push(viewMoreRoute)"
-      />
-    </div>
+
     
     <div class="overflow-x-hidden" v-if="items && items.length > 0">
       <div :class="gridClass" style="margin: 0;" class="pb-3">

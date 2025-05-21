@@ -1,180 +1,177 @@
 <template>
-  <div class="quote-graph-search p-4 bg-white dark:bg-gray-800 border border-surface-200 dark:border-surface-700 rounded-lg">
-    <h2 class="text-xl font-medium mb-4">Build your search query</h2>
+  <div class="">
+    <h2 class="text-xl font-medium mb-4 fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">Build your search query</h2>
     
     <!-- Search Builder UI -->
     <div class="search-builder mb-4">
-      
-        <div class="mb-4">
-          <div class="text-sm text-gray-500 mb-2">Use the options below to build a search query across quotes, authors, books, and tags.</div>
-          
-          <!-- Filter Builder -->
-          <div class="filter-builder">
-            <div v-for="(filter, index) in filters" :key="index" class="filter-row flex flex-wrap items-center gap-2 mb-2 p-2 bg-gray-50 dark:bg-gray-900 rounded">
-              <!-- Filter Type -->
-              <Dropdown
-                v-model="filter.type"
-                :options="filterTypes"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Select filter type"
-                class="w-48"
-                @change="resetFilterValue(index)"
+      <div class="mb-4">
+        <div class="text-sm text-500 dark:text-400 mb-2">Use the options below to build a search query across quotes, authors, books, and tags.</div>
+        
+        <!-- Filter Builder -->
+        <div class="filter-builder">
+          <div v-for="(filter, index) in filters" :key="index" class="filter-row flex flex-wrap items-center gap-2 mb-2 p-2 bg-surface-card dark:bg-surface-700 rounded-xl">
+            <!-- Filter Type -->
+            <Dropdown
+              v-model="filter.type"
+              :options="filterTypes"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select filter type"
+              class="w-48"
+              @change="resetFilterValue(index)"
+            />
+            
+            <!-- Filter Operator -->
+            <Dropdown
+              v-model="filter.operator"
+              :options="getOperatorsForType(filter.type)"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Operator"
+              class="w-32"
+            />
+            
+            <!-- Filter Value - changes based on type -->
+            <div class="filter-value flex-grow">
+              <!-- Text Input -->
+              <InputText 
+                v-if="['text', 'quote_content'].includes(filter.type)"
+                v-model="filter.value"
+                placeholder="Enter value"
+                class="w-full"
               />
               
-              <!-- Filter Operator -->
-              <Dropdown
-                v-model="filter.operator"
-                :options="getOperatorsForType(filter.type)"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Operator"
-                class="w-32"
+              <!-- Tag selection -->
+              <MultiSelect
+                v-else-if="filter.type === 'tags'"
+                v-model="filter.value"
+                :options="availableTags"
+                optionLabel="title"
+                placeholder="Select tags"
+                class="w-full"
+                display="chip"
               />
               
-              <!-- Filter Value - changes based on type -->
-              <div class="filter-value flex-grow">
-                <!-- Text Input -->
-                <InputText 
-                  v-if="['text', 'quote_content'].includes(filter.type)"
-                  v-model="filter.value"
-                  placeholder="Enter value"
-                  class="w-full"
-                />
-                
-                <!-- Tag selection -->
-                <MultiSelect
-                  v-else-if="filter.type === 'tags'"
-                  v-model="filter.value"
-                  :options="availableTags"
-                  optionLabel="title"
-                  placeholder="Select tags"
-                  class="w-full"
-                  display="chip"
-                />
-                
-                <!-- Author selection -->
-                <Dropdown
-                  v-else-if="filter.type === 'author'"
-                  v-model="filter.value"
-                  :options="availableAuthors"
-                  optionLabel="name"
-                  optionValue="id"
-                  placeholder="Select author"
-                  class="w-full"
-                />
-                
-                <!-- Book selection -->
-                <Dropdown
-                  v-else-if="filter.type === 'book'"
-                  v-model="filter.value"
-                  :options="availableBooks"
-                  optionLabel="title"
-                  optionValue="id"
-                  placeholder="Select book"
-                  class="w-full"
-                />
-                
-                <!-- Vector/Semantic search -->
-                <Textarea
-                  v-else-if="filter.type === 'similar_to'"
-                  v-model="filter.value"
-                  placeholder="Enter text to find similar quotes"
-                  class="w-full"
-                  rows="3"
-                />
-                
-                <!-- Date range -->
-                <Calendar 
-                  v-else-if="filter.type === 'date'"
-                  v-model="filter.value"
-                  selectionMode="range"
-                  dateFormat="yy-mm-dd"
-                  placeholder="Select date range"
-                  class="w-full"
-                />
-                
-                <!-- Boolean options -->
-                <ToggleButton
-                  v-else-if="filter.type === 'is_favorite'"
-                  v-model="filter.value"
-                  onLabel="Yes"
-                  offLabel="No"
-                  class="w-24"
-                />
-              </div>
+              <!-- Author selection -->
+              <Dropdown
+                v-else-if="filter.type === 'author'"
+                v-model="filter.value"
+                :options="availableAuthors"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Select author"
+                class="w-full"
+              />
               
-              <!-- Remove Filter Button -->
-              <Button 
-                icon="pi pi-times" 
-                class="p-button-rounded p-button-danger p-button-text" 
-                @click="removeFilter(index)"
+              <!-- Book selection -->
+              <Dropdown
+                v-else-if="filter.type === 'book'"
+                v-model="filter.value"
+                :options="availableBooks"
+                optionLabel="title"
+                optionValue="id"
+                placeholder="Select book"
+                class="w-full"
+              />
+              
+              <!-- Vector/Semantic search -->
+              <Textarea
+                v-else-if="filter.type === 'similar_to'"
+                v-model="filter.value"
+                placeholder="Enter text to find similar quotes"
+                class="w-full"
+                rows="3"
+              />
+              
+              <!-- Date range -->
+              <Calendar 
+                v-else-if="filter.type === 'date'"
+                v-model="filter.value"
+                selectionMode="range"
+                dateFormat="yy-mm-dd"
+                placeholder="Select date range"
+                class="w-full"
+              />
+              
+              <!-- Boolean options -->
+              <ToggleButton
+                v-else-if="filter.type === 'is_favorite'"
+                v-model="filter.value"
+                onLabel="Yes"
+                offLabel="No"
+                class="w-24"
               />
             </div>
             
-            <!-- Add Filter Button -->
+            <!-- Remove Filter Button -->
             <Button 
-              label="Add Filter" 
-              icon="pi pi-plus" 
-              class="p-button-outlined mt-2" 
-              @click="addFilter"
+              icon="pi pi-times" 
+              class="p-button-rounded p-button-danger p-button-text" 
+              @click="removeFilter(index)"
+            />
+          </div>
+          
+          <!-- Add Filter Button -->
+          <Button 
+            label="Add Filter" 
+            icon="pi pi-plus" 
+            class="p-button-outlined mt-2" 
+            @click="addFilter"
+          />
+        </div>
+      </div>
+      
+      <!-- Logic Operator -->
+      <div class="logic-operator mb-4">
+        <label class="block text-sm text-500 dark:text-400 mb-1">Combine filters with:</label>
+        <div class="flex gap-2">
+          <RadioButton v-model="logicOperator" value="AND" /> <label class="mr-4">AND (all conditions must match)</label>
+          <RadioButton v-model="logicOperator" value="OR" /> <label>OR (any condition can match)</label>
+        </div>
+      </div>
+      
+      <!-- Search Options -->
+      <div class="search-options mb-4">
+        <div class="flex flex-wrap items-center gap-4">
+          <div class="limit">
+            <label class="block text-sm text-500 dark:text-400 mb-1">Max results:</label>
+            <InputNumber v-model="searchLimit" :min="1" :max="100" />
+          </div>
+          
+          <div class="sort-by">
+            <label class="block text-sm text-500 dark:text-400 mb-1">Sort by:</label>
+            <Dropdown
+              v-model="sortBy"
+              :options="sortOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Sort by"
+            />
+          </div>
+          
+          <div class="sort-order">
+            <label class="block text-sm text-500 dark:text-400 mb-1">Order:</label>
+            <Dropdown
+              v-model="sortOrder"
+              :options="sortDirections"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Sort direction"
             />
           </div>
         </div>
-        
-        <!-- Logic Operator -->
-        <div class="logic-operator mb-4">
-          <label class="block text-sm text-gray-500 mb-1">Combine filters with:</label>
-          <div class="flex gap-2">
-            <RadioButton v-model="logicOperator" value="AND" /> <label class="mr-4">AND (all conditions must match)</label>
-            <RadioButton v-model="logicOperator" value="OR" /> <label>OR (any condition can match)</label>
-          </div>
-        </div>
-        
-        <!-- Search Options -->
-        <div class="search-options mb-4">
-          <div class="flex flex-wrap items-center gap-4">
-            <div class="limit">
-              <label class="block text-sm text-gray-500 mb-1">Max results:</label>
-              <InputNumber v-model="searchLimit" :min="1" :max="100" />
-            </div>
-            
-            <div class="sort-by">
-              <label class="block text-sm text-gray-500 mb-1">Sort by:</label>
-              <Dropdown
-                v-model="sortBy"
-                :options="sortOptions"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Sort by"
-              />
-            </div>
-            
-            <div class="sort-order">
-              <label class="block text-sm text-gray-500 mb-1">Order:</label>
-              <Dropdown
-                v-model="sortOrder"
-                :options="sortDirections"
-                optionLabel="label"
-                optionValue="value"
-                placeholder="Sort direction"
-              />
-            </div>
-          </div>
-        </div>
-        
-        <!-- Search Button -->
-        <div class="search-button-adv mt-4">
-          <div class="flex items-center gap-2 bg-primary-50 dark:bg-primary-900/20 p-3 rounded-xl cursor-pointer hover:bg-primary-100 dark:hover:bg-primary-900/30 transition-colors"
-               @click="searchQuotes"
-               :class="{ 'opacity-50 cursor-not-allowed': filters.length === 0 }">
-            <i class="pi pi-search text-primary-500 text-xl"></i>
-            <span class="text-primary-700 dark:text-primary-300 font-medium">
-              {{ loading ? 'Searching...' : 'Search Quotes' }}
-            </span>
-          </div>
-        </div>
-
+      </div>
+      
+      <!-- Search Button -->
+      <div class="search-button-adv mt-4">
+        <Button 
+          icon="pi pi-search" 
+          :label="loading ? 'Searching...' : 'Search Quotes'"
+          class="p-button-primary w-full"
+          :disabled="filters.length === 0"
+          @click="searchQuotes"
+        />
+      </div>
     </div>
     
     <!-- Search Results -->
@@ -183,7 +180,7 @@
         <ProgressSpinner />
       </div>
       
-      <div v-else-if="searchPerformed && results.length === 0" class="p-4 text-center text-gray-500">
+      <div v-else-if="searchPerformed && results.length === 0" class="p-4 text-center text-500 dark:text-400">
         No quotes found matching your criteria.
       </div>
       
@@ -192,7 +189,7 @@
           <template #header>
             <div class="flex justify-between items-center">
               <div>
-                <span class="text-sm text-gray-500">Found {{ results.length }} quotes</span>
+                <span class="text-sm text-500 dark:text-400">Found {{ results.length }} quotes</span>
               </div>
               <div>
                 <Button icon="pi pi-th-large" @click="layout = 'grid'" :outlined="layout !== 'grid'" :text="layout === 'grid'" />
@@ -553,59 +550,36 @@ onMounted(() => {
 <style scoped>
 .quote-graph-search {
   max-width: 100%;
-  background: var(--surface-card);
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.quote-graph-search:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-}
-
-/* Panel styling */
-:deep(.p-panel) {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-}
-
-:deep(.p-panel .p-panel-header) {
-  background: transparent;
-  border: none;
-  padding: 1.5rem;
-}
-
-:deep(.p-panel .p-panel-content) {
-  padding: 0 1.5rem 1.5rem;
-  background: transparent;
+  background: var(--surface-ground);
+  border-radius: 24px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Filter row styling */
 .filter-row {
-  background: var(--surface-ground);
+  background: var(--surface-card);
   border-radius: 16px;
-  padding: 1rem;
+  padding: 1.25rem;
   margin-bottom: 1rem;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid var(--surface-border);
 }
 
 .filter-row:hover {
   background: var(--surface-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 /* Dropdown styling */
 :deep(.p-dropdown) {
   border-radius: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--surface-border);
 }
 
 :deep(.p-dropdown:hover) {
   border-color: var(--primary-color);
-  box-shadow: 0 0 0 1px var(--primary-color);
 }
 
 :deep(.p-dropdown.p-focus) {
@@ -615,7 +589,8 @@ onMounted(() => {
 /* Input styling */
 :deep(.p-inputtext) {
   border-radius: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--surface-border);
 }
 
 :deep(.p-inputtext:hover) {
@@ -634,7 +609,7 @@ onMounted(() => {
 
 :deep(.p-button:hover) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 20px rgba(var(--primary-500-rgb), 0.2);
 }
 
 :deep(.p-button:active) {
@@ -648,44 +623,6 @@ onMounted(() => {
   margin-top: 2rem;
 }
 
-.search-button-adv .flex {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.search-button-adv .flex:hover:not(.opacity-50) {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(var(--primary-color-rgb), 0.1);
-}
-
-.search-button-adv .flex:active:not(.opacity-50) {
-  transform: translateY(0);
-}
-
-.search-button-adv .flex i {
-  transition: transform 0.3s ease;
-}
-
-.search-button-adv .flex:hover:not(.opacity-50) i {
-  transform: scale(1.1);
-}
-
-/* Dark mode adjustments */
-:root.dark .search-button-adv .flex {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
-
-:root.dark .search-button-adv .flex:hover:not(.opacity-50) {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .search-button-adv .flex {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
 /* Results grid styling */
 .results-grid {
   margin-top: 2rem;
@@ -694,7 +631,7 @@ onMounted(() => {
 .results-grid :deep(.p-dataview-header) {
   background: transparent;
   border: none;
-  padding: 1rem 0;
+  padding: 1.5rem 0;
 }
 
 .results-grid :deep(.p-dataview-content) {
@@ -704,25 +641,16 @@ onMounted(() => {
 /* Quote card wrapper styling */
 .quote-card-wrapper {
   background: var(--surface-card);
-  border-radius: 1rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
+  border: 1px solid var(--surface-border);
 }
 
 .quote-card-wrapper:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-}
-
-/* Quote card hover effects */
-.results-grid .grid .cursor-pointer {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.results-grid .grid .cursor-pointer:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
 }
 
 /* Tag styling */
@@ -730,50 +658,15 @@ onMounted(() => {
   background: var(--primary-50);
   color: var(--primary-700);
   border-radius: 12px;
-  padding: 0.25rem 0.75rem;
+  padding: 0.5rem 1rem;
   font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .results-grid .tag-pill:hover {
   background: var(--primary-100);
-  transform: translateY(-1px);
-}
-
-/* Dark mode adjustments */
-:root.dark {
-  .quote-graph-search {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  }
-  
-  .filter-row {
-    background: var(--surface-ground);
-    border-color: var(--surface-border);
-  }
-  
-  .filter-row:hover {
-    background: var(--surface-hover);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-  
-  .results-grid .tag-pill {
-    background: var(--primary-900);
-    color: var(--primary-300);
-  }
-  
-  .results-grid .tag-pill:hover {
-    background: var(--primary-800);
-  }
-  
-  .quote-card-wrapper {
-    background: var(--surface-ground);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  }
-  
-  .quote-card-wrapper:hover {
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  }
+  transform: translateY(-2px);
 }
 
 /* Loading spinner styling */
@@ -794,12 +687,14 @@ onMounted(() => {
 
 :deep(.p-radiobutton .p-radiobutton-box) {
   border-radius: 50%;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid var(--surface-border);
 }
 
 :deep(.p-radiobutton .p-radiobutton-box.p-highlight) {
   background: var(--primary-color);
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px var(--primary-color-lighter);
 }
 
 /* Calendar styling */
@@ -814,7 +709,8 @@ onMounted(() => {
 /* MultiSelect styling */
 :deep(.p-multiselect) {
   border-radius: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--surface-border);
 }
 
 :deep(.p-multiselect:hover) {
@@ -828,31 +724,95 @@ onMounted(() => {
 /* Toggle button styling */
 :deep(.p-togglebutton) {
   border-radius: 12px;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--surface-border);
 }
 
 :deep(.p-togglebutton.p-highlight) {
   background: var(--primary-color);
   border-color: var(--primary-color);
+  box-shadow: 0 0 0 4px var(--primary-color-lighter);
+}
+
+/* Dark mode adjustments */
+:root.dark {
+  .filter-row {
+    background: var(--surface-700);
+    border-color: var(--surface-border);
+  }
+  
+  .filter-row:hover {
+    background: var(--surface-600);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  
+  .results-grid .tag-pill {
+    background: var(--primary-900);
+    color: var(--primary-300);
+  }
+  
+  .results-grid .tag-pill:hover {
+    background: var(--primary-800);
+  }
+  
+  .quote-card-wrapper {
+    background: var(--surface-700);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  }
+  
+  .quote-card-wrapper:hover {
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  }
 }
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .filter-row {
-    padding: 0.75rem;
+    padding: 1rem;
   }
   
   :deep(.p-button) {
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1.25rem;
   }
   
   .search-button-adv .flex {
     width: 100%;
     justify-content: center;
+    padding: 0.75rem 1.5rem;
   }
   
   .quote-card-wrapper {
-    margin: 0.5rem 0;
+    margin: 0.75rem 0;
   }
+  
+  .results-grid .tag-pill {
+    padding: 0.375rem 0.75rem;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
 }
 </style> 

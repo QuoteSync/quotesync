@@ -1,422 +1,274 @@
 <template>
-  <div class="flex flex-col">
-    <div class="card">
-      <div class="flex justify-between items-center mb-4">
-        <div class="font-semibold text-xl">Books</div>
-        <div class="flex gap-2">
-          <Button 
-            label="Update Book Covers" 
-            icon="pi pi-refresh" 
-            severity="info" 
-            @click="fetchBookCovers"
-            :loading="updatingCovers"
-          />
-        </div>
-      </div>
-
-      <!-- Si está cargando, se muestran los skeletons -->
-      <div v-if="loading" class="grid grid-cols-12 gap-4">
-        <div
-          v-for="n in skeletonCount"
-          :key="n"
-          class="col-span-12 sm:col-span-6 lg:col-span-4 p-2"
-        >
-          <div
-            class="p-6 h-full border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg animate-pulse"
-          >
-            <div class="rounded-lg w-[200px] h-[300px] min-h-[300px] max-h-[300px] bg-gray-300 mx-auto"></div>
-            <div class="mt-4 text-center">
-              <div class="h-6 bg-gray-300 rounded w-3/4 mx-auto mb-2"></div>
-              <div class="flex items-center justify-center mb-2">
-                <div class="w-10 h-10 rounded-full bg-gray-300"></div>
-                <div class="ml-2 h-4 bg-gray-300 rounded w-1/3"></div>
-              </div>
-              <div class="h-4 bg-gray-300 rounded w-5/6 mx-auto"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Cuando ya cargaron los datos, se muestra el DataView -->
-      <DataView v-else :value="books" :layout="layout">
-        <!-- Header con botón para cambiar layout (solo en pantallas grandes) -->
-        <template #header>
-          <div class="flex justify-end">
+  <div class="flex flex-col min-h-screen bg-surface-50 dark:bg-surface-900 rounded-3xl">
+    <!-- Header Section -->
+    <div class="sticky top-0 z-10 bg-surface-0 dark:bg-surface-800 shadow-lg backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90 rounded-t-3xl">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          <h1 class="text-4xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent rounded text-center sm:text-left">
+            Library Collection
+          </h1>
+          <div class="flex gap-3 justify-center sm:justify-end mt-4 sm:mt-0">
+            <Button 
+              label="Update Book Covers" 
+              icon="pi pi-refresh" 
+              severity="info" 
+              @click="fetchBookCovers"
+              :loading="updatingCovers"
+              class="p-button-rounded"
+            />
             <SelectButton
-              v-if="!isSmallScreen"
               v-model="layout"
               :options="options"
               :allowEmpty="false"
+              class="p-button-rounded"
             >
               <template #option="{ option }">
                 <i :class="[option === 'list' ? 'pi pi-bars' : 'pi pi-table']"></i>
               </template>
             </SelectButton>
           </div>
-        </template>
+        </div>
+      </div>
+    </div>
 
-        <!-- Layout tipo lista -->
-        <template #list="slotProps">
-          <div class="flex flex-col">
-            <div v-for="(book, index) in slotProps.items" :key="index">
-              <div
-                class="flex flex-col sm:flex-row md:items-center p-6 gap-4 hover:scale-105 hover:shadow-xl transition-transform duration-300 cursor-pointer"
-                :class="{ 'border-t border-surface': index !== 0 }"
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+      <!-- Loading Skeleton -->
+      <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        <div v-for="n in skeletonCount" :key="n" class="animate-pulse">
+          <div class="bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden">
+            <div class="aspect-[2/3] bg-surface-200 dark:bg-surface-700"></div>
+            <div class="p-6 space-y-4">
+              <div class="h-6 bg-surface-200 dark:bg-surface-700 rounded w-3/4"></div>
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-surface-200 dark:bg-surface-700"></div>
+                <div class="h-4 bg-surface-200 dark:bg-surface-700 rounded w-1/3"></div>
+              </div>
+              <div class="h-4 bg-surface-200 dark:bg-surface-700 rounded w-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Books Grid/List View -->
+      <div v-else>
+        <Transition name="fade" mode="out-in">
+          <template v-if="layout === 'grid'">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+              <div v-for="book in books" :key="book.id" 
+                :data-book-id="book.id"
+                class="group transform transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer"
                 @click="goToBookDetail(book.id)"
               >
-                <!-- Contenedor de la portada (300x200 px) -->
-                <div class="flex-shrink-0 w-[200px]">
-                  <!-- Fixed size container to prevent layout shifts -->
-                  <div class="relative w-[200px] h-[300px] min-h-[300px] max-h-[300px] mx-auto">
-                    <!-- Skeleton loader that shows during loading -->
-                    <div 
-                      v-if="book.cover && coverLoadingStates[book.id]" 
-                      class="absolute inset-0 rounded-lg overflow-hidden bg-gray-200"
-                      :class="coverTransitionClass"
-                    >
-                      <!-- Skeleton animation -->
-                      <div class="absolute inset-0 w-full h-full animate-pulse">
-                        <div class="h-full w-full bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200"></div>
-                      </div>
-                      
-                      <!-- Loading spinner in the center -->
-                      <div class="absolute inset-0 flex items-center justify-center">
-                        <div class="w-8 h-8 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                      </div>
+                <div class="bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden h-full flex flex-col">
+                  <!-- Book Cover -->
+                  <div class="relative aspect-[2/3] overflow-hidden">
+                    <!-- Loading State -->
+                    <div v-if="book.cover && coverLoadingStates[book.id]" 
+                      class="absolute inset-0 bg-surface-200 dark:bg-surface-700 animate-pulse flex items-center justify-center">
+                      <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                    
-                    <!-- Actual book cover image -->
-                    <img
-                      v-if="book.cover && !book.imageFailed"
+
+                    <!-- Book Cover Image -->
+                    <img v-if="book.cover && !book.imageFailed"
                       :src="book.cover"
                       :alt="book.title"
-                      class="absolute inset-0 h-full w-full object-contain rounded-lg book-cover"
-                      :class="[coverTransitionClass, coverLoadingStates[book.id] ? 'opacity-0' : 'opacity-100']"
+                      class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       @error="handleImageError(book.id)"
                       @load="handleImageLoad(book.id)"
                     />
-                    
-                    <!-- Error fallback for failed images -->
-                    <div 
-                      v-if="book.cover && book.imageFailed" 
-                      class="absolute inset-0 flex flex-col items-center justify-center rounded-lg book-cover"
-                      :class="coverTransitionClass"
+
+                    <!-- Fallback Cover -->
+                    <div v-if="!book.cover || book.imageFailed"
+                      class="absolute inset-0 flex items-center justify-center overflow-hidden"
                       :style="{ background: book.gradient.background }"
                     >
-                      <!-- Book-like cover design -->
-                      <div class="w-full h-full flex flex-col p-4 relative overflow-hidden">
-                        <!-- Light reflection effect -->
-                        <div class="absolute top-0 right-0 w-20 h-[150%] bg-white opacity-10 rotate-30 -translate-x-10 -translate-y-10"></div>
-                        
-                        <!-- Title area -->
-                        <div class="mt-auto flex flex-col p-3 text-center z-10">
-                          <span class="text-white font-bold text-base leading-tight">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                          <span class="text-white/80 text-xs mt-2">by {{ book.author.name }}</span>
-                          <div class="mt-3 flex flex-col items-center">
-                            <i class="pi pi-image text-white/60 text-sm"></i>
-                            <span class="text-white/60 text-xs mt-1">Image unavailable</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Fallback if no cover is available -->
-                    <div
-                      v-if="!book.cover"
-                      class="absolute inset-0 rounded-lg overflow-hidden book-cover"
-                      :class="coverTransitionClass"
-                      :style="{ background: book.gradient.background }"
-                    >
-                      <!-- Book-like cover design -->
                       <div class="w-full h-full flex flex-col p-4 relative">
                         <!-- Light reflection effect -->
-                        <div class="absolute top-0 right-0 w-20 h-[150%] bg-white opacity-10 rotate-30 -translate-x-10 -translate-y-10"></div>
+                        <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
                         
                         <!-- Decorative book elements -->
                         <div class="flex-1 flex flex-col items-center justify-center relative">
                           <!-- Decorative circle -->
-                          <div class="w-20 h-20 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                            <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-                              <span class="text-white/80 text-xl font-serif">{{ book.title.charAt(0) }}</span>
+                          <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
+                            <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+                              <span class="text-white/80 text-3xl font-serif">{{ book.title.charAt(0) }}</span>
                             </div>
                           </div>
                           
                           <!-- Decorative lines -->
-                          <div class="w-16 h-0.5 bg-white/20 mb-1"></div>
-                          <div class="w-24 h-0.5 bg-white/20 mb-4"></div>
-                        </div>
-                        
-                        <!-- Title area -->
-                        <div class="mt-auto flex flex-col p-3 text-center z-10">
-                          <span class="text-white font-bold text-lg leading-tight uppercase tracking-wide">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                          <div class="w-12 h-0.5 bg-white/40 mx-auto my-2"></div>
-                          <span class="text-white/80 text-xs mt-2 italic">by {{ book.author.name }}</span>
+                          <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
+                          <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
                         </div>
                       </div>
                     </div>
+
+                    <!-- Overlay with Actions -->
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <Button 
+                        icon="pi pi-book" 
+                        rounded 
+                        severity="secondary" 
+                        @click.stop="goToBookDetail(book.id)"
+                      />
+                    </div>
                   </div>
-                </div>
-                <!-- Información del libro -->
-                <div class="flex flex-col justify-between flex-1">
-                  <div>
-                    <h2 class="text-3xl font-bold fancy-font">{{ book.title }}</h2>
-                    <div class="flex items-center mt-2">
-                      <!-- Author image with loading state and fallback -->
-                      <div class="relative w-10 h-10 rounded-full overflow-hidden">
-                        <!-- Loading skeleton -->
-                        <div 
-                          v-if="book.author.cover && authorImageLoadingStates[book.author.id]" 
-                          class="absolute inset-0 w-full h-full rounded-full bg-gray-200 animate-pulse"
-                        ></div>
-                        
-                        <!-- Author image -->
-                        <img
-                          v-if="book.author.cover && !authorImageFailedStates[book.author.id]"
+
+                  <!-- Book Info -->
+                  <div class="p-6 flex-1 flex flex-col">
+                    <h2 class="text-2xl font-bold fancy-font mb-3 line-clamp-2">{{ book.title }}</h2>
+                    
+                    <!-- Author Info -->
+                    <div class="flex items-center mb-4">
+                      <div class="relative w-10 h-10 rounded-full overflow-hidden mr-3">
+                        <img v-if="book.author.cover && !authorImageFailedStates[book.author.id]"
                           :src="book.author.cover"
                           :alt="book.author.name"
-                          class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
+                          class="w-full h-full object-cover"
                           @error="handleAuthorImageError(book.author.id, book.author.name)"
                           @load="handleAuthorImageLoad(book.author.id)"
                         />
-                        
-                        <!-- Gradient fallback -->
-                        <div
-                          v-if="!book.author.cover || authorImageFailedStates[book.author.id]"
-                          class="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105"
-                          :style="{ 
-                            background: book.author.gradient || 
-                              (book.author.gradientPrimary && book.author.gradientSecondary ? 
-                                `linear-gradient(135deg, ${book.author.gradientPrimary}, ${book.author.gradientSecondary})` : 
-                                getRandomGradient().background)
-                          }"
+                        <div v-else
+                          class="w-full h-full flex items-center justify-center"
+                          :style="{ background: book.author.gradient || getRandomGradient().background }"
                         >
                           <span class="text-white text-sm font-bold">{{ book.author.name.charAt(0) }}</span>
                         </div>
                       </div>
-                      <span class="ml-2 text-lg font-semibold">{{
-                        book.author.name
-                      }}</span>
+                      <span class="text-surface-600 dark:text-surface-400">{{ book.author.name }}</span>
                     </div>
-                    <p class="text-sm mt-2">{{ book.description }}</p>
-                  </div>
-                  <!-- Add quote count badge -->
-                  <div class="mt-4 flex flex-col md:items-end gap-4">
-                    <div
-                      class="bg-surface-100 p-1 rounded-full"
-                      style="border-radius: 30px"
-                    >
-                      <div
-                        class="bg-surface-0 flex items-center gap-2 justify-center py-1 px-2 rounded-full"
-                        style="
-                          box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.04),
-                            0px 1px 2px rgba(0, 0, 0, 0.06);
-                        "
-                      >
-                        <span class="text-surface-900 font-medium text-sm">{{ book.quotes_count || 0 }}</span>
-                        <i class="pi pi-comment text-primary-500"></i>
-                      </div>
-                    </div>
-                    <div class="flex flex-row-reverse md:flex-row gap-2">
-                      <Button
-                        :icon="book.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
-                        outlined
-                        @click.stop="toggleLike(book.id)"
-                      ></Button>
-                      <Button
-                        icon="pi pi-book"
-                        label="Leer más"
-                        class="flex-auto whitespace-nowrap"
-                        @click="goToBookDetail(book.id)"
-                      ></Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </template>
 
-        <!-- Layout tipo grid -->
-        <template #grid="slotProps">
-          <div class="grid grid-cols-12 gap-4 auto-rows-fr">
-            <div
-              v-for="(book, index) in slotProps.items"
-              :key="index"
-              class="col-span-12 sm:col-span-6 lg:col-span-4 p-2"
-            >
-              <div
-                @click="goToBookDetail(book.id)"
-                class="p-6 h-full border border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900 rounded-lg flex flex-col hover:scale-105 hover:shadow-xl mx-auto transition-transform duration-300 cursor-pointer"
-              >
-                <!-- Portada para grid (200x300 px) -->
-                <div class="relative w-[200px] h-[300px] min-h-[300px] max-h-[300px] mx-auto mb-4">
-                  <!-- Skeleton loader that shows during loading -->
-                  <div 
-                    v-if="book.cover && coverLoadingStates[book.id]" 
-                    class="absolute inset-0 rounded-lg overflow-hidden bg-gray-200"
-                    :class="coverTransitionClass"
-                  >
-                    <!-- Skeleton animation -->
-                    <div class="absolute inset-0 w-full h-full animate-pulse">
-                      <div class="h-full w-full bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200"></div>
-                    </div>
-                    
-                    <!-- Loading spinner in the center -->
-                    <div class="absolute inset-0 flex items-center justify-center">
-                      <div class="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                  </div>
-                  
-                  <!-- Actual book cover image -->
-                  <img
-                    v-if="book.cover && !book.imageFailed"
-                    :src="book.cover"
-                    :alt="book.title"
-                    class="absolute inset-0 w-full h-full rounded-lg object-contain book-cover"
-                    :class="[coverTransitionClass, coverLoadingStates[book.id] ? 'opacity-0' : 'opacity-100']"
-                    @error="handleImageError(book.id)"
-                    @load="handleImageLoad(book.id)"
-                  />
-                  
-                  <!-- Error fallback for failed images -->
-                  <div 
-                    v-if="book.cover && book.imageFailed" 
-                    class="absolute inset-0 flex flex-col items-center justify-center rounded-lg book-cover"
-                    :class="coverTransitionClass"
-                    :style="{ background: book.gradient.background }"
-                  >
-                    <!-- Book-like cover design -->
-                    <div class="w-full h-full flex flex-col p-4 relative overflow-hidden">
-                      <!-- Light reflection effect -->
-                      <div class="absolute top-0 right-0 w-20 h-[150%] bg-white opacity-10 rotate-30 -translate-x-10 -translate-y-10"></div>
-                      
-                      <!-- Title area -->
-                      <div class="mt-auto flex flex-col p-3 text-center z-10">
-                        <span class="text-white font-bold text-base leading-tight">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                        <span class="text-white/80 text-xs mt-2">by {{ book.author.name }}</span>
-                        <div class="mt-3 flex flex-col items-center">
-                          <i class="pi pi-image text-white/60 text-sm"></i>
-                          <span class="text-white/60 text-xs mt-1">Image unavailable</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <!-- Fallback if no cover is available -->
-                  <div
-                    v-if="!book.cover"
-                    class="absolute inset-0 rounded-lg overflow-hidden book-cover"
-                    :class="coverTransitionClass"
-                    :style="{ background: book.gradient.background }"
-                  >
-                    <!-- Book-like cover design -->
-                    <div class="w-full h-full flex flex-col p-4 relative">
-                      <!-- Light reflection effect -->
-                      <div class="absolute top-0 right-0 w-20 h-[150%] bg-white opacity-10 rotate-30 -translate-x-10 -translate-y-10"></div>
-                      
-                      <!-- Decorative book elements -->
-                      <div class="flex-1 flex flex-col items-center justify-center relative">
-                        <!-- Decorative circle -->
-                        <div class="w-20 h-20 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
-                          <div class="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-                            <span class="text-white/80 text-xl font-serif">{{ book.title.charAt(0) }}</span>
-                          </div>
-                        </div>
-                        
-                        <!-- Decorative lines -->
-                        <div class="w-16 h-0.5 bg-white/20 mb-1"></div>
-                        <div class="w-24 h-0.5 bg-white/20 mb-4"></div>
-                      </div>
-                      
-                      <!-- Title area -->
-                      <div class="mt-auto flex flex-col p-3 text-center z-10">
-                        <span class="text-white font-bold text-lg leading-tight uppercase tracking-wide">{{ book.title.split(' ').slice(0, 8).join(' ') }}{{ book.title.split(' ').length > 8 ? '...' : '' }}</span>
-                        <div class="w-12 h-0.5 bg-white/40 mx-auto my-2"></div>
-                        <span class="text-white/80 text-xs mt-2 italic">by {{ book.author.name }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <!-- Detalles del libro -->
-                <div class="mt-4 text-center">
-                  <h2 class="text-3xl font-bold fancy-font">{{ book.title }}</h2>
-                  <div class="flex items-center justify-center mt-2">
-                    <!-- Author image with loading state and fallback -->
-                    <div class="relative w-10 h-10 rounded-full overflow-hidden">
-                      <!-- Loading skeleton -->
-                      <div 
-                        v-if="book.author.cover && authorImageLoadingStates[book.author.id]" 
-                        class="absolute inset-0 w-full h-full rounded-full bg-gray-200 animate-pulse"
-                      ></div>
-                      
-                      <!-- Author image -->
-                      <img
-                        v-if="book.author.cover && !authorImageFailedStates[book.author.id]"
-                        :src="book.author.cover"
-                        :alt="book.author.name"
-                        class="w-10 h-10 rounded-full object-cover transition-transform duration-300 hover:scale-105"
-                        @error="handleAuthorImageError(book.author.id, book.author.name)"
-                        @load="handleAuthorImageLoad(book.author.id)"
-                      />
-                      
-                      <!-- Gradient fallback -->
-                      <div
-                        v-if="!book.author.cover || authorImageFailedStates[book.author.id]"
-                        class="w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-300 hover:scale-105"
-                        :style="{ 
-                          background: book.author.gradient || 
-                            (book.author.gradientPrimary && book.author.gradientSecondary ? 
-                              `linear-gradient(135deg, ${book.author.gradientPrimary}, ${book.author.gradientSecondary})` : 
-                              getRandomGradient().background)
-                        }"
-                      >
-                        <span class="text-white text-sm font-bold">{{ book.author.name.charAt(0) }}</span>
-                      </div>
-                    </div>
-                    <span class="ml-2 text-lg font-semibold">{{ book.author.name }}</span>
-                  </div>
-                  <p class="text-sm mt-2">{{ book.description }}</p>
-                </div>
-                <!-- Sección de rating y botones -->
-                <div class="mt-auto pt-4">
-                  <div class="flex flex-row justify-between items-center">
-                    <div
-                      class="bg-surface-100 p-1 rounded-full"
-                      style="border-radius: 30px"
-                    >
-                      <div
-                        class="bg-surface-0 flex items-center gap-2 justify-center py-1 px-2 rounded-full"
-                        style="
-                          box-shadow: 0px 1px 2px rgba(0, 0, 0, 0.04),
-                            0px 1px 2px rgba(0, 0, 0, 0.06);
-                        "
-                      >
-                        <span class="text-surface-900 font-medium text-sm">{{ book.quotes_count || 0 }}</span>
+                    <!-- Description -->
+                    <p class="text-surface-600 dark:text-surface-400 text-sm line-clamp-3 mb-4">{{ book.description }}</p>
+
+                    <!-- Stats and Actions -->
+                    <div class="mt-auto flex items-center justify-between">
+                      <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-full">
                         <i class="pi pi-comment text-primary-500"></i>
+                        <span class="text-sm font-medium">{{ book.quotes_count || 0 }}</span>
                       </div>
-                    </div>
-                    <div class="flex gap-2">
-                      <Button
-                        icon="pi pi-book"
-                        label="Leer más"
-                        class="flex-auto whitespace-nowrap"
-                        @click="goToBookDetail(book.id)"
-                      ></Button>
-                      <Button
-                        :icon="book.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
-                        outlined
+                      <Button 
+                        :icon="book.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'" 
+                        rounded 
+                        :severity="book.is_favorite ? 'danger' : 'secondary'"
                         @click.stop="toggleLike(book.id)"
-                      ></Button>
+                      />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        </template>
-      </DataView>
+          </template>
+          <template v-else>
+            <div class="space-y-4">
+              <div v-for="book in books" :key="book.id" 
+                :data-book-id="book.id"
+                class="group bg-surface-0 dark:bg-surface-800 rounded-2xl shadow-xl overflow-hidden cursor-pointer transform transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl"
+                @click="goToBookDetail(book.id)"
+              >
+                <div class="flex h-48">
+                  <!-- Book Cover -->
+                  <div class="relative w-32 flex-shrink-0">
+                    <!-- Loading State -->
+                    <div v-if="book.cover && coverLoadingStates[book.id]" 
+                      class="absolute inset-0 bg-surface-200 dark:bg-surface-700 animate-pulse flex items-center justify-center">
+                      <div class="w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+
+                    <!-- Book Cover Image -->
+                    <img v-if="book.cover && !book.imageFailed"
+                      :src="book.cover"
+                      :alt="book.title"
+                      class="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      @error="handleImageError(book.id)"
+                      @load="handleImageLoad(book.id)"
+                    />
+
+                    <!-- Fallback Cover -->
+                    <div v-if="!book.cover || book.imageFailed"
+                      class="absolute inset-0 flex items-center justify-center overflow-hidden"
+                      :style="{ background: book.gradient.background }"
+                    >
+                      <div class="w-full h-full flex flex-col p-4 relative">
+                        <!-- Light reflection effect -->
+                        <div class="absolute top-0 right-0 w-20 h-[130%] bg-white opacity-10" style="transform: rotate(30deg) translateX(-10px) translateY(-10px);"></div>
+                        
+                        <!-- Decorative book elements -->
+                        <div class="flex-1 flex flex-col items-center justify-center relative">
+                          <!-- Decorative circle -->
+                          <div class="w-24 h-24 rounded-full border-2 border-white/30 flex items-center justify-center mb-4">
+                            <div class="w-20 h-20 rounded-full bg-white/10 flex items-center justify-center">
+                              <span class="text-white/80 text-3xl font-serif">{{ book.title.charAt(0) }}</span>
+                            </div>
+                          </div>
+                          
+                          <!-- Decorative lines -->
+                          <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
+                          <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Book Info -->
+                  <div class="flex-1 p-6 flex flex-col">
+                    <div class="flex items-start justify-between">
+                      <div>
+                        <h2 class="text-2xl font-bold fancy-font mb-2">{{ book.title }}</h2>
+                        <!-- Author Info -->
+                        <div class="flex items-center mb-3">
+                          <div class="relative w-8 h-8 rounded-full overflow-hidden mr-2">
+                            <img v-if="book.author.cover && !authorImageFailedStates[book.author.id]"
+                              :src="book.author.cover"
+                              :alt="book.author.name"
+                              class="w-full h-full object-cover"
+                              @error="handleAuthorImageError(book.author.id, book.author.name)"
+                              @load="handleAuthorImageLoad(book.author.id)"
+                            />
+                            <div v-else
+                              class="w-full h-full flex items-center justify-center"
+                              :style="{ background: book.author.gradient || getRandomGradient().background }"
+                            >
+                              <span class="text-white text-xs font-bold">{{ book.author.name.charAt(0) }}</span>
+                            </div>
+                          </div>
+                          <span class="text-surface-600 dark:text-surface-400">{{ book.author.name }}</span>
+                        </div>
+                      </div>
+                      <Button 
+                        :icon="book.is_favorite ? 'pi pi-heart-fill' : 'pi pi-heart'" 
+                        rounded 
+                        :severity="book.is_favorite ? 'danger' : 'secondary'"
+                        @click.stop="toggleLike(book.id)"
+                      />
+                    </div>
+
+                    <!-- Description -->
+                    <p class="text-surface-600 dark:text-surface-400 text-sm line-clamp-2 mb-4">{{ book.description }}</p>
+
+                    <!-- Stats -->
+                    <div class="mt-auto flex items-center gap-4">
+                      <div class="flex items-center gap-2 bg-surface-100 dark:bg-surface-700 px-3 py-1 rounded-full">
+                        <i class="pi pi-comment text-primary-500"></i>
+                        <span class="text-sm font-medium">{{ book.quotes_count || 0 }} quotes</span>
+                      </div>
+                      <Button 
+                        icon="pi pi-book" 
+                        rounded 
+                        severity="secondary" 
+                        @click.stop="goToBookDetail(book.id)"
+                        class="opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </Transition>
+      </div>
     </div>
-    
+
     <!-- Cover Preview Dialog -->
     <Dialog 
       v-model:visible="coverPreviewDialog" 
@@ -425,6 +277,7 @@
       :modal="true"
       :closable="true"
       @hide="exitCoverProcess"
+      class="cover-preview-dialog"
     >
       <div class="flex flex-col items-center p-4">
         <h3 class="text-xl font-semibold mb-2">{{ currentBook?.title }}</h3>
@@ -628,7 +481,6 @@ const previewImageError = ref(false);
 // Actualiza el layout según el tamaño de la ventana
 const handleResize = () => {
   isSmallScreen.value = window.innerWidth < 768;
-  if (isSmallScreen.value) layout.value = "grid";
 };
 
 // Función para generar la URL de la portada usando cover_i
@@ -1370,5 +1222,108 @@ const handlePreviewImageLoad = () => {
   height: 100%;
   background: rgba(255,255,255,0.1);
   z-index: 1;
+}
+
+/* New styles */
+.fancy-font {
+  font-family: inherit;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Enhanced book cover styles */
+.book-cover {
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transition: all 0.3s ease;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* Dialog enhancements */
+.cover-preview-dialog {
+  .p-dialog-header {
+    background: var(--surface-0);
+    border-bottom: 1px solid var(--surface-200);
+  }
+  
+  .p-dialog-content {
+    background: var(--surface-0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* View transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Book transition styles */
+.book-transition-out {
+  transform: scale(1.1);
+  opacity: 0;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Add styles for the cover transition */
+.cover-transition {
+  position: fixed;
+  z-index: 9999;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>

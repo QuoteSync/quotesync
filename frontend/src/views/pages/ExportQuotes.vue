@@ -176,75 +176,101 @@ function refreshQuotes() {
 </script>
 
 <template>
-  <div class="grid">
-    <div class="col-12">
-      <div class="card">
-        <h5>Export Quotes</h5>
-        <p>Export all your quotes in either JSON or CSV format for backup or use in other applications.</p>
-        
-        <div class="flex align-items-center justify-content-between mt-4">
-          <div>
-            <span v-if="quotes.length > 0" class="text-600">
-              {{ quotes.length }} quotes ready for export
-            </span>
-            <span v-else class="text-600">
-              No quotes available for export
-            </span>
-          </div>
-          
-          <Button 
-            icon="pi pi-refresh" 
-            label="Refresh" 
-            class="p-button-outlined p-button-secondary" 
-            @click="refreshQuotes"
-            :loading="isLoading"
-          />
+  <div class="flex flex-col min-h-screen bg-surface-50 dark:bg-surface-900 rounded-3xl">
+    <!-- Header Section -->
+    <div class="sticky top-0 z-10 bg-surface-0 dark:bg-surface-800 shadow-lg backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90 rounded-t-3xl">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          <h1 class="text-4xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent rounded text-center sm:text-left">
+            Export Quotes
+          </h1>
         </div>
-        
-        <!-- Export format cards -->
-        <div class="grid mt-4">
-          <div class="col-12 md:col-6">
-            <div 
-              class="export-card border-round cursor-pointer"
-              @click="exportJSON"
-              :class="{ 'disabled': quotes.length === 0 || isLoading }"
-            >
-              <div class="flex align-items-center justify-content-center p-4">
-                <i class="pi pi-file-export text-xl mr-3"></i>
-                <div>
-                  <h6 class="text-900 font-bold mb-1">JSON Format</h6>
-                  <p class="text-600 m-0">
-                    Export in JSON format for complete data preservation and easy import into other systems.
-                    Contains all quote data with relationships preserved.
-                  </p>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+      <div class="grid">
+        <div class="col-12">
+          <div class="card bg-surface-ground dark:bg-surface-800 rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-300">
+            <div class="p-6">
+              <p class="text-lg text-500 dark:text-400 mb-6">Export all your quotes in either JSON or CSV format for backup or use in other applications.</p>
+              
+              <div class="flex flex-col sm:flex-row sm:align-items-center sm:justify-content-between gap-4 mb-6">
+                <div class="flex items-center gap-3">
+                  <div class="p-3 bg-primary-50 dark:bg-primary-900/30 rounded-xl">
+                    <i class="pi pi-file-export text-2xl text-primary-500"></i>
+                  </div>
+                  <div>
+                    <span v-if="quotes.length > 0" class="text-lg font-medium">
+                      {{ quotes.length }} quotes ready for export
+                    </span>
+                    <span v-else class="text-lg font-medium text-500">
+                      No quotes available for export
+                    </span>
+                  </div>
                 </div>
+                
+                <Button 
+                  icon="pi pi-refresh" 
+                  label="Refresh" 
+                  class="p-button-rounded p-button-secondary" 
+                  @click="refreshQuotes"
+                  :loading="isLoading"
+                />
               </div>
-              <div class="export-card-overlay">
-                <i class="pi pi-download text-2xl"></i>
-                <span>Export as JSON</span>
-              </div>
-            </div>
-          </div>
-          
-          <div class="col-12 md:col-6">
-            <div 
-              class="export-card border-round cursor-pointer"
-              @click="exportCSV"
-              :class="{ 'disabled': quotes.length === 0 || isLoading }"
-            >
-              <div class="flex align-items-center justify-content-center p-4">
-                <i class="pi pi-file-excel text-xl mr-3"></i>
-                <div>
-                  <h6 class="text-900 font-bold mb-1">CSV Format</h6>
-                  <p class="text-600 m-0">
-                    Export in CSV format for easy viewing in spreadsheet applications like Excel or Google Sheets.
-                    Basic data only in tabular format.
-                  </p>
+              
+              <!-- Export format cards -->
+              <div class="grid">
+                <div class="col-12 md:col-6">
+                  <div 
+                    class="export-card border-round-xl cursor-pointer"
+                    @click="exportJSON"
+                    :class="{ 'disabled': quotes.length === 0 || isLoading }"
+                  >
+                    <div class="flex align-items-center p-6">
+                      <div class="p-4 bg-primary-50 dark:bg-primary-900/30 rounded-xl mr-4">
+                        <i class="pi pi-file-export text-3xl text-primary-500"></i>
+                      </div>
+                      <div>
+                        <h4 class="m-0 font-semibold text-xl fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">JSON Format</h4>
+                        <p class="text-500 dark:text-400 m-0 mt-2">
+                          Export in JSON format for complete data preservation and easy import into other systems.
+                          Contains all quote data with relationships preserved.
+                        </p>
+                      </div>
+                    </div>
+                    <div class="export-card-overlay">
+                      <i class="pi pi-download text-3xl mb-2"></i>
+                      <span class="text-lg font-medium">Export as JSON</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div class="export-card-overlay">
-                <i class="pi pi-download text-2xl"></i>
-                <span>Export as CSV</span>
+                
+                <div class="col-12 md:col-6">
+                  <div 
+                    class="export-card border-round-xl cursor-pointer"
+                    @click="exportCSV"
+                    :class="{ 'disabled': quotes.length === 0 || isLoading }"
+                  >
+                    <div class="flex align-items-center p-6">
+                      <div class="p-4 bg-primary-50 dark:bg-primary-900/30 rounded-xl mr-4">
+                        <i class="pi pi-file-excel text-3xl text-primary-500"></i>
+                      </div>
+                      <div>
+                        <h4 class="m-0 font-semibold text-xl fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">CSV Format</h4>
+                        <p class="text-500 dark:text-400 m-0 mt-2">
+                          Export in CSV format for easy viewing in spreadsheet applications like Excel or Google Sheets.
+                          Basic data only in tabular format.
+                        </p>
+                      </div>
+                    </div>
+                    <div class="export-card-overlay">
+                      <i class="pi pi-download text-3xl mb-2"></i>
+                      <span class="text-lg font-medium">Export as CSV</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -255,39 +281,47 @@ function refreshQuotes() {
 </template>
 
 <style scoped>
+/* Card styling */
 .card {
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-bottom: 1.5rem;
-  padding: 2rem;
+  border-radius: 24px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--surface-card);
+  border: 1px solid var(--surface-border);
 }
 
 .card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.12);
   transform: translateY(-2px);
 }
 
-h5 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--text-color);
-}
-
+/* Button styling */
 .p-button {
   border-radius: 12px;
-  padding: 0.75rem 1.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.p-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, var(--primary-500), var(--primary-400));
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
 .p-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 20px rgba(var(--primary-500-rgb), 0.2);
 }
 
-.p-button.p-button-outlined {
-  border-width: 2px;
+.p-button:hover::after {
+  opacity: 0.1;
 }
 
 /* Export cards styling */
@@ -300,25 +334,26 @@ h5 {
   overflow: hidden;
 }
 
+.export-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
 .export-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
   border-color: var(--primary-color);
 }
 
-.export-card i {
-  font-size: 2rem;
-  padding: 1rem;
-  border-radius: 12px;
-  background: var(--primary-50);
-  color: var(--primary-color);
-  transition: all 0.3s ease;
-}
-
-.export-card:hover i {
-  transform: scale(1.1);
-  background: var(--primary-color);
-  color: white;
+.export-card:hover::before {
+  opacity: 1;
 }
 
 .export-card-overlay {
@@ -327,15 +362,16 @@ h5 {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(var(--primary-color-rgb), 0.9);
+  background: linear-gradient(135deg, var(--primary-500), var(--primary-700));
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   color: white;
   opacity: 0;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   transform: translateY(100%);
+  backdrop-filter: blur(4px);
 }
 
 .export-card:hover .export-card-overlay {
@@ -361,19 +397,16 @@ h5 {
 /* Dark mode adjustments */
 :root.dark {
   .card {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    background: var(--surface-card);
   }
   
   .export-card {
     background: var(--surface-ground);
   }
   
-  .export-card i {
-    background: var(--primary-900);
-  }
-  
-  .export-card:hover i {
-    background: var(--primary-color);
+  .export-card:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -382,17 +415,94 @@ h5 {
   gap: 1.5rem;
 }
 
-/* Text styling */
-.text-600 {
-  color: var(--text-color-secondary);
-}
-
-.text-900 {
-  color: var(--text-color);
-}
-
 /* Loading state styling */
 .p-button.p-button-loading {
   opacity: 0.8;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-in {
+  animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* View transition styles */
+.fade-enter-active,
+.fade-leave-active {
+  transition: all 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.fade-enter-to,
+.fade-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .card {
+    border-radius: 16px;
+  }
+  
+  .export-card {
+    border-radius: 12px;
+  }
 }
 </style> 

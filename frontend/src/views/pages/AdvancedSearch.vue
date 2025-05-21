@@ -1,19 +1,37 @@
 <template>
-
-  <div class="flex flex-col">
-    <div class="card">
-    <h1 class="text-3xl font-bold mb-4">Advanced Quote Search</h1>
-
-      <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <div>
-          <p class="text-gray-600 dark:text-gray-400">
-            Search across your quotes using advanced filtering and AI-powered semantic similarity.
-            Find exactly what you're looking for with our powerful search capabilities.
-          </p>
+  <div class="flex flex-col min-h-screen bg-surface-50 dark:bg-surface-900 rounded-3xl">
+    <!-- Header Section -->
+    <div class="sticky top-0 z-10 bg-surface-0 dark:bg-surface-800 shadow-lg backdrop-blur-sm bg-opacity-90 dark:bg-opacity-90 rounded-t-3xl">
+      <div class="container mx-auto px-6 py-4">
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          <h1 class="text-4xl font-bold fancy-font bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent rounded text-center sm:text-left">
+            Advanced Quote Search
+          </h1>
         </div>
       </div>
-      
-      <QuoteGraphSearch />
+    </div>
+
+    <!-- Main Content -->
+    <div class="container mx-auto px-6 py-8">
+      <div class="grid">
+        <div class="col-12">
+          <div class="bg-surface-ground dark:bg-surface-800 rounded-3xl p-6">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
+              <div class="flex items-center gap-3">
+                <div class="p-3 bg-primary-50 dark:bg-primary-900/30 rounded-xl">
+                  <i class="pi pi-search text-2xl text-primary-500"></i>
+                </div>
+                <p class="text-lg text-500 dark:text-400 m-0">
+                  Use our advanced search to find quotes by content, author, book, tags, and more. You can combine multiple criteria to narrow down your results.
+                </p>
+              </div>
+            </div>
+
+            <!-- Search Component -->
+            <QuoteGraphSearch />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -23,61 +41,29 @@ import QuoteGraphSearch from '@/components/QuoteGraphSearch.vue';
 </script>
 
 <style scoped>
-.card {
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 2rem;
-  background: var(--surface-card);
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
 }
 
-.card:hover {
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-.search-container {
-  position: relative;
-  background: var(--surface-ground);
-  border-radius: 16px;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
+::-webkit-scrollbar-thumb {
+  background: var(--surface-300);
+  border-radius: 4px;
 }
 
-.search-container:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-400);
 }
 
-h2 {
-  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-400) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-fill-color: transparent;
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--surface-600);
 }
 
-/* Dark mode adjustments */
-:root.dark {
-  .card {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  }
-  
-  .search-container {
-    background: var(--surface-ground);
-  }
-  
-  .search-container:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  }
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .card {
-    padding: 1.5rem;
-  }
-  
-  h2 {
-    font-size: 1.75rem;
-  }
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-500);
 }
 </style> 

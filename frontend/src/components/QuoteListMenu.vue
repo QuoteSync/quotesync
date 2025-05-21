@@ -56,11 +56,14 @@ const menuStyle = computed(() => {
 
 const loadQuoteLists = async () => {
   try {
+    console.log('Loading quote lists...');
     const lists = await QuoteListService.getQuoteLists();
+    console.log('Quote lists loaded:', lists);
     quoteLists.value = lists;
     // Check which lists already contain this quote
     for (const list of lists) {
       if (list.quotes?.some(quote => quote.id === props.quoteId)) {
+        console.log(`Quote ${props.quoteId} found in list ${list.id}`);
         addedToListIds.value.add(list.id);
       }
     }
@@ -120,7 +123,9 @@ const createNewList = async () => {
 
 const addQuoteToList = async (listId) => {
   try {
+    console.log(`Attempting to add quote ${props.quoteId} to list ${listId}`);
     await QuoteListService.addQuoteToList(listId, props.quoteId);
+    console.log(`Successfully added quote ${props.quoteId} to list ${listId}`);
     addedToListIds.value.add(listId);
     emit('quote-added-to-list', listId);
     toast.add({
@@ -131,6 +136,13 @@ const addQuoteToList = async (listId) => {
     });
   } catch (error) {
     console.error('Error adding quote to list:', error);
+    console.error('Error details:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      quoteId: props.quoteId,
+      listId: listId
+    });
     toast.add({
       severity: 'error',
       summary: 'Error',
@@ -163,6 +175,7 @@ const removeQuoteFromList = async (listId) => {
 };
 
 const toggleQuoteInList = async (listId, checked) => {
+  console.log(`Toggling quote ${props.quoteId} in list ${listId}, checked: ${checked}`);
   if (checked) {
     await addQuoteToList(listId);
   } else {

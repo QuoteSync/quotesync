@@ -6,130 +6,113 @@
                 <span class="text-muted-color text-2xl">Everything you need to collect, organize, and gain insights from your quotes</span>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pr-8 lg:pb-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(253, 228, 165, 0.2), rgba(187, 199, 205, 0.2)), linear-gradient(180deg, rgba(253, 228, 165, 0.2), rgba(187, 199, 205, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-yellow-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-book !text-2xl text-yellow-700"></i>
-                        </div>
-                        <h5 class="mb-2 text-surface-900 dark:text-surface-0">Book Management</h5>
-                        <span class="text-surface-600 dark:text-surface-200">Track your reading and organize your books.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-yellow-50 to-amber-50 dark:from-yellow-900/20 dark:to-amber-900/20 border border-yellow-200 dark:border-yellow-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-yellow-100 dark:bg-yellow-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-book !text-3xl text-yellow-600 dark:text-yellow-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Book Management</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Track your reading and organize your books with our intuitive library system.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pr-8 lg:pb-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(145, 226, 237, 0.2), rgba(251, 199, 145, 0.2)), linear-gradient(180deg, rgba(253, 228, 165, 0.2), rgba(172, 180, 223, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-cyan-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-comment !text-2xl text-cyan-700"></i>
-                        </div>
-                        <h5 class="mb-2 text-surface-900 dark:text-surface-0">Quote Collection</h5>
-                        <span class="text-surface-600 dark:text-surface-200">Save and categorize your favorite quotes.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-cyan-50 to-blue-50 dark:from-cyan-900/20 dark:to-blue-900/20 border border-cyan-200 dark:border-cyan-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-cyan-100 dark:bg-cyan-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-comment !text-3xl text-cyan-600 dark:text-cyan-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Quote Collection</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Save and categorize your favorite quotes with smart organization tools.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pb-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(145, 226, 237, 0.2), rgba(172, 180, 223, 0.2)), linear-gradient(180deg, rgba(172, 180, 223, 0.2), rgba(246, 158, 188, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-indigo-200" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-users !text-2xl text-indigo-700"></i>
-                        </div>
-                        <div class="mt-6 mb-1 text-surface-900 dark:text-surface-0 text-xl font-semibold">Author Tracking</div>
-                        <span class="text-surface-600 dark:text-surface-200">Follow your favorite authors and their works.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-indigo-200 dark:border-indigo-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-indigo-100 dark:bg-indigo-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-users !text-3xl text-indigo-600 dark:text-indigo-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Author Tracking</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Follow your favorite authors and discover their works with our tracking system.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pr-8 lg:pb-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(187, 199, 205, 0.2), rgba(251, 199, 145, 0.2)), linear-gradient(180deg, rgba(253, 228, 165, 0.2), rgba(145, 210, 204, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-slate-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-tag !text-2xl text-slate-700"></i>
-                        </div>
-                        <div class="mt-6 mb-1 text-surface-900 dark:text-surface-0 text-xl font-semibold">Smart Tagging</div>
-                        <span class="text-surface-600 dark:text-surface-200">Organize quotes with custom and AI-suggested tags.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-900/20 dark:to-gray-900/20 border border-slate-200 dark:border-slate-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-slate-100 dark:bg-slate-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-tag !text-3xl text-slate-600 dark:text-slate-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Smart Tagging</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Organize quotes with custom and AI-suggested tags for easy discovery.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pr-8 lg:pb-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(187, 199, 205, 0.2), rgba(246, 158, 188, 0.2)), linear-gradient(180deg, rgba(145, 226, 237, 0.2), rgba(160, 210, 250, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-orange-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-list !text-2xl text-orange-700"></i>
-                        </div>
-                        <div class="mt-6 mb-1 text-surface-900 dark:text-surface-0 text-xl font-semibold">Quote Lists</div>
-                        <span class="text-surface-600 dark:text-surface-200">Create themed collections of your favorite quotes.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 border border-orange-200 dark:border-orange-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-orange-100 dark:bg-orange-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-list !text-3xl text-orange-600 dark:text-orange-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Quote Lists</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Create themed collections of your favorite quotes for any occasion.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pb-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(251, 199, 145, 0.2), rgba(246, 158, 188, 0.2)), linear-gradient(180deg, rgba(172, 180, 223, 0.2), rgba(212, 162, 221, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-pink-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-share-alt !text-2xl text-pink-700"></i>
-                        </div>
-                        <div class="mt-6 mb-1 text-surface-900 dark:text-surface-0 text-xl font-semibold">Social Sharing</div>
-                        <span class="text-surface-600 dark:text-surface-200">Share quotes with friends and join reading groups.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-pink-50 to-rose-50 dark:from-pink-900/20 dark:to-rose-900/20 border border-pink-200 dark:border-pink-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-pink-100 dark:bg-pink-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-share-alt !text-3xl text-pink-600 dark:text-pink-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Social Sharing</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Share quotes with friends and join reading groups for discussions.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pr-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(145, 210, 204, 0.2), rgba(160, 210, 250, 0.2)), linear-gradient(180deg, rgba(187, 199, 205, 0.2), rgba(145, 210, 204, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-teal-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-comments !text-2xl text-teal-700"></i>
-                        </div>
-                        <div class="mt-6 mb-1 text-surface-900 dark:text-surface-0 text-xl font-semibold">AI Chat Assistant</div>
-                        <span class="text-surface-600 dark:text-surface-200">Ask questions about your quotes and books.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-teal-50 to-emerald-50 dark:from-teal-900/20 dark:to-emerald-900/20 border border-teal-200 dark:border-teal-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-teal-100 dark:bg-teal-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-comments !text-3xl text-teal-600 dark:text-teal-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">AI Chat Assistant</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Get insights and answers about your quotes with our AI assistant.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg:pr-8 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(145, 210, 204, 0.2), rgba(212, 162, 221, 0.2)), linear-gradient(180deg, rgba(251, 199, 145, 0.2), rgba(160, 210, 250, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-blue-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-search !text-2xl text-blue-700"></i>
-                        </div>
-                        <div class="mt-6 mb-1 text-surface-900 dark:text-surface-0 text-xl font-semibold">Advanced Search</div>
-                        <span class="text-surface-600 dark:text-surface-200">Find quotes across your entire collection instantly.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-blue-100 dark:bg-blue-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-search !text-3xl text-blue-600 dark:text-blue-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Advanced Search</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Find quotes across your entire collection with semantic search.</p>
                 </div>
             </div>
 
-            <div class="col-span-12 md:col-span-12 lg:col-span-4 p-0 lg-4 mt-6 lg:mt-0">
-                <div style="height: 160px; padding: 2px; border-radius: 10px; background: linear-gradient(90deg, rgba(160, 210, 250, 0.2), rgba(212, 162, 221, 0.2)), linear-gradient(180deg, rgba(246, 158, 188, 0.2), rgba(212, 162, 221, 0.2))">
-                    <div class="p-4 bg-surface-0 dark:bg-surface-900 h-full" style="border-radius: 8px">
-                        <div class="flex items-center justify-center bg-purple-200 mb-4" style="width: 3.5rem; height: 3.5rem; border-radius: 10px">
-                            <i class="pi pi-fw pi-download !text-2xl text-purple-700"></i>
-                        </div>
-                        <div class="mt-6 mb-1 text-surface-900 dark:text-surface-0 text-xl font-semibold">Import Quotes</div>
-                        <span class="text-surface-600 dark:text-surface-200">Easily add quotes from various sources and formats.</span>
+            <div class="col-span-12 md:col-span-6 lg:col-span-4 p-4">
+                <div class="h-full p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-900/20 dark:to-violet-900/20 border border-purple-200 dark:border-purple-800/50 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-center bg-purple-100 dark:bg-purple-800/30 mb-6 w-16 h-16 rounded-xl">
+                        <i class="pi pi-fw pi-download !text-3xl text-purple-600 dark:text-purple-400"></i>
                     </div>
+                    <h5 class="mb-3 text-2xl font-semibold text-surface-900 dark:text-surface-0">Import Quotes</h5>
+                    <p class="text-lg text-surface-600 dark:text-surface-200">Easily add quotes from various sources and formats to your library.</p>
                 </div>
             </div>
 
-            <div
-                class="col-span-12 mt-20 mb-20 p-2 md:p-20"
-                style="border-radius: 20px; background: linear-gradient(0deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.6)), radial-gradient(77.36% 256.97% at 77.36% 57.52%, #efe1af 0%, #c3dcfa 100%)"
-            >
-                <div class="flex flex-col justify-center items-center text-center px-4 py-4 md:py-0">
-                    <div class="text-gray-900 mb-2 text-3xl font-semibold">Emily Chen</div>
-                    <span class="text-gray-600 text-2xl">Literature Professor</span>
-                    <p class="text-gray-900 sm:line-height-2 md:line-height-4 text-2xl mt-6" style="max-width: 800px">
-                        "QuoteSync has transformed how I organize quotes for my literature classes. The AI tagging and search features save me hours of work, and my students love the sharing capabilities for group discussions."
-                    </p>
-                    <div class="flex mt-6 gap-2">
-                        <i class="pi pi-star-fill text-yellow-500 text-2xl"></i>
-                        <i class="pi pi-star-fill text-yellow-500 text-2xl"></i>
-                        <i class="pi pi-star-fill text-yellow-500 text-2xl"></i>
-                        <i class="pi pi-star-fill text-yellow-500 text-2xl"></i>
-                        <i class="pi pi-star-fill text-yellow-500 text-2xl"></i>
+            <!-- Testimonial Section -->
+            <div class="col-span-12 mt-20 mb-20">
+                <div class="relative p-8 md:p-12 rounded-3xl overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-r from-amber-100 to-cyan-100 dark:from-amber-900/30 dark:to-cyan-900/30 opacity-50"></div>
+                    <div class="relative z-10 flex flex-col items-center text-center">
+                        <div class="text-3xl font-semibold text-surface-900 dark:text-surface-0 mb-2">Emily Chen</div>
+                        <span class="text-xl text-surface-600 dark:text-surface-200 mb-6">Literature Professor</span>
+                        <p class="text-2xl text-surface-700 dark:text-surface-100 max-w-3xl leading-relaxed">
+                            "QuoteSync has transformed how I organize quotes for my literature classes. The AI tagging and search features save me hours of work, and my students love the sharing capabilities for group discussions."
+                        </p>
+                        <div class="flex mt-8 gap-2">
+                            <i class="pi pi-star-fill text-yellow-500 !text-2xl"></i>
+                            <i class="pi pi-star-fill text-yellow-500 !text-2xl"></i>
+                            <i class="pi pi-star-fill text-yellow-500 !text-2xl"></i>
+                            <i class="pi pi-star-fill text-yellow-500 !text-2xl"></i>
+                            <i class="pi pi-star-fill text-yellow-500 !text-2xl"></i>
+                        </div>
                     </div>
                 </div>
             </div>
