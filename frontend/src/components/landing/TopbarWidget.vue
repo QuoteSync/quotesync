@@ -59,13 +59,13 @@ function toggleMobileMenu() {
                         <i class="pi pi-sign-in mr-2"></i>
                         <span>Login</span>
                     </Button>
-                    <Button 
+    <Button
                         class="p-button-rounded register-btn" 
                         @click="router.push('/auth/register')"
-                    >
+    >
                         <i class="pi pi-user-plus mr-2"></i>
                         <span>Sign Up</span>
-                    </Button>
+    </Button>
                 </div>
             </div>
         </div>

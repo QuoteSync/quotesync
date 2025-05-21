@@ -81,7 +81,11 @@
                     <!-- Fallback Cover -->
                     <div v-if="!book.cover || book.imageFailed"
                       class="absolute inset-0 flex items-center justify-center overflow-hidden"
-                      :style="{ background: book.gradient.background }"
+                      :style="{ 
+                        background: book.gradient_primary_color && book.gradient_secondary_color 
+                          ? `linear-gradient(135deg, ${book.gradient_primary_color}, ${book.gradient_secondary_color})` 
+                          : book.gradient.background 
+                      }"
                     >
                       <div class="w-full h-full flex flex-col p-4 relative">
                         <!-- Light reflection effect -->
@@ -99,6 +103,17 @@
                           <!-- Decorative lines -->
                           <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
                           <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
+                        </div>
+
+                        <!-- Title area -->
+                        <div class="mt-auto text-center z-2">
+                          <span class="text-white font-bold text-sm uppercase tracking-wider block leading-tight">
+                            {{ book.title }}
+                          </span>
+                          <div class="w-12 h-0.5 bg-white/40 mx-auto my-2 rounded"></div>
+                          <span class="text-white/80 text-xs italic block">
+                            by {{ book.author.name }}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -187,7 +202,11 @@
                     <!-- Fallback Cover -->
                     <div v-if="!book.cover || book.imageFailed"
                       class="absolute inset-0 flex items-center justify-center overflow-hidden"
-                      :style="{ background: book.gradient.background }"
+                      :style="{ 
+                        background: book.gradient_primary_color && book.gradient_secondary_color 
+                          ? `linear-gradient(135deg, ${book.gradient_primary_color}, ${book.gradient_secondary_color})` 
+                          : book.gradient.background 
+                      }"
                     >
                       <div class="w-full h-full flex flex-col p-4 relative">
                         <!-- Light reflection effect -->
@@ -205,6 +224,17 @@
                           <!-- Decorative lines -->
                           <div class="w-20 h-0.5 bg-white/20 mb-1"></div>
                           <div class="w-32 h-0.5 bg-white/20 mb-4"></div>
+                        </div>
+
+                        <!-- Title area -->
+                        <div class="mt-auto text-center z-2">
+                          <span class="text-white font-bold text-sm uppercase tracking-wider block leading-tight">
+                            {{ book.title }}
+                          </span>
+                          <div class="w-12 h-0.5 bg-white/40 mx-auto my-2 rounded"></div>
+                          <span class="text-white/80 text-xs italic block">
+                            by {{ book.author.name }}
+                          </span>
                         </div>
                       </div>
                     </div>
