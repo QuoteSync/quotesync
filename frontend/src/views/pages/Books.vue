@@ -1,8 +1,190 @@
 <template>
   <div class="flex flex-col">
+    <!-- Hero Section with Personalized Greeting -->
+    <div class="card mb-6 overflow-hidden bg-surface-50 dark:bg-surface-800 p-0">
+      <div class="flex flex-col lg:flex-row">
+        <!-- Left Side: Greeting and Search -->
+        <div class="p-8 lg:w-1/2 relative z-10">
+          <!-- Personal greeting -->
+          <div class="mb-8">
+            <h1 class="text-5xl font-bold fancy-font mb-3 bg-gradient-to-r from-primary-500 to-primary-700 bg-clip-text text-transparent">
+              Happy reading, <span class="italic">{{ userName }}</span>
+            </h1>
+            <p class="text-lg text-surface-600 dark:text-surface-400 mt-3 max-w-lg">
+              Wow! You've delved deep into the wizarding world's secrets. Have Harry's parents died yet? Oops, looks like you're not there yet. Get reading now!
+            </p>
+            <Button 
+              label="Start reading" 
+              icon="pi pi-arrow-right" 
+              iconPos="right" 
+              class="mt-4 px-5 py-3 text-lg font-medium"
+            />
+          </div>
+          
+          <!-- Search Bar -->
+          <div class="relative mt-8">
+            <span class="p-input-icon-left w-full">
+              <i class="pi pi-search" />
+              <InputText 
+                placeholder="Search book name, author, edition..." 
+                class="w-full p-3 pl-10 rounded-full"
+              />
+            </span>
+          </div>
+        </div>
+        
+        <!-- Right Side: Featured Book -->
+        <div class="lg:w-1/2 relative overflow-hidden p-8 hidden lg:flex justify-center items-center">
+          <!-- Open book effect -->
+          <div class="relative w-[500px] h-[350px] transform -rotate-6 shadow-2xl">
+            <!-- Left page -->
+            <div class="absolute left-0 w-1/2 h-full bg-[#f8f5f0] rounded-l-lg shadow-inner border border-gray-300 flex items-center justify-center p-4">
+              <div class="flex flex-col items-end h-full">
+                <div class="w-full h-full flex flex-col justify-center">
+                  <p class="text-sm text-surface-700 leading-relaxed font-serif italic">
+                    "Harry had never been to London before. Although Hagrid seemed to know where he was going, he was obviously not used to getting there in an ordinary way. He got stuck in the ticket barrier on the Underground, and complained loudly that the seats were too small and the trains too slow..."
+                  </p>
+                </div>
+                <div class="text-xs text-surface-500 mt-4">
+                  <span>154</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Right page with illustration -->
+            <div class="absolute right-0 w-1/2 h-full bg-[#f8f5f0] rounded-r-lg shadow-inner border border-gray-300 flex items-center justify-center overflow-hidden">
+              <img src="https://images.unsplash.com/photo-1551269901-5c5e14c25df7?q=80&w=2069&auto=format&fit=crop" 
+                   alt="Magical forest" 
+                   class="object-cover h-full w-full rounded-r opacity-80" />
+            </div>
+            
+            <!-- Book spine -->
+            <div class="absolute left-1/2 h-full w-2 -ml-1 bg-gradient-to-r from-gray-400 to-gray-300 shadow"></div>
+            
+            <!-- Decorative elements -->
+            <div class="absolute top-4 left-4 w-16 h-16 rounded-full bg-gradient-to-br from-primary-300 to-primary-500 opacity-30"></div>
+            <div class="absolute bottom-6 right-8 w-10 h-10 rounded-full bg-gradient-to-br from-primary-300 to-primary-500 opacity-30"></div>
+          </div>
+          
+          <!-- Book Info Card: Floating on top of the book -->
+          <div class="absolute right-10 top-10 rounded-xl bg-white dark:bg-surface-900 shadow-xl border border-surface-200 dark:border-surface-700 p-5 w-72 transform rotate-3">
+            <h3 class="text-2xl font-bold fancy-font mb-1">The Chamber of Secrets</h3>
+            <div class="flex items-center text-xs text-surface-500 mb-3">
+              <span>154 / 300 pages</span>
+            </div>
+            <p class="text-sm text-surface-600 dark:text-surface-400">
+              Harry as he returns to Hogwarts school of witchcraft and wizardry for his 2nd year, only to discover that...
+            </p>
+            <div class="text-xs text-right mt-2 text-surface-500">
+              ~ JK Rowling
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Popular Now Section -->
+    <div class="card mb-6">
+      <div class="font-semibold text-2xl mb-4 fancy-font">Popular Now</div>
+      
+      <!-- Book Covers Carousel -->
+      <div class="overflow-x-auto pb-4">
+        <div class="flex gap-4">
+          <div v-for="(book, index) in books.slice(0, 4)" :key="index"
+               class="flex-shrink-0 flex flex-col items-center w-48 cursor-pointer hover:scale-105 transition-transform duration-300"
+               @click="goToBookDetail(book.id)">
+            <!-- Book Cover -->
+            <div class="relative w-[150px] h-[230px] rounded-lg overflow-hidden mb-3">
+              <!-- Actual cover image -->
+              <img 
+                v-if="book.cover && !book.imageFailed" 
+                :src="book.cover" 
+                alt="Book cover" 
+                class="w-full h-full object-cover shadow-lg rounded-lg"
+                @error="handleImageError(book.id)"
+              />
+              <!-- Gradient fallback -->
+              <div 
+                v-else
+                class="w-full h-full rounded-lg"
+                :style="{ background: book.gradient ? book.gradient.background : getRandomGradient().background }"
+              >
+                <!-- Book-like cover design -->
+                <div class="w-full h-full flex flex-col p-4 relative">
+                  <!-- Light reflection effect -->
+                  <div class="absolute top-0 right-0 w-20 h-[150%] bg-white opacity-10 rotate-30 -translate-x-10 -translate-y-10"></div>
+                  
+                  <!-- Title area -->
+                  <div class="mt-auto flex flex-col p-3 text-center z-10">
+                    <span class="text-white font-bold text-sm">{{ book.title.split(' ').slice(0, 3).join(' ') }}{{ book.title.split(' ').length > 3 ? '...' : '' }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Book Title -->
+            <div class="text-center">
+              <h4 class="font-semibold">{{ book.title }}</h4>
+              <p class="text-xs text-surface-500">{{ book.author.name }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Schedule Reading Section -->
+    <div class="card mb-6">
+      <div class="font-semibold text-2xl mb-4 fancy-font">Schedule Reading</div>
+      
+      <div class="flex flex-wrap gap-3 justify-center">
+        <div v-for="(day, index) in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']" :key="index"
+             class="day-item">
+          <div class="day-name">{{ day }}</div>
+          <div class="day-number">{{ 11 + index }}</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Reader Friends Section -->
+    <div class="card mb-6">
+      <div class="font-semibold text-2xl mb-4 fancy-font">Reader Friends</div>
+      
+      <div class="space-y-4">
+        <div class="friend-card group">
+          <div class="flex items-center gap-3">
+            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="Roberto" class="w-12 h-12 rounded-full object-cover" />
+            <div>
+              <h4 class="font-semibold">Roberto Jordan</h4>
+              <p class="text-sm text-surface-600 dark:text-surface-400">
+                What a delightful and magical chapter it is! It indeed transports readers to the wizarding world.
+              </p>
+              <div class="text-xs text-primary-500 font-medium mt-1 flex items-center">
+                <i class="pi pi-check-circle mr-1"></i> 
+                <span>Chapter Five: Diagon Alley</span>
+              </div>
+            </div>
+          </div>
+          <div class="text-xs text-surface-500 mt-1 text-right">2 min ago</div>
+        </div>
+        
+        <div class="friend-card group">
+          <div class="flex items-center gap-3">
+            <img src="https://randomuser.me/api/portraits/women/32.jpg" alt="Anna" class="w-12 h-12 rounded-full object-cover" />
+            <div>
+              <h4 class="font-semibold">Anna Henry</h4>
+              <p class="text-sm text-surface-600 dark:text-surface-400">
+                I finished reading the chapter last night. Can't wait to get to the next one!
+              </p>
+            </div>
+          </div>
+          <div class="text-xs text-surface-500 mt-1 text-right">1 hour ago</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Original Content from here -->
     <div class="card">
       <div class="flex justify-between items-center mb-4">
-        <div class="font-semibold text-xl">Books</div>
+        <div class="font-semibold text-xl">All Books</div>
         <div class="flex gap-2">
           <Button 
             label="Update Book Covers" 
@@ -224,7 +406,7 @@
                       ></Button>
                       <Button
                         icon="pi pi-book"
-                        label="Leer más"
+                        label="Read more"
                         class="flex-auto whitespace-nowrap"
                         @click="goToBookDetail(book.id)"
                       ></Button>
@@ -398,7 +580,7 @@
                     <div class="flex gap-2">
                       <Button
                         icon="pi pi-book"
-                        label="Leer más"
+                        label="Read more"
                         class="flex-auto whitespace-nowrap"
                         @click="goToBookDetail(book.id)"
                       ></Button>
@@ -576,12 +758,17 @@
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { BookService } from "@/service/BookService";
 import { AuthorService } from "@/service/AuthorService";
+import { UserService } from "@/service/UserService"; // Import UserService
 import { useToast } from "primevue/usetoast";
 import { useRouter } from "vue-router";
 
 // Inicializar el servicio Toast y router
 const toast = useToast();
 const router = useRouter();
+
+// User information
+const userName = ref("Harvey");
+const userProfile = ref(null);
 
 // Opciones de layout para DataView
 const layout = ref("grid");
@@ -624,6 +811,23 @@ const coverLoadErrors = ref({}); // Estado para almacenar errores de carga de po
 
 // Estado para el error de la imagen de vista previa
 const previewImageError = ref(false);
+
+// Load user data
+const loadUserData = async () => {
+  try {
+    const profile = await UserService.getProfile();
+    userProfile.value = profile;
+    
+    // Use the first name if available, otherwise fallback to username
+    if (profile.first_name) {
+      userName.value = profile.first_name;
+    } else if (profile.username) {
+      userName.value = profile.username;
+    }
+  } catch (error) {
+    console.error("Error loading user profile:", error);
+  }
+};
 
 // Actualiza el layout según el tamaño de la ventana
 const handleResize = () => {
@@ -1022,6 +1226,9 @@ onMounted(async () => {
   window.addEventListener("resize", handleResize);
   handleResize();
 
+  // Load user data
+  await loadUserData();
+
   // Obtener datos de libros a través de BookService
   const data = await BookService.getBooks();
 
@@ -1370,5 +1577,57 @@ const handlePreviewImageLoad = () => {
   height: 100%;
   background: rgba(255,255,255,0.1);
   z-index: 1;
+}
+
+/* New styles for the fancy book display */
+.day-item {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--surface-100);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.day-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--primary-100);
+}
+
+.day-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--surface-600);
+}
+
+.day-number {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--surface-900);
+}
+
+.friend-card {
+  padding: 16px;
+  border-radius: 12px;
+  background-color: var(--surface-50);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.friend-card:hover {
+  background-color: var(--surface-100);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.08);
+}
+
+.fancy-font {
+  font-family: 'Georgia', serif;
 }
 </style>
