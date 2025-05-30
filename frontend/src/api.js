@@ -2,8 +2,8 @@ import axios from 'axios';
 import router from './router';
 
 // Backend base URL - centralized here for reuse
-export const BACKEND_URL = 'http://localhost:8000';
-export const API_BASE_URL = `${BACKEND_URL}/api`;
+export const BACKEND_URL = import.meta.env.VITE_API_URL || '/api';
+export const API_BASE_URL = BACKEND_URL;
 
 // Helper function to get the value of a cookie
 function getCookie(name) {

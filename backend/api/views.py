@@ -1,3 +1,4 @@
+import requests
 from rest_framework import viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated
@@ -1817,3 +1818,73 @@ class AnthropicTagView(APIView):
         except Exception as e:
             logger.error(f"Error al generar etiquetas con Claude: {str(e)}")
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class GeminiTagView(APIView):
+    def post(self, request):
+        try:
+            quote_text = request.data.get('quoteText', '')
+            prompt = request.data.get('prompt', '')
+
+            if not quote_text:
+                return Response(
+                    {'error': 'No se proporcionó texto de la cita'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Obtener la API key de Gemini desde las variables de entorno
+            gemini_api_key = os.getenv('GEMINI_API_KEY')
+            if not gemini_api_key:
+                return Response(
+                    {'error': 'API key de Gemini no configurada'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            # Configurar la URL y headers para la API de Gemini
+            url = f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_api_key}'
+            headers = {
+                'Content-Type': 'application/json'
+            }
+
+            # Preparar el payload para Gemini
+            payload = {
+                'contents': [
+                    {
+                        'parts': [
+                            {
+                                'text': prompt
+                            }
+                        ]
+                    }
+                ]
+            }
+
+            # Hacer la petición a la API de Gemini
+            response = requests.post(url, headers=headers, json=payload)
+            response.raise_for_status()
+
+            # Procesar la respuesta
+            gemini_response = response.json()
+            if 'candidates' in gemini_response and len(gemini_response['candidates']) > 0:
+                # Extraer el texto de la respuesta
+                response_text = gemini_response['candidates'][0]['content']['parts'][0]['text']
+                
+                # Procesar las etiquetas (separadas por comas)
+                tags = [tag.strip() for tag in response_text.split(',') if tag.strip()]
+                
+                return Response({'tags': tags})
+            else:
+                return Response(
+                    {'error': 'Formato de respuesta inválido de Gemini'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        except requests.exceptions.RequestException as e:
+            return Response(
+                {'error': f'Error en la comunicación con Gemini: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'Error al procesar la solicitud: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

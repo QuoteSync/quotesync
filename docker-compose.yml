@@ -1,32 +1,125 @@
 version: '3.8'
+
+volumes:
+  postgres_data:
+  backend_static:
+  backend_media:
+  nginx_logs:
+
+networks:
+  quotesync_network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: 1400
+
 services:
   backend:
     build: ./backend
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ./backend:/app
+      - backend_static:/app/static
+      - backend_media:/app/media
+    environment:
+      - DEBUG=1
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - SECRET_KEY=${SECRET_KEY}
+    command: gunicorn backend.wsgi:application --workers=4 --bind=0.0.0.0:8000 --timeout=120
     depends_on:
-      - ollama
+      - db
+    networks:
+      - quotesync_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
   frontend:
     build: ./frontend
-    ports:
-      - "5173:5173"
+    expose:
+      - "5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - VITE_API_URL=http://localhost/api
+      - VITE_HOST=0.0.0.0
+      - VITE_BASE_URL=http://localhost
+    command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend
-
-  ollama:
-    image: ollama/ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    command: serve
+    networks:
+      - quotesync_network
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
 
-volumes:
-  ollama_data: 
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-postgres.sh:/docker-entrypoint-initdb.d/init-postgres.sh
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - "5433:5432"
+    networks:
+      - quotesync_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/ssl:/etc/nginx/ssl
+      - backend_static:/usr/share/nginx/html/static
+      - backend_media:/usr/share/nginx/html/media
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - quotesync_network
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "3"
+
+# ollama:
+#   image: ollama/ollama
+#   ports:
+#     - "11434:11434"
+#   volumes:
+#     - ollama_data:/root/.ollama
+#   command: serve
+#   restart: unless-stopped
+
+# ollama_data: 

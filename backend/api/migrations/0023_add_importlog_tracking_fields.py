@@ -25,7 +25,11 @@ class Migration(migrations.Migration):
             name='platform',
             field=models.CharField(choices=[('kindle', 'Kindle'), ('google_books', 'Google Books'), ('apple_books', 'Apple Books'), ('google_books_batch', 'Google Books Batch')], help_text='Plataforma de origen', max_length=50),
         ),
-        migrations.AlterField(
+        migrations.RemoveField(
+            model_name='quote',
+            name='tags',
+        ),
+        migrations.AddField(
             model_name='quote',
             name='tags',
             field=models.ManyToManyField(blank=True, help_text='Etiquetas asociadas', related_name='quotes', through='api.QuoteTag', to='api.tag'),

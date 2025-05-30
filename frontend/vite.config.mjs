@@ -17,19 +17,32 @@ export default defineConfig({
         })
     ],
     server: {
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
         proxy: {
-            // Todas las peticiones que comiencen con /api serán redirigidas al backend de Django.
             '/api': {
-                target: 'http://localhost:8000',  // Asegúrate de que tu servidor Django esté corriendo en este puerto.
+                target: 'http://backend:8000',
                 changeOrigin: true,
-                secure: false,
-                // rewrite: (path) => path.replace(/^\/api/, '')
-            },
+                secure: false
+            }
         },
+        hmr: false
     },
     resolve: {
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))
+        }
+    },
+    build: {
+        sourcemap: true,
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    'vendor': ['vue', 'vue-router', 'pinia', 'axios'],
+                    'primevue': ['primevue']
+                }
+            }
         }
     }
 });

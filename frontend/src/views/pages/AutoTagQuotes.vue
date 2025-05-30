@@ -65,6 +65,12 @@
                   @click="aiService = 'claude'"
                 />
                 <Button 
+                  :class="['p-button-sm p-button-rounded', aiService === 'gemini' ? 'p-button-primary' : 'p-button-outlined']"
+                  label="Gemini" 
+                  icon="pi pi-android"
+                  @click="aiService = 'gemini'"
+                />
+                <Button 
                   :class="['p-button-sm p-button-rounded', aiService === 'ollama' ? 'p-button-primary' : 'p-button-outlined']"
                   label="Ollama" 
                   icon="pi pi-desktop"
@@ -76,6 +82,7 @@
                   icon="pi pi-cloud"
                   @click="aiService = 'quotesync'"
                 />
+                
               </div>
             </div>
           </div>
@@ -389,6 +396,7 @@ import { QuoteService } from '@/service/QuoteService';
 import { QuoteSyncChatService } from '@/service/QuoteSyncChatService';
 import { OllamaService } from '@/service/OllamaService';
 import { AnthropicService } from '@/service/AnthropicService';
+import { GeminiService } from '@/service/GeminiService';
 import { TagService } from '@/service/TagService';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -582,6 +590,9 @@ const generateTagsForQuote = async (quote) => {
       
       // Use Ollama service
       result = await OllamaService.generateTags(quote.body);
+    } else if (aiService.value === 'gemini') {
+      // Use Gemini service
+      result = await GeminiService.generateTags(quote.body);
     } else {
       // Use QuoteSyncChat service
       result = await QuoteSyncChatService.generateTags(quote.id);

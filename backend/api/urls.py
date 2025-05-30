@@ -17,6 +17,7 @@ from .views import (
     import_history,
     get_subscription_plan,
     AnthropicTagView,
+    GeminiTagView,
 )
 from .views_deepseek import DeepSeekTagView, DeepSeekRelatedView, DeepSeekChatView, DeepSeekRelatedByTextView, DeepSeekContextView
 
@@ -59,6 +60,8 @@ urlpatterns = [
     path('api/deepseek/context', DeepSeekContextView.as_view(), name='deepseek-context'),
     # Anthropic (Claude) API endpoint
     path('api/anthropic/generate-tags', AnthropicTagView.as_view(), name='anthropic-generate-tags'),
+    # Gemini API endpoint
+    path('api/gemini/generate-tags', GeminiTagView.as_view(), name='gemini-generate-tags'),
 ]
 
 # Map the UserViewSet action URLs in a more friendly way

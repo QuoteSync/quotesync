@@ -121,12 +121,6 @@ REST_FRAMEWORK = {
     ],
 }
 
-
-SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  # Puedes cambiar 5 minutos por el valor que desees
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),     # Y aquí cambiar 1 día si lo prefieres
-}
-
 ROOT_URLCONF = 'backend.urls'
 
 TEMPLATES = [
@@ -205,9 +199,8 @@ USE_I18N = True
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.1/howto/static-files/
-
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 # Media files (images, files)
 MEDIA_URL = '/media/'
@@ -220,16 +213,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # django-allauth settings
 # Configuración de django-allauth
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"  # Asegurar que usa tu campo personalizado
 ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"  # Si quieres usar email para login
 
 ACCOUNT_LOGIN_METHODS = {'email', 'username'}  # adjust as needed
-# ACCOUNT_AUTHENTICATION_METHOD = "username_email"  # Allow both username and email login
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_LOGIN_METHODS = {'username', 'email'}
-# ACCOUNT_EMAIL_REQUIRED = True
 
 HEADLESS_ONLY = True
 HEADLESS_FRONTEND_URLS = {
