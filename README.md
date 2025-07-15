@@ -1,55 +1,218 @@
-# QuoteSync: Plataforma centralizada para la gestión, organización e integración documental de citas literarias
+# QuoteSync: Centralized Platform for the Management, Organization, and Documentary Integration of Literary Quotes
 
-## Título
-- **es:** QuoteSync: Plataforma centralizada para la gestión, organización e integración documental de citas literarias
-- **en:** QuoteSync: Centralized platform for management, organization and documentary integration of literary quotes
-- **ca:** QuoteSync: Plataforma centralitzada per a la gestió, organització i integració documental de cites literàries
+## Table of Contents
 
-## Características clave
-- **Centralización de citas:** Unifica citas de múltiples plataformas (Kindle, Google Play Books, Apple Books) en un único repositorio.
-- **Etiquetado inteligente mediante IA:** Sistema automático que analiza el contenido de las citas y sugiere etiquetas temáticas relevantes, reduciendo la necesidad de clasificación manual.
-- **Inserción contextual en documentos:** Capacidad para integrar automáticamente citas relevantes en documentos importados por el usuario, sugiriendo puntos de inserción óptimos basados en el contexto temático.
-- **Organización personalizada:** Creación de colecciones temáticas y listas de citas para diferentes proyectos o áreas de interés.
-- **Colaboración entre investigadores:** Funcionalidades para compartir y colaborar en colecciones de citas con otros usuarios.
+1. [What is QuoteSync?](#what-is-quotesync)
+2. [Key Features](#key-features)
+3. [Architecture & Technologies](#architecture--technologies)
+4. [Repository Structure](#repository-structure)
+5. [Installation & Usage](#installation--usage)
+    - [Prerequisites](#prerequisites)
+    - [Environment Setup](#environment-setup)
+    - [Backend (Django)](#backend-django)
+    - [Frontend (Vuejs)](#frontend-vuejs)
+    - [Database (PostgreSQL)](#database-postgresql)
+    - [Running with Docker](#running-with-docker)
+6. [AI Integration (Claude/Anthropic)](#ai-integration-claudeanthropic)
+7. [Importing & Organizing Quotes](#importing--organizing-quotes)
+8. [Collaboration & Social Features](#collaboration--social-features)
+9. [Export & Advanced Search](#export--advanced-search)
 
-## Resumen (es)
+---
 
-1. **Contexto del problema:**
-   Los lectores e investigadores acumulan numerosas citas y anotaciones a través de diversas plataformas digitales como Kindle, Google Play Books y Apple Books, pero estas permanecen aisladas en cada ecosistema, dificultando su recuperación efectiva cuando son necesarias. La fragmentación de este valioso conocimiento limita su potencial como herramienta para la investigación, la escritura académica y el desarrollo personal. QuoteSync surge como respuesta a esta necesidad, ofreciendo una plataforma centralizada que actúa como un "segundo cerebro" donde todas las citas y reflexiones pueden ser almacenadas, organizadas y accesibles desde un único punto, independientemente de su origen.
+## What is QuoteSync?
 
-2. **Conjunto de datos y estructura del sistema:**
-   El sistema se fundamenta en una arquitectura robusta de modelos de datos relacionales implementados en Django (backend) y una interfaz dinámica en Vue.js (frontend). La estructura principal incluye modelos interconectados para Usuarios, Autores, Libros, Citas, Etiquetas y Listas temáticas. Cada cita puede ser categorizada mediante múltiples etiquetas, vinculada a su libro y autor de origen, y organizada en colecciones personalizadas. La plataforma incorpora un subsistema de inteligencia artificial que analiza semánticamente el contenido de las citas para sugerir etiquetas temáticas relevantes, ahorrando tiempo en la clasificación manual. Además, incluye capacidades de importación directa desde plataformas populares, conservando metadatos esenciales como ubicación en el libro, capítulo y fecha de captura. Una funcionalidad destacada es el sistema de inserción automática de citas en documentos, que analiza el texto importado por el usuario, identifica puntos temáticamente relevantes y sugiere citas de la biblioteca personal que podrían enriquecer el contenido. Los datos se estructuran de manera que permiten búsquedas avanzadas por múltiples criterios y facilitan la exportación para su uso en documentos académicos o personales. La plataforma también incluye funcionalidades sociales que permiten compartir colecciones de citas entre grupos de investigación o estudio.
+QuoteSync is a web platform that centralizes the management, organization, and retrieval of literary quotes and annotations from multiple digital ecosystems (Kindle, Google Play Books, Apple Books, etc.). Its goal is to eliminate the fragmentation of literary knowledge, allowing readers, researchers, and writers to store, tag, search, and reuse their quotes efficiently, acting as a true "second brain."
 
-3. **Resultados esperados:**
-   Se prevé que QuoteSync transforme la forma en que los usuarios gestionan su conocimiento literario, convirtiéndose en un repositorio centralizado que elimina las barreras entre plataformas de lectura. El sistema de etiquetado impulsado por IA permitirá una clasificación más consistente y completa, descubriendo conexiones temáticas que podrían pasar desapercibidas para el usuario. La funcionalidad de inserción automática en documentos supondrá un cambio significativo en el flujo de trabajo académico, al permitir que las citas relevantes "encuentren su camino" hacia los documentos del usuario en el momento adecuado, potenciando la productividad investigadora. Los investigadores podrán acelerar significativamente sus procesos de trabajo, al tener acceso instantáneo a todas sus referencias previamente recopiladas, organizadas temáticamente y contextualizadas. Los escritores encontrarán un recurso valioso para enriquecer sus textos con referencias precisas, mientras que los estudiantes podrán construir progresivamente una biblioteca personal de conocimiento que trasciende los límites de los cursos individuales. Las métricas de uso proporcionarán además información sobre patrones de lectura y áreas de interés, ayudando a los usuarios a identificar tendencias en su consumo intelectual. Como herramienta de "segundo cerebro", QuoteSync promete reducir la carga cognitiva asociada a recordar y localizar ideas importantes, permitiendo dedicar más recursos mentales al análisis y la creación.
+---
 
-## Resumen (en)
+## Key Features
 
-1. **Problem context:**
-   Readers and researchers accumulate numerous quotes and annotations across various digital platforms such as Kindle, Google Play Books, and Apple Books, but these remain isolated in each ecosystem, making their effective retrieval difficult when needed. The fragmentation of this valuable knowledge limits its potential as a tool for research, academic writing, and personal development. QuoteSync emerges as a response to this need, offering a centralized platform that acts as a "second brain" where all quotes and reflections can be stored, organized, and accessible from a single point, regardless of their origin.
+- **Centralized Quotes:** Unifies quotes and annotations from various platforms into a single repository.
+- **AI-powered Smart Tagging:** Analyzes quote content and suggests relevant thematic tags using AI models like Claude (Anthropic).
+- **Contextual Insertion in Documents:** Suggests relevant quotes for automatic insertion into imported documents, based on thematic context.
+- **Personalized Organization:** Create thematic collections, lists, and groups of quotes for different projects or interests.
+- **Collaboration:** Share and collaborate on quote collections with other users.
+- **Direct Import:** Supports importing quotes from Kindle, Google Play Books, Apple Books, and other formats.
+- **Advanced Search:** Search by multiple criteria (author, book, tags, text, etc.).
+- **Export:** Export quotes and collections for use in academic or personal documents.
+- **Visual Cover Management:** Automatically update and manage book covers from OpenLibrary.
 
-2. **Dataset and system structure:**
-   The system is based on a robust architecture of relational data models implemented in Django (backend) and a dynamic interface in Vue.js (frontend). The main structure includes interconnected models for Users, Authors, Books, Quotes, Tags, and Thematic Lists. Each quote can be categorized through multiple tags, linked to its source book and author, and organized into customized collections. The platform incorporates an artificial intelligence subsystem that semantically analyzes quote content to suggest relevant thematic tags, saving time in manual classification. Additionally, it includes direct import capabilities from popular platforms, preserving essential metadata such as location in the book, chapter, and capture date. A prominent feature is the automatic quote insertion system for documents, which analyzes text imported by the user, identifies thematically relevant points, and suggests quotes from the personal library that could enrich the content. The data is structured to allow advanced searches by multiple criteria and facilitate export for use in academic or personal documents. The platform also includes social functionalities that enable sharing quote collections among research or study groups.
+---
 
-3. **Expected results:**
-   QuoteSync is expected to transform how users manage their literary knowledge, becoming a centralized repository that eliminates barriers between reading platforms. The AI-powered tagging system will allow for more consistent and comprehensive classification, discovering thematic connections that might go unnoticed by the user. The automatic insertion functionality in documents will represent a significant change in academic workflow, allowing relevant quotes to "find their way" into the user's documents at the right time, enhancing research productivity. Researchers will be able to significantly accelerate their work processes by having instant access to all their previously compiled references, thematically organized and contextualized. Writers will find a valuable resource to enrich their texts with precise references, while students will be able to progressively build a personal knowledge library that transcends the limits of individual courses. Usage metrics will also provide information about reading patterns and areas of interest, helping users identify trends in their intellectual consumption. As a "second brain" tool, QuoteSync promises to reduce the cognitive load associated with remembering and locating important ideas, allowing more mental resources to be dedicated to analysis and creation.
+## Architecture & Technologies
 
-## Palabras clave (es)
-gestión del conocimiento; segundo cerebro; citas literarias; importación de Kindle; organización bibliográfica; investigación académica; base de datos centralizada; metadatos bibliográficos; productividad académica; etiquetado automático; inteligencia artificial; inserción contextual; Django; Vue.js
+- **Backend:** [Django](https://www.djangoproject.com/) (Python) with Django REST Framework.
+- **Frontend:** [Vue.js](https://vuejs.org/) (modern SPA, responsive).
+- **Database:** [PostgreSQL](https://www.postgresql.org/).
+- **AI & Tagging:** Integration with [Claude (Anthropic)](https://console.anthropic.com/) and other services.
+- **Containers:** Support for [Docker](https://www.docker.com/) and `docker-compose`.
+- **Other:** OpenLibrary API for covers, Redis (optional), cloud deployment (see `/docs/ideas/cloud_deployment_options.md`).
 
-## Palabras clave (en)
-knowledge management; second brain; literary quotes; Kindle import; bibliographic organization; academic research; centralized database; bibliographic metadata; academic productivity; automatic tagging; artificial intelligence; contextual insertion; Django; Vue.js
+---
 
-## Integración con Claude (Anthropic)
+## Repository Structure
 
-QuoteSync ahora incluye integración con Claude, el modelo de IA avanzado de Anthropic, para mejorar la generación de etiquetas. Para utilizar esta funcionalidad:
+```
+quotesync/
+│
+├── backend/                # Django backend (API, models, services)
+│   ├── api/                # Main app: models, views, urls, services
+│   ├── accounts/           # User management and authentication
+│   ├── media/              # Uploaded files (covers, avatars, etc.)
+│   ├── requirements.txt    # Python dependencies
+│   ├── manage.py           # Django main command
+│   └── ...                 # Other files and configs
+│
+├── frontend/               # Vue.js frontend (SPA)
+│   ├── src/                # Vue source code, components, services
+│   ├── public/             # Static resources
+│   ├── package.json        # Node.js dependencies
+│   └── ...                 # Config and assets
+│
+├── docs/                   # Additional documentation
+│
+├── docker-compose.yml      # Docker orchestration
+├── setup_database.sql      # Database initialization script
+├── README.md               # This file
+└── ...                     # Other scripts and utilities
+```
 
-1. Obtén una API key de Anthropic desde https://console.anthropic.com/
-2. Añade la API key a tu archivo `.env` en el directorio `backend`:
+---
+
+## Installation & Usage
+
+### Prerequisites
+
+- Python 3.9+
+- Node.js 18+
+- PostgreSQL 13+
+- (Optional) Docker and Docker Compose
+- (Optional) Redis
+
+### Environment Setup
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/youruser/quotesync.git
+   cd quotesync
    ```
-   ANTHROPIC_API_KEY=your_api_key_here
-   ```
-3. Reinicia el servidor backend
-4. En la interfaz de usuario, al generar etiquetas para una cita, selecciona "Claude" como servicio de IA
 
-Esta integración proporciona etiquetas más precisas y relevantes para tus citas, especialmente para textos complejos o especializados. 
+2. **Environment variables:**
+   - Copy the sample file and edit with your credentials:
+     ```bash
+     cp backend/.env.sample backend/.env
+     ```
+   - Add your Anthropic API key if you want to use AI:
+     ```
+     ANTHROPIC_API_KEY=your_api_key
+     ```
+
+### Backend (Django)
+
+1. **Install dependencies:**
+   ```bash
+   cd backend
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
+
+2. **Migrations and superuser:**
+   ```bash
+   python manage.py migrate
+   python manage.py createsuperuser
+   ```
+
+3. **Run the server:**
+   ```bash
+   python manage.py runserver
+   ```
+
+### Frontend (Vuejs)
+
+1. **Install dependencies:**
+   ```bash
+   cd frontend
+   npm install
+   ```
+
+2. **Run the app:**
+   ```bash
+   npm run dev
+   ```
+   The app will be available at [http://localhost:5173](http://localhost:5173) (or your configured port).
+
+### Database (PostgreSQL)
+
+- You can use the `setup_database.sql` script to initialize the database.
+- If using Docker, the database is started automatically.
+
+### Running with Docker
+
+1. **Start all services:**
+   ```bash
+   docker-compose up --build
+   ```
+   This will start backend, frontend, and database in containers.
+
+---
+
+## AI Integration (Claude/Anthropic)
+
+QuoteSync allows you to generate smart tags for quotes using advanced AI:
+
+1. **Get an Anthropic API key:**  
+   [https://console.anthropic.com/](https://console.anthropic.com/)
+
+2. **Configure the key in the backend:**  
+   Add to `backend/.env`:
+   ```
+   ANTHROPIC_API_KEY=your_api_key
+   ```
+
+3. **Restart the backend.**
+
+4. **In the UI, select "Claude" when generating tags.**
+
+This enables more accurate and relevant tag suggestions, especially for complex or specialized texts.
+
+---
+
+## Importing & Organizing Quotes
+
+- **Import your quotes** from Kindle, Google Play Books, Apple Books, `.json`, `.txt`, or `.docx` files from the import section.
+- **Organize** your quotes into lists, groups, and thematic collections.
+- **Edit and tag** each quote manually or using AI.
+- **Manage book covers** automatically from OpenLibrary.
+
+---
+
+## Collaboration & Social Features
+
+- **Share collections** of quotes with other users or research groups.
+- **Collaborate** on organizing and tagging quotes.
+- **Track group activity** and receive notifications of changes.
+
+---
+
+## Export & Advanced Search
+
+- **Export** your quotes and collections in formats suitable for academic or personal documents.
+- **Perform advanced searches** by author, book, tags, text, date, etc.
+- **Automatically insert quotes** into imported documents, with contextual suggestions.
+
+---
+
+**Questions or suggestions?**  
+Author: Francisco Javier Jiménez Ríos  
+Advisor: Francisco Javier Jaén Martínez  
+Academic Year: 2024-2025
+
+---
+
+> _QuoteSync: Transform your literary knowledge into a centralized, intelligent, and always accessible resource._
+
+---
+
+**Welcome to smart literary quote management!** 
